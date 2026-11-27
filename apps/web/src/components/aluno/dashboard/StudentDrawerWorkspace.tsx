@@ -3,10 +3,10 @@
 import AuditPageView from "@/components/audit/AuditPageView";
 import { usePortalDrawerNavigation } from "@/components/portal/ui/PortalDrawerNavigator";
 import { TabNotificacoes } from "@/components/aluno/tabs/TabNotificacoes";
-import { AcademicoWorkspace as Academic, type AcademicTab } from "@/components/aluno/academico/Academic";
-import { TabFinanceiro as Finance } from "@/components/aluno/tabs/Finance";
-import { TabDocumentos as Documents } from "@/components/aluno/tabs/Documents";
-import { RematriculaBanner as Enrollment } from "@/components/aluno/home/Enrollment";
+import { AcademicoWorkspace as Academic, type AcademicTab } from "@/components/aluno/academico/AcademicoWorkspace";
+import { TabFinanceiro as Finance } from "@/components/aluno/tabs/TabFinanceiro";
+import { TabDocumentos as Documents } from "@/components/aluno/tabs/TabDocumentos";
+import { RematriculaBanner as Enrollment } from "@/components/aluno/home/RematriculaBanner";
 
 export function StudentDrawerWorkspace({ scope, kind, initialTab, serviceCode }: {
   scope: string;
