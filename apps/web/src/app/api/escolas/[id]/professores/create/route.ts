@@ -14,16 +14,19 @@ const TurnosSchema = z.enum(['Manhã', 'Tarde', 'Noite'])
 const BodySchema = z.object({
   nome_completo: z.string().trim().min(1),
   genero: z.enum(['M', 'F']),
-  data_nascimento: z.string().trim().min(1),
+  data_nascimento: z.string().trim().regex(/^\d{4}-\d{2}-\d{2}$/).refine(v => {
+    const d = new Date(v + 'T00:00:00Z')
+    return Number.isFinite(d.getTime()) && d.toISOString().slice(0, 10) === v && v <= new Date().toISOString().slice(0, 10)
+  }, 'Informe uma data de nascimento válida'),
   numero_bi: z.string().trim().transform(v => v.toUpperCase()).refine(v => !v || (/^[A-Z0-9]{14}$/.test(v) && !/^0+$/.test(v)), 'Informe um BI válido de 14 caracteres ou deixe em branco').nullish(),
   email: z.string().email(),
   telefone_principal: z.string().trim().nullable().optional(),
   habilitacoes: z.enum(['Ensino Médio', 'Bacharelato', 'Licenciatura', 'Mestrado', 'Doutoramento']),
   area_formacao: z.string().trim().nullable().optional(),
   vinculo_contratual: z.enum(['Efetivo', 'Colaborador', 'Eventual']),
-  carga_horaria_maxima: z.number().int().positive(),
+  carga_horaria_maxima: z.number().int().positive().max(100),
   turnos_disponiveis: z.array(TurnosSchema).default([]),
-  disciplinas_habilitadas: z.array(z.string().uuid()).default([]),
+  disciplinas_habilitadas: z.array(z.string().uuid()).max(200).default([]),
   is_diretor_turma: z.boolean().default(false),
 })
 
@@ -114,9 +117,23 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
       allowed = Boolean(adminLink && adminLink.length > 0)
     }
 
-    if (!allowed) {
+    if (!allowed || userEscolaId !== escolaId) {
       emitObs('error', 403, { error_code: 'FORBIDDEN' })
       return NextResponse.json({ ok: false, error: 'Sem permissão' }, { status: 403 })
+    }
+
+    const disciplinaIds = Array.from(new Set(body.disciplinas_habilitadas || []))
+    if (disciplinaIds.length) {
+      const { data: skills, error: skillError } = await supabase.from('disciplinas_catalogo')
+        .select('id').eq('escola_id', userEscolaId).in('id', disciplinaIds)
+      if (skillError) {
+        emitObs('error', 503, { error_code: 'SKILLS_CHECK_FAILED' })
+        return NextResponse.json({ ok: false, error: 'Não foi possível validar as disciplinas.' }, { status: 503 })
+      }
+      if (skills?.length !== disciplinaIds.length) {
+        emitObs('error', 409, { error_code: 'INVALID_SKILLS' })
+        return NextResponse.json({ ok: false, error: 'Uma disciplina selecionada não pertence à escola.' }, { status: 409 })
+      }
     }
 
     // Check the tenant-scoped BI before any Auth side effect. The unique index remains
@@ -185,7 +202,6 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
       }
     }
 
-    const disciplinaIds = Array.from(new Set(body.disciplinas_habilitadas || []))
     const { data: rpcData, error: rpcError } = await (supabase as any).rpc(
       'create_or_update_professor_academico',
       {
@@ -217,7 +233,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
     if (rpcError) {
       const dbCode = String(rpcError.code ?? '')
       const biConflict = dbCode === '23505' && /teachers_escola_numero_bi_uidx/.test(rpcError.message ?? '')
-      const confirmedAbort = /^(22|23|40|42|P0)/.test(dbCode)
+      const confirmedAbort = /^(22|23|40|42|P0)/.test(dbCode) && !/IDENTITY_ALREADY_LINKED/.test(rpcError.message ?? '')
       const rolledBack = confirmedAbort && await rollbackAuthUserCreate()
       if (!rolledBack) {
         emitObs('error', 503, { error_code: 'PROF_CREATE_RECONCILIATION_REQUIRED', db_code: dbCode, user_id: userId })
