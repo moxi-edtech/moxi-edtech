@@ -52,7 +52,7 @@ CREATE TABLE public.anos_letivos (
 );
 CREATE TABLE public.turmas (
   id uuid PRIMARY KEY, escola_id uuid NOT NULL, session_id uuid,
-  curso_id uuid, classe_id uuid, nome text, status_fecho text
+  curso_id uuid, classe_id uuid, nome text, status_fecho text, turno text
 );
 CREATE TABLE public.curso_curriculos (
   id uuid PRIMARY KEY, escola_id uuid NOT NULL, ano_letivo_id uuid NOT NULL,
@@ -81,7 +81,7 @@ CREATE TABLE public.horario_versoes (
 );
 CREATE TABLE public.horario_slots (
   id uuid PRIMARY KEY, escola_id uuid NOT NULL,
-  dia_semana integer, inicio time, fim time, is_intervalo boolean
+  dia_semana integer, inicio time, fim time, is_intervalo boolean, turno_id text
 );
 CREATE TABLE public.quadro_horarios (
   id uuid PRIMARY KEY, escola_id uuid NOT NULL, turma_id uuid NOT NULL,
