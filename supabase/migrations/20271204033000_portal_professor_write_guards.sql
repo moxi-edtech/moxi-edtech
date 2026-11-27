@@ -130,10 +130,6 @@ BEGIN
     v_portal := 'service_role';
   END IF;
 
-  IF NOT v_is_service_role AND NOT v_is_staff AND NOT v_guarded THEN
-    RAISE EXCEPTION 'GRADE_REVISION_REQUIRED: recarregue a pauta antes de guardar.' USING ERRCODE = '40001';
-  END IF;
-
   SELECT
     t.id,
     t.escola_id,
@@ -220,6 +216,10 @@ BEGIN
         RAISE EXCEPTION 'AUTH: Professor não atribuído a esta disciplina/turma.';
       END IF;
     END IF;
+  END IF;
+
+  IF NOT v_is_service_role AND NOT v_is_staff AND NOT v_guarded THEN
+    RAISE EXCEPTION 'GRADE_REVISION_REQUIRED: recarregue a pauta antes de guardar.' USING ERRCODE = '40001';
   END IF;
 
   SELECT pl.id
