@@ -29,6 +29,12 @@ async function validateDrawerData() {
     const path = new URL(req.url()).pathname;
     counts.set(path, (counts.get(path) ?? 0) + 1);
     if (req.method() === "POST") writes.push({path, body: req.postDataJSON()});
+    if (path === "/api/escola/fixture/provas") {
+      const offset = Number(new URL(req.url()).searchParams.get("offset"));
+      const provas = Array.from({length:offset ? 1 : 30}, (_,i) => ({id:String(offset+i), titulo:"Prova " + (offset+i), classe:"7ª", trimestre:1, estado:"rascunho"}));
+      await route.fulfill({json:{permissions:{author:true},provas}});
+      return;
+    }
     if (path === "/api/aluno/disciplinas") await slow;
     await route.fulfill({json: responses[path] ?? {ok: true}});
   });
@@ -54,6 +60,12 @@ async function validateDrawerData() {
     await area.getByText("Disciplina sintética").waitFor();
     await page.waitForLoadState("networkidle");
     assert.deepEqual(Object.fromEntries(counts), loaded, "tab switches repeated API calls");
+    await open("exams");
+    await page.getByRole("button",{name:"Seguinte"}).click();
+    await page.getByRole("button",{name:"Anterior"}).click();
+    await page.getByRole("button",{name:"Seguinte"}).click();
+    assert.equal(counts.get("/api/escola/fixture/provas"),2);
+    assert.equal(await page.getByRole("dialog").count(),1);
     await open("withdrawal");
     await page.getByRole("button", {name:"Outras ações para Aluno sintético"}).click();
     await page.getByRole("button", {name:"Sinalizar desistência"}).click();
