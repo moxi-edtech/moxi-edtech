@@ -173,7 +173,8 @@ export function groupMathRange(nodes:MathNode[],first:number,last:number):MathNo
  const body=nodes.slice(start,end+1),visible=significant(body);
  if(!visible.length||visible[0].kind==="script"||visible.at(-1)?.kind==="token"&&isMathOperator((visible.at(-1) as {value:string}).value))return null;
  const head=visible[0];
- if(head.kind==="token"&&isMathOperator(head.value)&&head.value!=="-"&&head.value!=="+")return null;
+ const before=significant(nodes.slice(0,start)).at(-1);
+ if(head.kind==="token"&&isMathOperator(head.value)&&(!(head.value==="-"||head.value==="+")||before&&!(before.kind==="token"&&isMathOperator(before.value))))return null;
  if(significant(nodes.slice(end+1))[0]?.kind==="script")return null;
  const next:MathNode[]=[...nodes.slice(0,start),{kind:"group",open:"(",body},...nodes.slice(end+1)];
  return mathTreeValid(next,true)?next:null;
@@ -183,7 +184,11 @@ export function groupMathRange(nodes:MathNode[],first:number,last:number):MathNo
 export function ungroupMathRange(nodes:MathNode[],index:number):MathNode[]|null{
  const group=nodes[index];
  if(group?.kind!=="group"||group.open==="{"||!group.body.length)return null;
- if(significant(nodes.slice(index+1))[0]?.kind==="script")return null;
+ const before=significant(nodes.slice(0,index)).at(-1),after=significant(nodes.slice(index+1))[0];
+ // Do not turn implicit multiplication or a function argument into concatenation,
+ // nor turn a power of a group into a power of its final token.
+ if(before&&!(before.kind==="token"&&isMathOperator(before.value)))return null;
+ if(after&&!(after.kind==="token"&&isMathOperator(after.value)))return null;
  const next=[...nodes.slice(0,index),...group.body,...nodes.slice(index+1)];
  return mathTreeValid(next,true)?next:null;
 }
