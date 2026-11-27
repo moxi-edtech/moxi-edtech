@@ -403,9 +403,24 @@ BEGIN
   IF public.teacher_workload_exceeds(p_escola_id,p_turma_id,v_carga_atual,v_carga_minutos,v_carga_nova,v_carga_maxima,v_limite_minutos) THEN
     RAISE EXCEPTION 'TEACHER_REPLACE_WORKLOAD_EXCEEDED';
   END IF;
+  -- The confirmed per-subject CAS is an explicit specialist assignment, not a
+  -- titular replacement. Preserve the titular and require another live subject.
   IF EXISTS (SELECT 1 FROM public.turmas tu WHERE tu.id=p_turma_id AND tu.escola_id=p_escola_id
-    AND tu.regime_docencia='monodocencia' AND tu.professor_titular_id IS DISTINCT FROM p_professor_novo_id) THEN
-    RAISE EXCEPTION 'TEACHER_MONODOCENCIA_TITULAR_MISMATCH';
+    AND tu.professor_titular_id=p_professor_anterior_id AND tu.professor_titular_id IS DISTINCT FROM p_professor_novo_id) THEN
+    IF NOT EXISTS (
+      SELECT 1 FROM public.turma_disciplinas td
+      JOIN public.curso_matriz cm ON cm.id=td.curso_matriz_id AND cm.escola_id=td.escola_id AND cm.ativo
+      JOIN public.curso_curriculos cc ON cc.id=cm.curso_curriculo_id AND cc.escola_id=td.escola_id
+        AND cc.ano_letivo_id=v_ano_id AND cc.status='published'
+      JOIN public.turmas tu ON tu.id=td.turma_id AND tu.escola_id=td.escola_id
+        AND tu.curso_id=cm.curso_id AND tu.classe_id=cm.classe_id
+      WHERE td.escola_id=p_escola_id AND td.turma_id=p_turma_id AND cm.disciplina_id<>v_disciplina_id
+        AND (td.professor_id=p_professor_anterior_id OR EXISTS (
+          SELECT 1 FROM public.turma_disciplinas_professores tdp WHERE tdp.escola_id=p_escola_id
+           AND tdp.turma_id=p_turma_id AND tdp.disciplina_id=cm.disciplina_id AND tdp.professor_id=p_professor_anterior_id))
+    ) THEN RAISE EXCEPTION 'TEACHER_REGIME_TITULAR_LAST_SUBJECT'; END IF;
+    UPDATE public.turmas SET regime_docencia='misto'
+      WHERE id=p_turma_id AND escola_id=p_escola_id AND regime_docencia='monodocencia';
   END IF;
 
   -- Update the canonical and shared live links without deleting rows:
@@ -467,8 +482,7 @@ BEGIN
  IF NOT FOUND THEN RAISE EXCEPTION 'TEACHER_REGIME_TURMA_INVALID'; END IF;
  IF p_regime='monodocencia' AND v_titular_actual IS NOT NULL AND v_titular_actual IS DISTINCT FROM p_professor_id
  THEN RAISE EXCEPTION 'TEACHER_REGIME_TITULAR_CONFLICT'; END IF;
- IF p_regime='misto' AND v_regime_actual='monodocencia' AND v_titular_actual IS DISTINCT FROM p_professor_id
- THEN RAISE EXCEPTION 'TEACHER_REGIME_TITULAR_CONFLICT'; END IF;
+ -- A partial specialist assignment may extend monodocência into mixed; existing owners still cannot be overwritten.
  IF p_regime='pluridocencia' THEN
    IF p_professor_id IS NOT NULL OR p_matriz_ids IS NOT NULL THEN RAISE EXCEPTION 'TEACHER_REGIME_INVALID'; END IF;
    UPDATE public.turmas SET regime_docencia=p_regime,professor_titular_id=NULL WHERE id=p_turma_id AND escola_id=p_escola_id;
@@ -492,7 +506,7 @@ BEGIN
  ELSIF p_matriz_ids IS NOT NULL THEN RAISE EXCEPTION 'TEACHER_REGIME_INVALID_SUBSET'; END IF;
  -- Configure within the same transaction so the single-RPC mono guard is effective.
  -- Subset assignment must not silently downgrade monodocência or replace the titular.
- IF NOT (p_regime='misto' AND v_regime_actual='monodocencia') THEN
+ IF NOT (p_regime='misto' AND v_regime_actual='monodocencia' AND v_titular_actual=p_professor_id) THEN
    UPDATE public.turmas SET regime_docencia=p_regime,
      professor_titular_id=COALESCE(v_titular_actual,p_professor_id)
    WHERE id=p_turma_id AND escola_id=p_escola_id;
@@ -567,6 +581,9 @@ DECLARE v_titular uuid; v_regime text; v_ano uuid; v_disciplina uuid;
  v_current_periods integer; v_current_minutes bigint; v_existing boolean;
 BEGIN
  IF NEW.professor_id IS NULL THEN RETURN NEW; END IF;
+ IF pg_catalog.current_setting('role',true)='authenticated'
+    AND NEW.escola_id IS DISTINCT FROM public.current_tenant_escola_id()
+ THEN RAISE EXCEPTION 'ASSIGN_PROF_FORBIDDEN'; END IF;
  IF TG_OP='UPDATE' THEN
    IF NEW.professor_id IS NOT DISTINCT FROM OLD.professor_id AND NEW.turma_id=OLD.turma_id AND NEW.escola_id=OLD.escola_id THEN
      IF TG_TABLE_NAME='turma_disciplinas' THEN
