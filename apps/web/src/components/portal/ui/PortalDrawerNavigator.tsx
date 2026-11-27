@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useCallback, useContext, useId, useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useId, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { PortalSheet } from "@/components/portal/ui/PortalSheet";
 
 export type PortalDrawerFrame = {
@@ -46,7 +46,7 @@ export function PortalDrawerNavigator({ root, open, onClose, onReopen, onChanged
 }) {
   // A root identifier must include the school/student/turma scope.
   const [stack, setStack] = useState<{ rootId: string; entries: Entry[] }>({ rootId: root.id, entries: [] });
-  const entries = open && stack.rootId === root.id ? stack.entries : [];
+  const entries = useMemo(() => open && stack.rootId === root.id ? stack.entries : [], [open, stack, root.id]);
   const active = entries[entries.length - 1]?.frame ?? root;
   const [guards, setGuards] = useState<Record<string, Record<string, Guard>>>({});
   const changed = useRef(false);
@@ -75,6 +75,8 @@ export function PortalDrawerNavigator({ root, open, onClose, onReopen, onChanged
   // Only opaque positions enter browser history. The scoped mount owns the trail.
   const session = useRef<{ token: string; rootId: string; trail: Entry[]; reopen: () => void; url: string } | null>(null);
   const travelling = useRef(false);
+  // Initialize both mutable traversal refs before any callback captures them.
+  const approved = useRef(false);
   const historyKey = "klassePortalDrawer";
   const invalidate = useCallback(() => {
     if (historyOwner === session.current?.token) historyOwner = null;
@@ -95,12 +97,15 @@ export function PortalDrawerNavigator({ root, open, onClose, onReopen, onChanged
   useLayoutEffect(() => {
     if (!open) return;
     const current = session.current;
-    if (current?.rootId === root.id && historyOwner === current.token && history.state?.[historyKey]?.token === current.token) return;
+    if (current?.rootId === root.id && historyOwner === current.token && history.state?.[historyKey]?.token === current.token) {
+      current.reopen = onReopen;
+      return;
+    }
     const token = crypto.randomUUID();
     historyOwner = token;
     session.current = { token, rootId: root.id, trail: [], reopen: onReopen, url: location.href };
     history.pushState({ ...history.state, [historyKey]: { token, depth: 0 } }, "");
-  }, [open, root.id]);
+  }, [open, root.id, onReopen]);
   const push = useCallback((frame: PortalDrawerFrame) => {
     if (!open || busy || dirty || frame.id === root.id) return;
     const previousScroll = body.current?.scrollTop ?? 0;
@@ -113,7 +118,6 @@ export function PortalDrawerNavigator({ root, open, onClose, onReopen, onChanged
     setStack({ rootId: root.id, entries: next });
   }, [open, root.id, busy, dirty, entries]);
 
-  const approved = useRef(false);
   const travel = (delta: number) => {
     if (travelling.current) return;
     const current = session.current;
