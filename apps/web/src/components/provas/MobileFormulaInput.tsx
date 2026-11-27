@@ -1,5 +1,5 @@
 "use client";
-import { useRef,useState } from "react";
+import { useId,useRef,useState } from "react";
 import { ArrowLeft,Plus,Pencil,Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { mathMarkup } from "@/lib/provas/math";
@@ -11,6 +11,7 @@ import { composeExpression,formulaCategories,formulaModels,formulaOperators,part
 /** Lossless fallback for valid imported LaTeX outside the structural grammar.
  * Never replace the original just because the user opened the editor. */
 function ImportedFormulaEditor({initial,onInsert,onCancel,onVisual,disabled}:{initial:string;onInsert:(value:string)=>void;onCancel:()=>void;onVisual:(nodes:MathNode[])=>void;disabled:boolean}){
+ const rawId=useId();
  const [raw,setRaw]=useState(initial);
  const [mode,setMode]=useState<"values"|"raw">("values");
  const [values,setValues]=useState(()=>formulaValueSlots(initial).map(slot=>slot.value));
@@ -28,7 +29,7 @@ function ImportedFormulaEditor({initial,onInsert,onCancel,onVisual,disabled}:{in
    <div role="group" aria-label="Valores da fórmula importada" className="flex flex-wrap gap-2">{slots.map((slot,i)=><button key={slot.start} type="button" aria-label={"Valor "+(i+1)+": "+values[i]} aria-pressed={active===i} disabled={disabled} onClick={()=>setActive(i)} className={"min-h-11 min-w-11 rounded-xl border px-2 "+(active===i?"border-klasse-gold bg-klasse-gold/10":"border-border")}>{values[i]||"□"}</button>)}</div>
    {active!==null&&<label className="grid gap-1 text-sm">Valor {active+1}<input key={active} aria-label={"Valor "+(active+1)} type="text" inputMode="decimal" maxLength={16} autoComplete="off" value={values[active]} disabled={disabled} onChange={e=>setValues(v=>v.map((old,i)=>i===active?e.target.value:old))} className="min-h-11 w-full rounded-xl border border-border bg-background px-3 text-base focus:ring-4 focus:ring-klasse-gold/20"/></label>}
    <Button type="button" variant="ghost" disabled={disabled||!valid} onClick={()=>{setRaw(candidate??initial);setMode("raw");}}>Edição avançada (LaTeX)</Button>
-  </>:<label className="grid gap-1 text-sm">Expressão em LaTeX<textarea className="min-h-24 w-full rounded-xl border border-border bg-background p-3 font-mono text-base" autoCapitalize="off" autoCorrect="off" spellCheck={false} maxLength={300} disabled={disabled} value={raw} onChange={e=>setRaw(e.target.value)}/></label>}
+  </>:<div className="grid gap-1 text-sm"><label htmlFor={rawId}>Expressão em LaTeX</label><textarea id={rawId} className="min-h-24 w-full rounded-xl border border-border bg-background p-3 font-mono text-base" autoCapitalize="off" autoCorrect="off" spellCheck={false} maxLength={300} disabled={disabled} value={raw} onChange={e=>setRaw(e.target.value)}/></div>}
   {visual&&<Button type="button" variant="outline" disabled={disabled} onClick={()=>onVisual(visual)}>Editar por blocos</Button>}
   <div className="grid grid-cols-2 gap-2"><Button type="button" variant="outline" onClick={onCancel}>Cancelar</Button><Button type="button" tone="gold" disabled={disabled||!valid} onClick={()=>{if(!disabled&&valid&&candidate!==null)onInsert(candidate);}}>Actualizar fórmula</Button></div>
  </section>;
