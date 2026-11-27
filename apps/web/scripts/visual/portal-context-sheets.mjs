@@ -85,6 +85,7 @@ async function validateDrawerData() {
 }
 try {
   await validateDrawerData();
+  await validateDashboardNavigation();
   for (const viewport of [{width:390,height:844},{width:768,height:1024},{width:1024,height:768},{width:1366,height:768}]) {
     for (const reducedMotion of ["reduce","no-preference"]) {
       const ctx=await browser.newContext({viewport,reducedMotion});
@@ -321,3 +322,81 @@ try {
   }
 }finally{await browser.close();await writeFile(dir+"/portal-context-sheets.json",JSON.stringify(results,null,2));}
 console.log("Contextual sheet tests passed",results);
+
+async function validateDashboardNavigation() {
+  const page = await browser.newPage({ viewport:{width:390,height:844} });
+  const dialog = page.getByRole("dialog");
+  const failures = [];
+  page.on("pageerror", err => failures.push(err.message));
+  const visit = async story => {
+    await page.goto(base + "/?story=" + story);
+    await page.waitForLoadState("networkidle");
+    await page.evaluate(() => {
+      window.drawerRequests = [];
+      const fetch = window.fetch.bind(window);
+      window.fetch = (input, init) => {
+        window.drawerRequests.push(new URL(typeof input === "string" ? input : input.url ?? input, location.href).pathname);
+        return fetch(input, init);
+      };
+    });
+  };
+  const count = path => page.evaluate(path => window.drawerRequests.filter(url => url === path).length, path);
+  const click = (scope, name) => scope.getByRole("button", {name,exact:true}).first().click();
+  const child = async (name, title) => {
+    const parent = await dialog.getAttribute("aria-labelledby");
+    const heading = await page.locator("[id]").evaluateAll((els, id) => els.find(el => el.id === id)?.textContent, parent);
+    await click(dialog, name);
+    await page.getByRole("dialog",{name:title,exact:true}).waitFor();
+    assert.equal(await dialog.count(), 1);
+    await page.evaluate(() => history.back());
+    await page.getByRole("dialog",{name:heading,exact:true}).waitFor();
+  };
+  const close = async () => { await page.keyboard.press("Escape"); await dialog.waitFor({state:"hidden"}); };
+  try {
+    await page.route("**/api/**", route => {
+      const path = new URL(route.request().url()).pathname;
+      const data = path.endsWith("/avisos") ? {ok:true,avisos:[{id:"notice",titulo:"Circular sintética",resumo:"Mensagem"}]}
+        : path.endsWith("/financeiro") ? {ok:true,mensalidades:[{id:"month",competencia:"2026-11",valor:500,status:"pendente"}],servicos:[{id:"service",nome:"Serviço sintético",valor:500,status:"pendente",acao:{label:"Consultar",href:"/aluno/documentos?servico=DOC"}}],movimentos:[]}
+        : path.endsWith("/pauta") ? [] : {ok:true,items:[],periodos:[],eventos:[],slots:[],assignments:[]};
+      return route.fulfill({json:data});
+    });
+    await visit("dashboard-clean");
+    await page.locator("section").filter({has:page.getByRole("heading",{name:"Próxima aula",exact:true})}).last().getByRole("button").first().click();
+    await click(dialog,"Consultar horário completo");
+    for (const tab of ["Próximos eventos","Aulas","Próximos eventos"]) await click(dialog,tab);
+    assert.equal(await count("/api/aluno/horario"),1);
+    assert.equal(await count("/api/aluno/home/academic-events"),1);
+    await close();
+    await page.getByRole("button",{name:/Reunião de encarregados/}).first().click();
+    await click(dialog,"Ver todos os avisos");
+    await child(/Circular sintética/,"Circular sintética");
+    await close();
+    await page.getByTestId("aluno-summary-cards").getByRole("button",{name:/^Propinas vencidas/}).click();
+    await click(dialog,/^Filtrar período/);
+    await dialog.getByRole("region",{name:"Filtrar período"}).getByRole("button",{name:"Voltar"}).click();
+    await click(dialog,/2026-11/);
+    await click(dialog,"Enviar comprovativo");
+    await dialog.getByRole("region",{name:"Pagamento consolidado"}).waitFor();
+    assert.equal(await page.getByRole("dialog").count(),1);
+    await dialog.getByRole("region",{name:"Pagamento consolidado"}).getByRole("button",{name:"Voltar",exact:true}).first().click();
+    await click(dialog,/Serviço sintético/);
+    await child(/Secretaria Digital/,"Documentos e serviços");
+    await close();
+    await visit("professor-com-turmas");
+    const turma = page.getByRole("button",{name:/7.*Classe A.*Matemática.*Portuguesa/i}).first();
+    await turma.click();
+    for (const [label,title] of [["Chamada","Registar chamada"],["Notas","Lançamento de notas"],["Plano de aula","Planos de aula"],["Materiais","Materiais pedagógicos"],["Horário da turma","Horário da turma"],["Aluno sintético","Aluno sintético"]]) await child(label,title);
+    assert.equal(await count("/api/professor/agenda"),0);
+    await close();
+    await page.locator('button[aria-expanded][aria-haspopup="dialog"]').filter({hasText:"08:00"}).first().click();
+    for (const [label,title] of [["Chamada","Registar chamada"],["Notas","Lançamento de notas"],["Plano de aula","Planos de aula"]]) await child(label,title);
+    await close();
+    for (const [label,title] of [["Ver calendário","Calendário académico"],["Calendário de Avaliações","Calendário de avaliações"]]) {
+      await click(page,label);
+      await page.getByRole("dialog",{name:title,exact:true}).waitFor();
+      assert.equal(await dialog.count(),1);
+      await close();
+    }
+    assert.deepEqual(failures,[]);
+  } finally { await page.close(); }
+}
