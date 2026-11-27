@@ -14,6 +14,7 @@ export type PortalDrawerFrame = {
 type Entry = { frame: PortalDrawerFrame; previousScroll: number; opener: HTMLElement | null };
 type Guard = { dirty: boolean; busy: boolean };
 type Navigation = { push: (frame: PortalDrawerFrame) => void; registerGuard: (frameId: string, sourceId: string, guard: Guard | null) => void; notifyChanged: () => void; busy: boolean; dirty: boolean };
+export const PortalFrameActiveContext = createContext(true);
 const FrameContext = createContext<string | null>(null);
 const Context = createContext<Navigation | null>(null);
 // A page may mount separate turma, lesson and operation navigators. Only the
@@ -219,11 +220,11 @@ export function PortalDrawerNavigator({ root, open, onClose, onReopen, onChanged
       <PortalPresentationContext.Provider value="drawer">
       <Context.Provider value={{ push, registerGuard, notifyChanged, busy, dirty }}>
         <div key={root.id} hidden={entries.length > 0} className={entries.length ? "hidden" : "space-y-4"}>
-          <FrameContext.Provider value={root.id}>{root.content}</FrameContext.Provider>
+          <PortalFrameActiveContext.Provider value={open && entries.length === 0}><FrameContext.Provider value={root.id}>{root.content}</FrameContext.Provider></PortalFrameActiveContext.Provider>
         </div>
         {entries.map(({ frame }, index) => (
           <div key={frame.id} hidden={index !== entries.length - 1} className={index !== entries.length - 1 ? "hidden" : "space-y-4"}>
-            <FrameContext.Provider value={frame.id}>{frame.content}</FrameContext.Provider>
+            <PortalFrameActiveContext.Provider value={open && index === entries.length - 1}><FrameContext.Provider value={frame.id}>{frame.content}</FrameContext.Provider></PortalFrameActiveContext.Provider>
           </div>
         ))}
       </Context.Provider>
