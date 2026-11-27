@@ -485,7 +485,7 @@ async function validateGradeAndPaymentRequests() {
     await open("individual-grades");
     const discipline = page.getByLabel("Disciplina",{exact:true});
     const period = page.getByLabel("Trimestre",{exact:true});
-    const expectGrade = async value => page.getByText(value + " / 20",{exact:true}).waitFor();
+    const expectGrade = async value => page.getByText("MAC",{exact:true}).locator("..").getByText(value + " / 20",{exact:true}).waitFor();
     await expectGrade(11);
     await period.selectOption("2"); await expectGrade(12);
     await discipline.selectOption("disc-2"); await expectGrade(15);
