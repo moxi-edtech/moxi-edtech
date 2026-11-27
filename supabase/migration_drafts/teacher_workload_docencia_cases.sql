@@ -116,6 +116,14 @@ BEGIN
   PERFORM public.trocar_professor_turma_disciplina_atomic(s,t,m,p,'40000000-0000-0000-0000-000000000002');
   RAISE EXCEPTION 'EXPECTED_LAST_TITULAR_REJECTION';
  EXCEPTION WHEN OTHERS THEN IF SQLERRM NOT LIKE 'TEACHER_REGIME_TITULAR_LAST_SUBJECT%' THEN RAISE; END IF; END;
+ -- A titular change is explicit, atomic, CAS-protected and leaves specialist links intact.
+ SELECT public.replace_teacher_titular_atomic(s,t,p,'40000000-0000-0000-0000-000000000002') INTO n;
+ IF n<>1 OR NOT EXISTS(SELECT 1 FROM public.turmas WHERE id=t AND professor_titular_id='40000000-0000-0000-0000-000000000002') THEN RAISE EXCEPTION 'TITULAR_REPLACEMENT_FAILED'; END IF;
+ IF (SELECT count(*) FROM public.turma_disciplinas WHERE turma_id=t AND professor_id='40000000-0000-0000-0000-000000000002')<>2 THEN RAISE EXCEPTION 'TITULAR_REPLACEMENT_LINKS'; END IF;
+ BEGIN
+  PERFORM public.replace_teacher_titular_atomic(s,t,p,'40000000-0000-0000-0000-000000000002');
+  RAISE EXCEPTION 'EXPECTED_STALE_TITULAR_REJECTION';
+ EXCEPTION WHEN OTHERS THEN IF SQLERRM NOT LIKE 'TEACHER_REGIME_TITULAR_CONFLICT%' THEN RAISE; END IF; END;
  -- Missing duration is fail-closed for minute limits, not legacy periods.
  UPDATE public.turmas SET tempo_lectivo_minutos=NULL WHERE id=t;
  BEGIN
