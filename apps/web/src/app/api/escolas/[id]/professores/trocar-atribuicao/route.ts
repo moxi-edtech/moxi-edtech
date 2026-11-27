@@ -25,7 +25,7 @@ const errorMessages: Array<[RegExp, number, string]> = [
     'Esta é a última disciplina do professor titular. Troque o professor da turma antes de continuar.'],
   [/TEACHER_LOAD_DURATION_UNCONFIGURED/, 409,
     'Não foi possível confirmar a disponibilidade do professor. Peça à administração para rever o horário.'],
-  [/TEACHER_REPLACE_WORKLOAD_EXCEEDED/, 409,
+  [/TEACHER_REPLACE_WORKLOAD_EXCEEDED|ASSIGN_PROF_CARGA_EXCEEDED/, 409,
     'A carga horária máxima do novo professor seria ultrapassada.'],
   [/TEACHER_REPLACE_SCHEDULE_CONFLICT|Conflito global de professor para slot publicado/, 409,
     'O novo professor já leciona noutra turma neste horário.'],
@@ -74,13 +74,25 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
 
     // Single RPC: guarded by the same advisory lock as individual and batch
     // assignments. CAS, workload, slots, timetable, and audit commit together.
-    const { data, error } = await supabase.rpc('trocar_professor_turma_disciplina_atomic', {
+    let { data, error } = await supabase.rpc('trocar_professor_turma_disciplina_atomic', {
       p_escola_id: escolaId,
       p_turma_id: parsed.data.turma_id,
       p_curso_matriz_id: parsed.data.curso_matriz_id,
       p_professor_anterior_id: parsed.data.professor_anterior_id,
       p_professor_novo_id: newTeacher.id,
     })
+    // An explicitly confirmed last-subject swap must not force staff to ask
+    // support to change the titular. The first RPC failed without writes;
+    // the atomic multi-subject engine verifies the same expected owner again.
+    if (error?.message?.includes('TEACHER_REGIME_TITULAR_LAST_SUBJECT')) {
+      const replacement = await supabase.rpc('replace_teacher_subjects_atomic', {
+        p_escola_id: escolaId, p_turma_id: parsed.data.turma_id,
+        p_professor_novo_id: newTeacher.id, p_scope: 'some',
+        p_expected: [{ matriz_id: parsed.data.curso_matriz_id, professor_id: parsed.data.professor_anterior_id }],
+      })
+      error = replacement.error
+      data = null
+    }
     if (error) {
       const known = errorMessages.find(([pattern]) => pattern.test(error.message || ''))
       return NextResponse.json({
