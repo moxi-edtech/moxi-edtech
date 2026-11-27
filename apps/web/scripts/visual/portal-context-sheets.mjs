@@ -459,6 +459,7 @@ async function validateGradeAndPaymentRequests() {
   const api = "/api/aluno/financeiro/appypay";
   const reference = { id: "fixture-reference", entity: "12345", reference: "123456789", amount: 500, currency: "AOA", expires_at: "2099-12-01T00:00:00Z", status: "active" };
   let issued = false;
+  let gradeEntry = false;
   try {
     await page.route("**/api/**", route => {
       const req = route.request();
@@ -466,10 +467,11 @@ async function validateGradeAndPaymentRequests() {
       url.searchParams.sort();
       const body = req.method() === "POST" ? req.postDataJSON() : null;
       requests.push({ path: url.pathname, key: req.method() + " " + url.pathname + url.search, action: body?.action ?? url.searchParams.get("action"), body });
-      if (url.pathname === "/api/professor/periodos") return route.fulfill({ json: { ok: true, items: [1,2,3].map(numero => ({ id: "period-"+numero, numero, data_inicio: null, data_fim: null, trava_notas_em: null })) } });
+      if (url.pathname === "/api/professor/atribuicoes") return route.fulfill({ json:{ok:true, context:{anoLetivoId:"year-a",mode:"CURRENT"}, items:[{turma:{id:"fixture-class",nome:"Turma A"},disciplina:{id:"disc",nome:"Matemática"},turma_disciplina_id:"link-a"}]} });
+      if (url.pathname === "/api/professor/periodos") return route.fulfill({ json: { ok: true, items: [1,2,3].map(numero => ({ id: "period-"+numero, numero, data_inicio: gradeEntry && numero===2 ? "2000-01-01" : null, data_fim: gradeEntry && numero===2 ? "2099-12-31" : null, trava_notas_em: null })) } });
       if (url.pathname === "/api/professor/pauta") {
         const mac = 10 + Number(url.searchParams.get("trimestre")) + (url.searchParams.get("disciplinaId") === "disc-2" ? 3 : 0);
-        return route.fulfill({ json: [{ aluno_id:"fixture-student", matricula_id:"fixture-enrollment", mac, npt: 17, mt: 15 }], headers: { "x-klasse-grade-max":"20", "x-klasse-grade-components":"MAC,NPT" } });
+        return route.fulfill({ json: [{ aluno_id:"fixture-student", matricula_id:"fixture-enrollment", nome:"Aluno sintético", numero_chamada:1, mac, npt:17, mt:15 }], headers: { "x-klasse-grade-max":"20", "x-klasse-grade-components":"MAC,NPT" } });
       }
       if (url.pathname === api) {
         if (req.method() === "GET") return route.fulfill({ json: url.searchParams.get("action") === "status" ? { ok:true, enabled:true } : { ok:true, amount:500, environment:"sandbox", canIssue:!issued, reference:issued ? reference : null } });
@@ -499,6 +501,30 @@ async function validateGradeAndPaymentRequests() {
     assert.equal(gradeReads().length,4,"revisiting subject/term repeated the grade query");
     assert.equal(requests.filter(r => r.path === "/api/professor/periodos").length,1);
     console.log("Drawer request budget: individual grades, four first reads, zero repeats on subject/term revisit");
+    requests.length = 0;
+    gradeEntry = true;
+    await open("grade-entry");
+    await page.getByText("Aluno sintético",{exact:true}).first().waitFor();
+    await page.waitForLoadState("networkidle");
+    assert.equal(gradeReads().length,1,"grade entry must wait for canonical term rather than fetch default term 1");
+    assert.ok(gradeReads()[0].key.includes("trimestre=2"));
+    const initialKeys = requests.filter(r=>r.key.startsWith("GET ")).map(r=>r.key);
+    assert.equal(new Set(initialKeys).size,initialKeys.length,"duplicate GET in initial grade entry");
+    await page.getByRole("button",{name:/Turma e disciplina/}).click();
+    const context = page.getByRole("region",{name:"Contexto de lançamento"});
+    const term = context.getByLabel("Trimestre");
+    await term.selectOption("1");
+    await page.waitForLoadState("networkidle");
+    assert.equal(gradeReads().length,2);
+    await term.selectOption("2");
+    await page.waitForLoadState("networkidle");
+    assert.equal(gradeReads().length,2,"return to already loaded grade term");
+    const allGradeKeys = requests.filter(r=>r.key.startsWith("GET ")).map(r=>r.key);
+    assert.equal(new Set(allGradeKeys).size,allGradeKeys.length,"grade term revisit duplicated a read");
+    await context.getByRole("button",{name:"Concluir selecção"}).click();
+    await page.waitForLoadState("networkidle");
+    assert.equal(requests.filter(r=>r.key.startsWith("GET ")).length,allGradeKeys.length,"closing grade context refetched data");
+    console.log("Drawer request budget: grade entry waits for canonical term; zero repeated GETs including academic auxiliary data");
     await open("appypay");
     await page.getByRole("button",{name:"Pagar com AppyPay"}).click();
     const panel = page.getByRole("region",{name:"Pagamento por referência"});
