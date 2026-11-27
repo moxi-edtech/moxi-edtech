@@ -78,6 +78,8 @@ export function PortalDrawerNavigator({ root, open, onClose, onReopen, onChanged
   // Initialize both mutable traversal refs before any callback captures them.
   const approved = useRef(false);
   const historyKey = "klassePortalDrawer";
+  const reopenCallback = useRef(onReopen);
+  useLayoutEffect(() => { reopenCallback.current = onReopen; }, [onReopen]);
   const invalidate = useCallback(() => {
     if (historyOwner === session.current?.token) historyOwner = null;
     session.current = null;
@@ -97,15 +99,12 @@ export function PortalDrawerNavigator({ root, open, onClose, onReopen, onChanged
   useLayoutEffect(() => {
     if (!open) return;
     const current = session.current;
-    if (current?.rootId === root.id && historyOwner === current.token && history.state?.[historyKey]?.token === current.token) {
-      current.reopen = onReopen;
-      return;
-    }
+    if (current?.rootId === root.id && historyOwner === current.token && history.state?.[historyKey]?.token === current.token) return;
     const token = crypto.randomUUID();
     historyOwner = token;
-    session.current = { token, rootId: root.id, trail: [], reopen: onReopen, url: location.href };
+    session.current = { token, rootId: root.id, trail: [], reopen: () => reopenCallback.current(), url: location.href };
     history.pushState({ ...history.state, [historyKey]: { token, depth: 0 } }, "");
-  }, [open, root.id, onReopen]);
+  }, [open, root.id]);
   const push = useCallback((frame: PortalDrawerFrame) => {
     if (!open || busy || dirty || frame.id === root.id) return;
     const previousScroll = body.current?.scrollTop ?? 0;
