@@ -2,7 +2,7 @@ name: Teacher workload — full Supabase schema
 on:
   pull_request:
     paths:
-      - 'supabase/migration_drafts/teacher_workload_docencia*.sql'
+      - 'supabase/migration_drafts/teacher_workload*.sql'
       - 'supabase/migrations/**'
       - '.github/workflows/teacher-workload-full-schema.yml'
 permissions:
@@ -18,33 +18,16 @@ jobs:
       - uses: supabase/setup-cli@v3
         with:
           version: 2.84.2
-      - name: Generate migration with CLI in an isolated project
+      - name: Prepare isolated project with complete versioned history
         run: |
           set -euo pipefail
           supabase --version
-          supabase migration new --help
           mkdir -p "$RUNNER_TEMP/klasse-workload"
           cd "$RUNNER_TEMP/klasse-workload"
           supabase init
           sed -i -E 's/^major_version = [0-9]+/major_version = 17/' supabase/config.toml
-          supabase migration new teacher_workload_docencia
-          generated="$(find supabase/migrations -name '*_teacher_workload_docencia.sql' -type f -print -quit)"
-          test -n "$generated"
-          cp "$GITHUB_WORKSPACE/supabase/migration_drafts/teacher_workload_docencia.sql" "$generated"
-          cp "$generated" "$RUNNER_TEMP/generated_teacher_workload.sql"
-          echo "CLI generated: $generated"
           cp "$GITHUB_WORKSPACE"/supabase/migrations/*.sql supabase/migrations/
-          # Reversion explicitly after the current maximum repository version.
-          last="$(find "$GITHUB_WORKSPACE/supabase/migrations" -maxdepth 1 -type f -name '*.sql' -printf '%f\n' | sort | tail -1)"
-          echo "Highest existing migration: $last"
-          version="${last%%_*}"
-          test "$version" -lt 20271204034000
-          mv "$generated" supabase/migrations/20271204034000_teacher_workload_docencia.sql
-          echo "Versioned candidate: 20271204034000_teacher_workload_docencia.sql"
-      - uses: actions/upload-artifact@v4
-        with:
-          name: teacher-workload-generated-migration
-          path: ${{ runner.temp }}/generated_teacher_workload.sql
+          test -s supabase/migrations/20271204034000_teacher_workload_docencia.sql
       - name: Replay complete migration history locally (no seed, no linked project)
         working-directory: ${{ runner.temp }}/klasse-workload
         run: |
