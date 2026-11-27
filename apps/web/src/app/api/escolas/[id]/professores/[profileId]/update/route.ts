@@ -20,10 +20,20 @@ const BodySchema = z.object({
   area_formacao: z.string().trim().max(200).nullable().optional(),
   vinculo_contratual: z.enum(['Efetivo', 'Colaborador', 'Eventual']),
   carga_horaria_maxima: z.number().int().positive().max(100),
+  carga_lectiva_unidade: z.enum(['tempos','minutos']).optional(),
+  carga_lectiva_limite: z.number().int().positive().max(10080).optional(),
+  carga_contratual_minutos: z.number().int().positive().max(10080).nullable().optional(),
   turnos_disponiveis: z.array(z.enum(['Manhã', 'Tarde', 'Noite'])).max(3).default([]),
   disciplinas_habilitadas: z.array(UUID).max(200).default([]),
   is_diretor_turma: z.boolean().default(false),
-}).strict()
+}).strict().superRefine((v, ctx) => {
+  if (v.carga_lectiva_unidade === undefined && (v.carga_lectiva_limite !== undefined || v.carga_contratual_minutos !== undefined)
+    || v.carga_lectiva_unidade !== undefined && (v.carga_lectiva_limite === undefined
+      || (v.carga_lectiva_unidade === 'tempos' && v.carga_lectiva_limite > 100)
+      || (v.carga_lectiva_unidade === 'minutos' && v.carga_contratual_minutos != null && v.carga_lectiva_limite > v.carga_contratual_minutos))) {
+    ctx.addIssue({ code: 'custom', path: ['carga_lectiva_limite'], message: 'Informe uma carga lectiva válida e compatível com o contrato.' })
+  }
+})
 
 export async function POST(req: NextRequest, context: { params: Promise<{ id: string; profileId: string }> }) {
   const { id: escolaId, profileId } = await context.params
@@ -121,7 +131,9 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
         ok: false,
         error: msg.includes('INVALID_SKILLS')
           ? 'Uma das disciplinas selecionadas já não pertence à escola.'
-          : msg,
+          : msg.includes('TEACHER_LOAD_BELOW_ASSIGNED') ? 'O limite é inferior à carga lectiva já atribuída.'
+          : msg.includes('TEACHER_LOAD_DURATION_UNCONFIGURED') ? 'Não foi possível determinar a carga das turmas atribuídas. Reveja os horários.'
+          : msg.includes('TEACHER_LOAD_INVALID') ? 'Informe uma carga lectiva válida.' : msg,
       }, { status })
     }
 
