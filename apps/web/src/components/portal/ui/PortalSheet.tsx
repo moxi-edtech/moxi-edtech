@@ -20,6 +20,8 @@ type Props = {
   navigationKey?: string;
   bodyRef?: Ref<HTMLDivElement>;
   inline?: boolean;
+  /** Desktop dashboards can opt into a centered dialog while mobile retains the sheet. */
+  desktopPresentation?: "sheet" | "centered";
 };
 const sizes = { compact: "40dvh", medium: "65dvh", expanded: "90dvh" };
 
@@ -55,7 +57,7 @@ function InlinePortalPanel({ open, onClose, title, description, busy = false, ch
 }
 
 /** Radix owns modality, focus trapping and motion in standalone sheets. */
-function ModalPortalSheet({ open, onClose, title, description, size = "medium", busy = false, children, footer, closeLabel = "Fechar", contentId, onBack, navigationKey, bodyRef }: Props) {
+function ModalPortalSheet({ open, onClose, title, description, size = "medium", busy = false, children, footer, closeLabel = "Fechar", contentId, onBack, navigationKey, bodyRef, desktopPresentation = "sheet" }: Props) {
   const opener = useRef<HTMLElement | null>(null);
   const header = useRef<HTMLHeadingElement>(null);
   const content = useRef<HTMLDivElement>(null);
@@ -92,6 +94,7 @@ function ModalPortalSheet({ open, onClose, title, description, size = "medium", 
       <DialogContent ref={content} layout="bottom-sheet" closeButton={false} {...(contentId ? { id: contentId } : {})} aria-modal="true"
         data-motion-state={closing ? "closing" : "open"}
         data-portal-navigator={navigationKey ? "true" : undefined}
+        data-desktop-presentation={desktopPresentation}
         onAnimationEnd={event => { if (event.target === event.currentTarget && closing && event.animationName === "klasse-context-sheet-exit") setRetained(false); }}
         onClickCapture={event => { if (closing) { event.preventDefault(); event.stopPropagation(); } }}
         overlayClassName={"klasse-portal-theme klasse-academic-dialog klasse-context-sheet-overlay bg-muted-foreground/60" + (closing ? " klasse-context-sheet-overlay-closing" : "")}
@@ -121,7 +124,7 @@ function ModalPortalSheet({ open, onClose, title, description, size = "medium", 
         onFocusOutside={event => { event.preventDefault(); if (busy || closing) header.current?.focus({ preventScroll: true }); }}
         onInteractOutside={event => { if (busy || closing) event.preventDefault(); }}>
         <header className="shrink-0 border-b border-border px-4 pb-3 pt-3">
-          <div aria-hidden="true" className={`mx-auto mb-3 h-1 w-8 rounded-full bg-muted-foreground/30 ${navigationKey ? "lg:hidden" : ""}`} />
+          <div aria-hidden="true" className={`mx-auto mb-3 h-1 w-8 rounded-full bg-muted-foreground/30 ${desktopPresentation === "centered" ? "md:hidden" : navigationKey ? "lg:hidden" : ""}`} />
           <div className="flex items-start justify-between gap-3">
             {onBack && <button type="button" onClick={onBack} aria-label="Voltar" disabled={busy || closing} className="klasse-portal-press flex min-h-11 min-w-11 shrink-0 items-center justify-center gap-1 rounded-xl px-2 text-sm font-semibold text-primary focus-visible:ring-2 focus-visible:ring-ring"><ArrowLeft size={18} aria-hidden="true" /><span className="sr-only sm:not-sr-only">Voltar</span></button>}
             <div className="min-w-0 flex-1 space-y-1">
