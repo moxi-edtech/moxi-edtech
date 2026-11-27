@@ -1851,18 +1851,7 @@ export default function TurmaDetailClient({
                       <button
                         className="w-full py-2 text-xs font-bold bg-klasse-gold/10 text-klasse-gold-700 dark:text-klasse-gold-300 rounded-lg border border-klasse-gold/20 hover:bg-klasse-gold/20 transition-colors"
                         onClick={() =>
-                          d.professor ? setTeacherModal({ matrizId: d.curso_matriz_id ?? null }) : setActionModal({
-                            type: "professor",
-                            disciplina: {
-                              id: d.id,
-                              nome: d.nome,
-                              professor: d.professor ?? null,
-                              turma_disciplina_id: d.turma_disciplina_id ?? null,
-                              curso_matriz_id: d.curso_matriz_id ?? null,
-                              disciplina_id: d.disciplina_id ?? null,
-                              carga_horaria_semanal: d.carga_horaria_semanal ?? null,
-                            },
-                          })
+                          setTeacherModal({ matrizId: d.curso_matriz_id ?? null })
                         }
                       >
                         {d.professor ? "Trocar Professor" : "Atribuir Professor"}
