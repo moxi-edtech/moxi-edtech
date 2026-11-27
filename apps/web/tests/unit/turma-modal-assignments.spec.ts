@@ -3,6 +3,7 @@ import { describe, it } from 'node:test'
 import { readFileSync } from 'node:fs'
 import { planTurmaModalBatch, selectedProfessorForLegacyId } from '../../src/lib/professores/turma-modal-assignment'
 import type { AssignmentCandidate } from '../../src/lib/professores/assignment-candidates'
+import { DEFAULT_TEACHER_WORKLOAD, parseTeacherWorkload } from '../../src/lib/professores/teacher-workload-form'
 
 const candidates: AssignmentCandidate[] = [
   { turma_id: '8-A', nome: '8.ª Classe A', turno: 'Manhã', curso_matriz_id: 'bio-8', professor_id: null },
@@ -187,7 +188,7 @@ describe('Carga lectiva: edição contextual sem perder atribuição', () => {
     assert.match(modal, /<TeacherWorkloadEditor/)
     assert.match(editor, /Editar carga lectiva/)
     assert.match(editor, /\/carga-lectiva/)
-    assert.match(editor, /Math\.round\(parsed \* 60\)/)
+    assert.match(editor, /parseTeacherWorkload/)
     assert.match(workloadRoute, /configure_teacher_workload_atomic/)
     assert.match(workloadRoute, /authorizeTeacherManage/)
   })
@@ -196,5 +197,43 @@ describe('Carga lectiva: edição contextual sem perder atribuição', () => {
     assert.match(modal, /Tentar atribuir novamente/)
     assert.match(modal, /handleAssign\(disc, p\)/)
     assert.match(modal, /onSaved=\{\(\) => \{ setClassError\(null\); setClassReviewed\(false\); \}\}/)
+  })
+})
+
+describe('Cadastro docente: unidade lectiva explícita e carga contratual', () => {
+  const page = readFileSync(new URL('../../src/app/escola/[id]/(portal)/professores/page.tsx', import.meta.url), 'utf8')
+  const create = readFileSync(new URL('../../src/app/api/escolas/[id]/professores/create/route.ts', import.meta.url), 'utf8')
+  it('preserva os 20 tempos anteriores como padrão, sem os reinterpretar como horas', () => {
+    assert.deepEqual(parseTeacherWorkload(DEFAULT_TEACHER_WORKLOAD), {
+      carga_lectiva_unidade: 'tempos', carga_lectiva_limite: 20, carga_contratual_minutos: null,
+    })
+  })
+  it('converte horas efectivas e horas decimais em minutos, incluindo contrato opcional', () => {
+    assert.deepEqual(parseTeacherWorkload({ unidade: 'minutos', limite: '20', contratual: '40' }), {
+      carga_lectiva_unidade: 'minutos', carga_lectiva_limite: 1200, carga_contratual_minutos: 2400,
+    })
+    assert.equal(parseTeacherWorkload({ unidade: 'minutos', limite: '15.75', contratual: '' }).carga_lectiva_limite, 945)
+    assert.equal(parseTeacherWorkload({ unidade: 'minutos', limite: '0.75', contratual: '' }).carga_lectiva_limite, 45)
+    assert.equal(parseTeacherWorkload({ unidade: 'tempos', limite: '26', contratual: '20' }).carga_lectiva_limite, 26)
+  })
+  it('rejeita valores vazios, não finitos, tempos fraccionários e limites fora do intervalo', () => {
+    for (const limite of ['', '0', '-1', 'NaN', 'Infinity', '1.5', '101']) {
+      assert.throws(() => parseTeacherWorkload({ unidade: 'tempos', limite, contratual: '' }))
+    }
+    for (const limite of ['', '0', '-1', 'Infinity', '169']) {
+      assert.throws(() => parseTeacherWorkload({ unidade: 'minutos', limite, contratual: '' }))
+    }
+    for (const contratual of ['0', '-1', 'Infinity', '169', '19']) {
+      assert.throws(() => parseTeacherWorkload({ unidade: 'minutos', limite: '20', contratual }))
+    }
+  })
+  it('liga os campos do cadastro à mesma RPC de persistência transaccional, sem pedido adicional', () => {
+    assert.match(page, /parseTeacherWorkload\(teacherWorkload\)/)
+    assert.match(page, /setTeacherWorkload\(DEFAULT_TEACHER_WORKLOAD\)/)
+    assert.match(page, /carga_horaria_maxima: workload\.carga_lectiva_unidade === "tempos"/)
+    assert.match(create, /carga_lectiva_unidade: z\.enum/)
+    assert.match(create, /carga_lectiva_limite: body\.carga_lectiva_limite/)
+    assert.match(create, /carga_contratual_minutos: body\.carga_contratual_minutos \?\? null/)
+    assert.match(create, /create_or_update_professor_academico/)
   })
 })
