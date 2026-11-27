@@ -3,9 +3,12 @@ import { z } from "zod";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { dispatchSecretariaNotificacao } from "@/lib/notificacoes/dispatchSecretariaNotificacao";
+import { AcademicYearContextError } from "@/lib/academic-year/context";
+import { assertProfessorLessonAssignmentYear, assertProfessorLessonYear } from "@/lib/professor/lessonAcademicYear";
 import { isWithinSchoolLessonWindow } from "@/lib/professor/lessonWindow";
 
 const Body = z.object({
+  ano_letivo_id: z.string().uuid().optional(),
   aula_id: z.string().uuid().optional(),
   turma_id: z.string().uuid().optional(),
   disciplina_id: z.string().uuid().optional(),
@@ -19,6 +22,7 @@ export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 export async function POST(req: Request) {
+  try {
   const supabase = await supabaseServerTyped<any>();
   const { data: auth } = await supabase.auth.getUser();
   if (!auth.user) return NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 });
@@ -43,12 +47,13 @@ export async function POST(req: Request) {
   if (body.aula_id) {
     const { data: aula } = await supabase
       .from("aulas")
-      .select("data, inicio_previsto, fim_previsto")
+      .select("data, inicio_previsto, fim_previsto, turma_disciplina_id")
       .eq("id", body.aula_id)
       .eq("escola_id", escolaId)
       .eq("professor_id", professor.id)
       .maybeSingle();
     if (!aula) return NextResponse.json({ ok: false, error: "Aula não encontrada" }, { status: 404 });
+    await assertProfessorLessonAssignmentYear(supabase, escolaId, aula.turma_disciplina_id, body.ano_letivo_id);
     lessonDate = aula.data;
     lessonStart = aula.inicio_previsto;
     lessonEnd = aula.fim_previsto;
@@ -65,6 +70,7 @@ export async function POST(req: Request) {
     if (!body.turma_id || !body.disciplina_id || !body.data) {
       return NextResponse.json({ ok: false, error: "Informe aula_id ou turma, disciplina e data" }, { status: 400 });
     }
+    await assertProfessorLessonYear(supabase, escolaId, body.turma_id, body.ano_letivo_id);
     const { data, error } = await supabase.rpc("professor_iniciar_aula_contexto", {
       p_escola_id: escolaId,
       p_professor_id: professor.id,
@@ -179,4 +185,9 @@ export async function POST(req: Request) {
     params: { aulaId, actionUrl: `/escola/${escolaId}/operacoes/dashboard` },
   });
   return NextResponse.json({ ok: true, aula: data });
+  } catch (error) {
+    if (error instanceof AcademicYearContextError) return NextResponse.json({ ok: false, error: error.code, message: error.message }, { status: error.status });
+    console.error("[professor/aulas/iniciar]", error);
+    return NextResponse.json({ ok: false, error: "Não foi possível validar o contexto académico da aula." }, { status: 503 });
+  }
 }
