@@ -24,6 +24,10 @@ type Atrib = {
   disciplina: { id: string | null; nome: string | null }
 }
 
+type GradeRevision = { id: string; updated_at: string | null; valor: number | null; is_isento: boolean | null }
+type GradeComponent = 'MAC' | 'NPP' | 'NPT'
+type GradeBaseline = { row: StudentGradeRow; matriculaId: string; versions: Record<GradeComponent, GradeRevision | null> | undefined }
+
 type PautaDetalhadaRow = {
   matricula_id: string
   aluno_id: string
@@ -34,6 +38,7 @@ type PautaDetalhadaRow = {
   npp?: number | null
   npt?: number | null
   mt?: number | null
+  versions?: Record<GradeComponent, GradeRevision | null>
 }
 
 type ExamComponent = {
@@ -123,6 +128,7 @@ function parseGradeWeightsHeader(value: string | null): Record<string, number> {
 
 function friendlyGradeError(cause: unknown) {
   const raw = cause instanceof Error ? cause.message : String(cause)
+  if (/GRADE_CONFLICT|GRADE_REVISION_REQUIRED/.test(raw)) return "Outra sessão alterou a pauta, ou a revisão está indisponível. Recarregue e confira as notas antes de guardar."
   if (/ACADEMIC_YEAR_CLOSED|ano letivo.*(não permite|fechad)|ano letivo.*encerrad/i.test(raw)) return "Este ano letivo está fechado para lançamentos. Selecione o ano letivo ativo ou peça orientação à secretaria."
   if (/CROSS_YEAR_ENTITY_MISMATCH|não pertence ao ano letivo|ano letivo.*(incorreto|inválido)/i.test(raw)) return "A turma selecionada pertence a outro ano letivo. Volte aos filtros e selecione o ano letivo correspondente."
   if (/fechad|trav|reabert|bloquead/i.test(raw)) return "Este trimestre está fechado para lançamentos. Solicite uma reabertura à escola para continuar."
@@ -143,6 +149,10 @@ export function ProfessorGradesWorkspace({ embedded = false, requestedAnoLetivoI
   const [disciplinaNome, setDisciplinaNome] = useState<string | null>(null)
   const saveControl = useRef<(() => Promise<void>) | null>(null)
   const [loadedRows, setLoadedRows] = useState<StudentGradeRow[]>([])
+  const baselines = useRef(new Map<string, GradeBaseline>())
+  const gradeConflictRef = useRef(false)
+  const [gradeConflict, setGradeConflict] = useState(false)
+  const [pautaReload, setPautaReload] = useState(0)
   const [pauta, setPauta] = useState<StudentGradeRow[]>([])
   const [gradeMaxima, setGradeMaxima] = useState<number | null>(20)
   const [gradeCorte, setGradeCorte] = useState<number | null>(10)
@@ -270,7 +280,7 @@ export function ProfessorGradesWorkspace({ embedded = false, requestedAnoLetivoI
     void loadReopenRequests()
     const timer = window.setInterval(() => void loadReopenRequests(), 30_000)
     return () => { active = false; window.clearInterval(timer) }
-  }, [turmaId, disciplinaId, turmaDisciplinaId, trimestreSelecionado, anoLetivoId])
+  }, [turmaId, disciplinaId, turmaDisciplinaId, trimestreSelecionado, anoLetivoId, pautaReload])
 
   const handleRequestReopen = async () => {
     if (requestingReopen) return
@@ -304,6 +314,9 @@ export function ProfessorGradesWorkspace({ embedded = false, requestedAnoLetivoI
     const load = async () => {
       setLoading(true)
       setLoadedPautaScope(null)
+      baselines.current.clear()
+      gradeConflictRef.current = false
+      setGradeConflict(false)
       setGradeDraft([])
       setMatriculaIds({})
       try {
@@ -357,6 +370,7 @@ export function ProfessorGradesWorkspace({ embedded = false, requestedAnoLetivoI
               mt1: row.mt ?? null,
               _status: "synced",
             }))
+          baselines.current = new Map(rows.map((row, index) => [row.id, { row, matriculaId: detailedRows[index].matricula_id, versions: detailedRows[index].versions }]))
           setLoadedRows(rows)
           setPauta(rows)
           setMatriculaIds(nextMatriculaIds)
@@ -611,7 +625,8 @@ export function ProfessorGradesWorkspace({ embedded = false, requestedAnoLetivoI
   }, [turmaId, anoLetivoId, periodosRetry, requestedTrimestre, requestedTrimestreValid])
 
   const handleSaveBatch = async (rows: StudentGradeRow[]) => {
-    if (!pautaReady || !turmaId || !disciplinaId) throw new Error("O contexto da pauta não está disponível.")
+    if (gradeConflictRef.current) throw new Error("GRADE_CONFLICT: recarregue a pauta.")
+    if (raaScopeRef.current !== raaScope || !pautaReady || !turmaId || !disciplinaId) throw new Error("O contexto da pauta não está disponível.")
     if (!anoLetivoId) throw new Error("Ano letivo ativo não identificado. Atualize a página e tente novamente.")
     if (academicMode !== "CURRENT") {
       throw new Error("Este ano letivo está disponível apenas para consulta.")
@@ -625,9 +640,9 @@ export function ProfessorGradesWorkspace({ embedded = false, requestedAnoLetivoI
     const trimestre = trimestreSelecionado
     const configured = new Set(gradeComponentes.map((tipo) => tipo.toUpperCase()))
     const candidates = [
-      { tipo: "MAC", campo: "mac1" as const },
-      { tipo: "NPP", campo: "npp1" as const },
-      { tipo: "NPT", campo: "npt1" as const },
+      { tipo: "MAC" as const, campo: "mac1" as const },
+      { tipo: "NPP" as const, campo: "npp1" as const },
+      { tipo: "NPT" as const, campo: "npt1" as const },
     ]
     const payloads = configured.size === 0
       ? candidates.filter((item) => item.tipo !== "NPP")
@@ -636,7 +651,16 @@ export function ProfessorGradesWorkspace({ embedded = false, requestedAnoLetivoI
         )
 
     for (const { tipo, campo } of payloads) {
-      const notas = rows.map((row) => ({ aluno_id: row.id, valor: row[campo] }))
+      if (raaScopeRef.current !== raaScope) throw new Error("O contexto da pauta mudou.")
+      const notas = rows.flatMap(row => {
+        const baseline = baselines.current.get(row.id)
+        if (!baseline || !baseline.versions || !Object.prototype.hasOwnProperty.call(baseline.versions, tipo)) {
+          gradeConflictRef.current = true; setGradeConflict(true)
+          throw new Error("GRADE_REVISION_REQUIRED: recarregue a pauta.")
+        }
+        return baseline.row[campo] === row[campo] ? [] : [{ aluno_id: row.id, matricula_id: baseline.matriculaId, valor: row[campo], expected: baseline.versions[tipo] }]
+      })
+      if (!notas.length) continue
 
       const idempotencyKey = createIdempotencyKey(
         `nota-${turmaId}-${disciplinaId}-${trimestre}-${tipo}-${Date.now()}`
@@ -663,20 +687,35 @@ export function ProfessorGradesWorkspace({ embedded = false, requestedAnoLetivoI
         type: "professor_notas",
       }
 
+      let versions: Record<string, GradeRevision> | null = null
       if (!online) {
+        // Preserve the original revision in the offline queue. A later stale
+        // edit will become an explicit 409 conflict, never overwrite silently.
         await enqueueOfflineAction(request)
-        continue
+      } else {
+        const res = await fetch(request.url, { method: request.method, headers: request.headers, body: request.body })
+        const json = await res.json().catch(() => null)
+        if (!res.ok || !json?.ok) {
+          if (res.status === 409 && /GRADE_CONFLICT|GRADE_REVISION_REQUIRED/.test(String(json?.error ?? ""))) {
+            gradeConflictRef.current = true; setGradeConflict(true)
+          }
+          throw new Error(json?.error || "Falha ao salvar notas")
+        }
+        versions = json?.data?.versions ?? null
+        if (!versions || notas.some(nota => !versions?.[nota.matricula_id]?.id)) {
+          gradeConflictRef.current = true; setGradeConflict(true)
+          throw new Error("GRADE_REVISION_REQUIRED: confirme a gravação ao recarregar a pauta.")
+        }
+        navigation?.notifyChanged()
       }
-
-      const res = await fetch(request.url, {
-        method: request.method,
-        headers: request.headers,
-        body: request.body,
-      })
-      const json = await res.json().catch(() => null)
-      if (!res.ok || !json?.ok) {
-        throw new Error(json?.error || "Falha ao salvar notas")
+      if (raaScopeRef.current !== raaScope) throw new Error("O contexto da pauta mudou.")
+      for (const nota of notas) {
+        const baseline = baselines.current.get(nota.aluno_id)!
+        baseline.row = { ...baseline.row, [campo]: nota.valor }
+        if (versions && baseline.versions) baseline.versions = { ...baseline.versions, [tipo]: versions[nota.matricula_id] }
       }
+      const committed = new Map(notas.map(nota => [nota.aluno_id, nota.valor]))
+      setPauta(previous => previous.map(row => committed.has(row.id) ? { ...row, [campo]: committed.get(row.id)! } : row))
     }
 
     if (online) navigation?.notifyChanged()
@@ -1101,6 +1140,7 @@ export function ProfessorGradesWorkspace({ embedded = false, requestedAnoLetivoI
             <PortalSheet open={reopenSheet} busy={requestingReopen} inline={embedded} onClose={()=>{ if (requestingReopen || (requestReason.trim() && !window.confirm("Descartar pedido de reabertura?"))) return; setRequestReason(""); setReopenSheet(false) }} title="Solicitar reabertura" description={`${disciplinaNome ?? "Disciplina"} · ${trimestreSelecionado}.º trimestre`} size="expanded">
               <textarea aria-label="Motivo da reabertura" disabled={requestingReopen} value={requestReason} onChange={(event) => setRequestReason(event.target.value)} rows={3} placeholder="Explique por que precisa lançar ou corrigir esta nota." className="w-full rounded-xl border border-border bg-card px-3 py-2 text-sm text-foreground outline-none focus:ring-2 focus:ring-ring" /><button type="button" onClick={() => void handleRequestReopen()} disabled={requestingReopen || !anoLetivoId || requestReason.trim().length < 5} className="rounded-xl bg-amber px-4 py-2 font-bold text-white disabled:opacity-60">{requestingReopen ? "A enviar..." : "Solicitar reabertura"}</button>
             </PortalSheet>
+            {gradeConflict && <div role="alert" className="space-y-2 rounded-xl border border-border bg-card p-3 text-sm"><p className="font-semibold">A pauta foi alterada noutra sessão ou a revisão não está disponível.</p><p className="text-muted-foreground">As alterações locais não foram sobrescritas no servidor. Confere a versão actual antes de voltar a guardar.</p><button type="button" disabled={mutationBusy || Boolean(navigation?.busy)} onClick={() => { if (window.confirm("Recarregar a pauta e descartar as alterações locais ainda não guardadas?")) setPautaReload(value => value + 1) }} className="min-h-11 rounded-xl border border-border px-3 font-semibold text-primary">Recarregar pauta</button></div>}
             {loading ? (
               <div className="rounded-xl border border-border bg-card p-3 sm:p-4 animate-pulse space-y-2">
                 <div className="h-4 w-40 rounded-md bg-muted" />
