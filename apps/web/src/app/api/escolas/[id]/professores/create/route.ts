@@ -6,7 +6,7 @@ import { resolveEscolaIdForUser } from '@/lib/tenant/resolveEscolaIdForUser'
 import { hasPermission, mapPapelToGlobalRole, normalizePapel } from '@/lib/permissions'
 import { sanitizeEmail } from '@/lib/sanitize'
 import { callAuthAdminJob } from '@/lib/auth-admin-job'
-import { emitirEvento } from '@/lib/eventos/emitirEvento'
+import { randomInt, randomUUID } from 'node:crypto'
 import { buildCredentialsEmail, buildInviteEmail, sendMail } from '@/lib/mailer'
 
 const TurnosSchema = z.enum(['Manhã', 'Tarde', 'Noite'])
@@ -15,7 +15,7 @@ const BodySchema = z.object({
   nome_completo: z.string().trim().min(1),
   genero: z.enum(['M', 'F']),
   data_nascimento: z.string().trim().min(1),
-  numero_bi: z.string().trim().regex(/^[A-Za-z0-9]{14}$/, 'BI deve ter 14 caracteres alfanuméricos'),
+  numero_bi: z.string().trim().transform(v => v.toUpperCase()).refine(v => !v || (/^[A-Z0-9]{14}$/.test(v) && !/^0+$/.test(v)), 'Informe um BI válido de 14 caracteres ou deixe em branco').nullish(),
   email: z.string().email(),
   telefone_principal: z.string().trim().nullable().optional(),
   habilitacoes: z.enum(['Ensino Médio', 'Bacharelato', 'Licenciatura', 'Mestrado', 'Doutoramento']),
@@ -33,19 +33,23 @@ const generateStrongPassword = (len = 12) => {
   const nums = '0123456789'
   const special = '!@#$%^&*()-_=+[]{};:,.?'
   const all = upper + lower + nums + special
-  const pick = (s: string) => s[Math.floor(Math.random() * s.length)]
+  const pick = (s: string) => s[randomInt(s.length)]
   let pwd = pick(upper) + pick(lower) + pick(nums) + pick(special)
   for (let i = pwd.length; i < len; i++) pwd += pick(all)
-  return pwd.split('').sort(() => Math.random() - 0.5).join('')
+  const chars = pwd.split('')
+  for (let i = chars.length - 1; i > 0; i--) {
+    const j = randomInt(i + 1)
+    ;[chars[i], chars[j]] = [chars[j], chars[i]]
+  }
+  return chars.join('')
 }
 
 export async function POST(req: NextRequest, context: { params: Promise<{ id: string }> }) {
   const { id: escolaId } = await context.params
   const startedAt = Date.now()
-  let obsSupabase: any = null
+  const requestId = randomUUID()
   let obsEscolaId: string | null = null
-  let obsActorId: string | null = null
-  let obsEmail: string | null = null
+  let pendingUserId: string | null = null
 
   try {
     const json = await req.json()
@@ -56,15 +60,12 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
 
     const body = parse.data
     const email = sanitizeEmail(body.email)
-    obsEmail = email
     const nome = body.nome_completo.trim()
     const roleEnum = mapPapelToGlobalRole('professor') as Database['public']['Enums']['user_role']
 
     const supabase = await createRouteClient()
-    obsSupabase = supabase
     const { data: userRes } = await supabase.auth.getUser()
     const requesterId = userRes?.user?.id
-    obsActorId = requesterId ?? null
     if (!requesterId) return NextResponse.json({ ok: false, error: 'Não autenticado' }, { status: 401 })
 
     const userEscolaId = await resolveEscolaIdForUser(supabase, requesterId, escolaId)
@@ -73,22 +74,12 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
       return NextResponse.json({ ok: false, error: 'Sem permissão' }, { status: 403 })
     }
 
-    const emitObs = (status: 'success' | 'error', httpStatus: number, details: Record<string, unknown> = {}) =>
-      emitirEvento(supabase as any, {
-        escola_id: userEscolaId,
-        tipo: 'academico.professor_create',
-        payload: {
-          status,
-          http_status: httpStatus,
-          duration_ms: Date.now() - startedAt,
-          email: obsEmail,
-          ...details,
-        },
-        actor_id: requesterId,
-        actor_role: 'admin',
-        entidade_tipo: 'professores',
-        entidade_id: null,
-      }).catch(() => null)
+    const emitObs = (status: 'success' | 'error', httpStatus: number, details: Record<string, unknown> = {}) => {
+      const log = { event: 'academico.professor_create', request_id: requestId, escola_id: userEscolaId,
+        status, http_status: httpStatus, duration_ms: Date.now() - startedAt, ...details }
+      if (status === 'error') console.error(log)
+      else console.info(log)
+    }
 
     const { data: vinc } = await supabase
       .from('escola_users')
@@ -128,145 +119,70 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
       return NextResponse.json({ ok: false, error: 'Sem permissão' }, { status: 403 })
     }
 
+    // Check the tenant-scoped BI before any Auth side effect. The unique index remains
+    // the final authority for concurrent requests.
+    if (body.numero_bi) {
+      const { data: duplicate, error: biError } = await supabase.from('teachers')
+        .select('id').eq('escola_id', userEscolaId).eq('numero_bi', body.numero_bi).limit(1)
+      if (biError) {
+        emitObs('error', 503, { error_code: 'BI_CHECK_FAILED' })
+        return NextResponse.json({ ok: false, code: 'BI_CHECK_FAILED', error: 'Não foi possível validar o BI. Tente novamente.' }, { status: 503 })
+      }
+      if (duplicate?.length) {
+        emitObs('error', 409, { error_code: 'BI_ALREADY_REGISTERED' })
+        return NextResponse.json({ ok: false, code: 'BI_ALREADY_REGISTERED', error: 'Já existe um professor com este BI nesta escola.' }, { status: 409 })
+      }
+    }
+
+    const { data: prof, error: profileError } = await supabase
+      .from('profiles').select('user_id').eq('email', email).limit(1)
+    if (profileError) {
+      emitObs('error', 503, { error_code: 'PROFILE_CHECK_FAILED' })
+      return NextResponse.json({ ok: false, code: 'PROFILE_CHECK_FAILED', error: 'Não foi possível validar o e-mail. Tente novamente.' }, { status: 503 })
+    }
+    const emailConflict = () => {
+      emitObs('error', 409, { error_code: 'EMAIL_ALREADY_REGISTERED' })
+      return NextResponse.json({ ok: false, code: 'EMAIL_ALREADY_REGISTERED',
+        error: 'Já existe uma conta com este e-mail. Verifique o cadastro existente ou solicite a recuperação.' }, { status: 409 })
+    }
+    if (prof?.length) return emailConflict()
+
+    // Auth enforces global uniqueness atomically; never enumerate the first 1000 users.
+    const tempPassword = generateStrongPassword(12)
     let userId: string | undefined
-    const { data: prof } = await supabase
-      .from('profiles')
-      .select('user_id, role, nome')
-      .eq('email', email)
-      .limit(1)
-
-    const existingProfile = prof?.[0] as { user_id?: string | null; role?: string | null; nome?: string | null } | undefined
-    userId = existingProfile?.user_id as string | undefined
-
-    if (userId) {
-      emitObs('error', 409, {
-        error_code: 'EMAIL_ALREADY_REGISTERED',
-        existing_role: existingProfile?.role ?? null,
-        existing_user_id: userId,
-      })
-      return NextResponse.json(
-        {
-          ok: false,
-          error: 'Já existe um utilizador com este e-mail. Use outro e-mail para o professor.',
-          code: 'EMAIL_ALREADY_REGISTERED',
-        },
-        { status: 409 },
-      )
-    }
-
-    if (!userId) {
-      const existing = await callAuthAdminJob(req, 'findUserByEmail', { email })
-      const existingUser = existing as { user?: { id?: string | null } | null } | null
-      userId = existingUser?.user?.id ?? undefined
-    }
-
-    if (userId) {
-      emitObs('error', 409, {
-        error_code: 'EMAIL_ALREADY_REGISTERED_AUTH',
-        existing_user_id: userId,
-      })
-      return NextResponse.json(
-        {
-          ok: false,
-          error: 'Já existe um utilizador com este e-mail. Use outro e-mail para o professor.',
-          code: 'EMAIL_ALREADY_REGISTERED',
-        },
-        { status: 409 },
-      )
-    }
-
-    let tempPassword: string | null = null
-    let userCreated = false
-    if (!userId) {
-      tempPassword = generateStrongPassword(12)
+    try {
       const created = await callAuthAdminJob(req, 'createUser', {
-        email,
-        password: tempPassword,
-        email_confirm: true,
-        user_metadata: {
-          nome,
-          full_name: nome,
-          role: roleEnum,
-          escola_id: userEscolaId,
-          must_change_password: true,
-        },
+        email, password: tempPassword, email_confirm: true,
+        user_metadata: { nome, full_name: nome, role: roleEnum, escola_id: userEscolaId, must_change_password: true },
         app_metadata: { role: roleEnum, escola_id: userEscolaId },
       })
-      const createdUser = created as { user?: { id?: string | null } | null } | null
-      userId = createdUser?.user?.id ?? undefined
-      userCreated = Boolean(userId)
+      userId = (created as { user?: { id?: string | null } | null } | null)?.user?.id ?? undefined
+    } catch (error) {
+      const message = error instanceof Error ? error.message : ''
+      if (/email_exists|user_already_exists|already (been )?registered|already exists/i.test(message)) return emailConflict()
+      emitObs('error', 503, { error_code: 'AUTH_USER_CREATE_UNCONFIRMED' })
+      return NextResponse.json({ ok: false, code: 'AUTH_USER_CREATE_UNCONFIRMED', requestId,
+        error: 'Não foi possível confirmar a criação da conta. Solicite a verificação antes de repetir.' }, { status: 503 })
     }
-
     if (!userId) {
-      emitObs('error', 400, { error_code: 'AUTH_USER_CREATE_FAILED' })
-      return NextResponse.json({ ok: false, error: 'Falha ao criar usuário' }, { status: 400 })
+      emitObs('error', 503, { error_code: 'AUTH_USER_CREATE_UNCONFIRMED' })
+      return NextResponse.json({ ok: false, code: 'AUTH_USER_CREATE_UNCONFIRMED', requestId,
+        error: 'Não foi possível confirmar a criação da conta.' }, { status: 503 })
     }
+    pendingUserId = userId
+    const userCreated = true
 
-    const rollbackAuthUserCreate = async () => {
-      if (!userCreated) return
-      let existingTeacherId: string | null = null
-      try {
-        const { data: existingTeacher } = await supabase
-          .from('teachers')
-          .select('id')
-          .eq('escola_id', userEscolaId)
-          .eq('profile_id', userId)
-          .maybeSingle()
-        existingTeacherId = (existingTeacher as { id?: string | null } | null)?.id ?? null
-      } catch {}
-      try {
-        if (existingTeacherId) {
-          await supabase
-            .from('teacher_skills')
-            .delete()
-            .eq('teacher_id', existingTeacherId)
-        }
-      } catch {}
-      try {
-        await supabase
-          .from('teachers')
-          .delete()
-          .eq('escola_id', userEscolaId)
-          .eq('profile_id', userId)
-      } catch {}
-      try {
-        await supabase
-          .from('professores')
-          .delete()
-          .eq('escola_id', userEscolaId)
-          .eq('profile_id', userId)
-      } catch {}
-      try {
-        await supabase
-          .from('escola_users')
-          .delete()
-          .eq('escola_id', userEscolaId)
-          .eq('user_id', userId)
-      } catch {}
-      try {
-        await supabase
-          .from('profiles')
-          .delete()
-          .eq('user_id', userId)
-      } catch {}
+    // Only compensate a confirmed SQL transaction failure. Do not delete academic rows:
+    // a transport failure can mean the transaction committed despite a lost response.
+    const rollbackAuthUserCreate = async (): Promise<boolean> => {
       try {
         await callAuthAdminJob(req, 'deleteUser', { userId })
-      } catch {}
-    }
-
-    try {
-      await callAuthAdminJob(req, 'updateUserById', {
-        userId,
-        attributes: { app_metadata: { role: roleEnum, escola_id: userEscolaId } },
-      })
-    } catch (error) {
-      await rollbackAuthUserCreate()
-      const message = error instanceof Error ? error.message : 'Falha ao atualizar metadados do usuário'
-      emitObs('error', 400, { error_code: 'PROF_CREATE_AUTH_METADATA', stage: 'auth_metadata' })
-      return NextResponse.json(
-        { ok: false, stage: 'auth_metadata', error: `PROF_CREATE_AUTH_METADATA: ${message}` },
-        { status: 400 }
-      )
+        pendingUserId = null
+        return true
+      } catch {
+        emitObs('error', 503, { error_code: 'PROF_CREATE_ROLLBACK_FAILED', user_id: userId })
+        return false
+      }
     }
 
     const disciplinaIds = Array.from(new Set(body.disciplinas_habilitadas || []))
@@ -299,15 +215,27 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
     )
 
     if (rpcError) {
-      await rollbackAuthUserCreate()
-      emitObs('error', 400, { error_code: 'PROF_CREATE_ACADEMICO_RPC', stage: 'academico' })
-      return NextResponse.json(
-        { ok: false, stage: 'academico', error: `PROF_CREATE_ACADEMICO_RPC: ${rpcError.message}` },
-        { status: 400 }
-      )
+      const dbCode = String(rpcError.code ?? '')
+      const biConflict = dbCode === '23505' && /teachers_escola_numero_bi_uidx/.test(rpcError.message ?? '')
+      const confirmedAbort = /^(22|23|40|42|P0)/.test(dbCode)
+      const rolledBack = confirmedAbort && await rollbackAuthUserCreate()
+      if (!rolledBack) {
+        emitObs('error', 503, { error_code: 'PROF_CREATE_RECONCILIATION_REQUIRED', db_code: dbCode, user_id: userId })
+        return NextResponse.json({ ok: false, code: 'PROF_CREATE_RECONCILIATION_REQUIRED', requestId,
+          error: 'Cadastro não confirmado. É necessária uma verificação antes de repetir.' }, { status: 503 })
+      }
+      emitObs('error', biConflict ? 409 : 400, { error_code: biConflict ? 'BI_ALREADY_REGISTERED' : 'PROF_CREATE_ACADEMICO_RPC', db_code: dbCode })
+      return NextResponse.json({ ok: false, stage: 'academico',
+        code: biConflict ? 'BI_ALREADY_REGISTERED' : 'PROF_CREATE_ACADEMICO_RPC',
+        error: biConflict ? 'Já existe um professor com este BI nesta escola.' : 'Não foi possível concluir o cadastro académico.' }, { status: biConflict ? 409 : 400 })
     }
 
     const teacherId = (rpcData as { teacher_id?: string | null } | null)?.teacher_id ?? null
+    if (!teacherId) {
+      emitObs('error', 503, { error_code: 'PROF_CREATE_RECONCILIATION_REQUIRED', user_id: userId })
+      return NextResponse.json({ ok: false, code: 'PROF_CREATE_RECONCILIATION_REQUIRED', requestId, error: 'Cadastro não confirmado. Solicite a verificação.' }, { status: 503 })
+    }
+    pendingUserId = null
 
     const origin = new URL(req.url).origin
     const loginUrl = (process.env.KLASSE_AUTH_URL?.trim() || `${origin}/login`).replace(/\/$/, '')
@@ -376,24 +304,11 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
       senha_temp: userCreated ? tempPassword : null,
       emailStatus,
     })
-  } catch (err) {
-    if (obsSupabase && obsEscolaId) {
-      emitirEvento(obsSupabase as any, {
-        escola_id: obsEscolaId,
-        tipo: 'academico.professor_create',
-        payload: {
-          status: 'error',
-          http_status: 500,
-          duration_ms: Date.now() - startedAt,
-          email: obsEmail,
-          error_code: 'UNHANDLED_EXCEPTION',
-        },
-        actor_id: obsActorId,
-        actor_role: 'admin',
-        entidade_tipo: 'professores',
-        entidade_id: null,
-      }).catch(() => null)
-    }
-    return NextResponse.json({ ok: false, error: err instanceof Error ? err.message : String(err) }, { status: 500 })
+  } catch {
+    console.error({ event: 'academico.professor_create', request_id: requestId, escola_id: obsEscolaId,
+      error_code: pendingUserId ? 'PROF_CREATE_RECONCILIATION_REQUIRED' : 'UNHANDLED_EXCEPTION',
+      user_id: pendingUserId, duration_ms: Date.now() - startedAt })
+    return NextResponse.json({ ok: false, requestId, code: pendingUserId ? 'PROF_CREATE_RECONCILIATION_REQUIRED' : 'UNHANDLED_EXCEPTION',
+      error: pendingUserId ? 'Cadastro não confirmado. Solicite a verificação.' : 'Não foi possível concluir a operação.' }, { status: pendingUserId ? 503 : 500 })
   }
 }
