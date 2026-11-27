@@ -4,7 +4,7 @@ import { flushSync } from "react-dom";
 import { ArrowLeft,Plus,Trash2,MoveLeft,MoveRight,Undo2,Redo2,SlidersHorizontal,ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { mathMarkup } from "@/lib/provas/math";
-import { AST_LIMITS,editableMathToken,mathAt,mathNodeLabel,mathSlots,mathSymbols,mathTreeValid,modelMathTree,replaceMathAt,serializeMath,tokenNode,validMathExpression,validMathToken,type MathNode,type MathPath } from "@/lib/provas/formulaAst";
+import { AST_LIMITS,editableMathToken,editableValueNode,groupMathRange,ungroupMathRange,mathAt,mathNodeLabel,mathSlots,mathSymbols,mathTreeValid,modelMathTree,replaceMathAt,serializeMath,tokenNode,validMathExpression,validMathToken,type MathNode,type MathPath } from "@/lib/provas/formulaAst";
 import { formulaModels,formulaCategories,type FormulaCategory } from "@/lib/provas/formulaModels";
 
 const fieldStyle="min-h-11 w-full min-w-0 rounded-xl border border-border bg-background px-2 text-base focus:outline-none focus:ring-4 focus:ring-klasse-gold/20";
@@ -37,13 +37,15 @@ export default function RecursiveFormulaEditor({initial,onInsert,onBack,disabled
  const [category,setCategory]=useState<FormulaCategory>("Aritmética");
  const [error,setError]=useState("");
  const [advanced,setAdvanced]=useState(false);
+ const [grouping,setGrouping]=useState<{path:MathPath;first:number}|null>(null);
+ const [groupMode,setGroupMode]=useState(false);
  const [live,setLive]=useState(false);
  const valueInput=useRef<HTMLInputElement>(null);
  const [keyboard,setKeyboard]=useState<"decimal"|"text">("decimal");
  const [past,setPast]=useState<MathNode[][]>([]);
  const [future,setFuture]=useState<MathNode[][]>([]);
  const liveInvalid=live&&!validMathToken(atom.replace(",","."));
- function resetSelection(){setPath([]);setSelection(null);setPicker(null);setLive(false);setError("");}
+ function resetSelection(){setGroupMode(false);setGrouping(null);setPath([]);setSelection(null);setPicker(null);setLive(false);setError("");}
  function undo(){if(disabled||!past.length)return;setFuture(f=>[tree,...f].slice(0,50));setTree(past[past.length-1]);setPast(p=>p.slice(0,-1));resetSelection();}
  function redo(){if(disabled||!future.length)return;setPast(p=>[...p,tree].slice(-50));setTree(future[0]);setFuture(f=>f.slice(1));resetSelection();}
  const list=mathAt(tree,path)??[];
@@ -56,13 +58,13 @@ export default function RecursiveFormulaEditor({initial,onInsert,onBack,disabled
   const updated=replaceMathAt(tree,path,next);
   if(!updated||!mathTreeValid(updated,true)){setError("Limite de profundidade, 160 elementos ou 300 caracteres atingido.");return false;}
   if(serializeMath(updated)!==serializeMath(tree)){setPast(p=>[...p,tree].slice(-50));setFuture([]);setTree(updated);}
-  setSelection(focus);if(!keepLive){setPicker(null);setLive(false);}setError("");return true;
+  setGroupMode(false);setGrouping(null);setSelection(focus);if(!keepLive){setPicker(null);setLive(false);}setError("");return true;
  }
  function add(nodes:MathNode[]){
   if(disabled||!nodes.length)return;
   const index=position==="end"||selection===null?list.length:position==="before"||position==="replace"?selection:selection+1;
   const remove=position==="replace"&&selection!==null?1:0;
-  const next=[...list];next.splice(index,remove,...nodes);change(next,index);
+  const next=[...list];const insert=picker==="numbers"&&nodes.length===1&&nodes[0].kind==="token"?[editableValueNode(nodes[0].value,list.slice(0,index),list.slice(index+remove),remove?list[index]:undefined)]:nodes;next.splice(index,remove,...insert);change(next,index);
  }
  function openPicker(kind:Picker,at:typeof position){
   if(disabled||liveInvalid||error&&live)return;
@@ -74,7 +76,13 @@ export default function RecursiveFormulaEditor({initial,onInsert,onBack,disabled
  function navigate(depth:number){setPath(p=>p.slice(0,depth));setSelection(null);setPicker(null);setLive(false);setError("");}
  function selectElement(at:MathPath,index:number){
   if(disabled||liveInvalid||error&&live)return;
-  const node=mathAt(tree,at)?.[index];if(!node)return;
+  const siblings=mathAt(tree,at);const node=siblings?.[index];if(!node||!siblings)return;
+  if(groupMode){
+   if(!grouping||JSON.stringify(grouping.path)!==JSON.stringify(at)){setGrouping({path:at,first:index});setError("");return;}
+   const next=groupMathRange(siblings,grouping.first,index),updated=next&&replaceMathAt(tree,at,next);
+   if(!updated||!mathTreeValid(updated,true)||!validMathExpression(updated)){setError("Seleccione um intervalo completo, incluindo a base e os expoentes.");return;}
+   setPast(p=>[...p,tree].slice(-50));setFuture([]);setTree(updated);setPath(at);setSelection(Math.min(grouping.first,index));setGroupMode(false);setGrouping(null);setAdvanced(true);setError("");return;
+  }
   const numeric=node.kind==="token"&&editableMathToken(node.value);
   const select=()=>{
    setPath(at);setSelection(index);setPosition("replace");setError("");
@@ -92,14 +100,19 @@ export default function RecursiveFormulaEditor({initial,onInsert,onBack,disabled
   setAtom(raw);
   const normalized=raw.replace(",",".");
   if(selection===null||!validMathToken(normalized)){setError("");return;}
-  change(list.map((n,i)=>i===selection?tokenNode(normalized):n),selection,true);
+  const replacement=editableValueNode(normalized,list.slice(0,selection),list.slice(selection+1),selected??undefined);
+  if(replacement.kind==="group"){
+   if(change(list.map((n,i)=>i===selection?replacement:n),selection,true)){
+    setPath(p=>[...p,{index:selection,slot:"body"}]);setSelection(0);
+   }
+  }else change(list.map((n,i)=>i===selection?replacement:n),selection,true);
  }
  function renderSequence(nodes:MathNode[],at:MathPath,context="Expressão"):ReactNode{
   const slot=(i:number,key:MathPath[number]["slot"],children:MathNode[],label:string)=>renderSequence(children,[...at,{index:i,slot:key}],label);
   return <span className="inline-flex w-max max-w-none items-center gap-1 align-middle">
    {nodes.length===0&&<button type="button" className="min-h-11 min-w-11 rounded-xl border border-dashed border-border" aria-label={"Preencher "+context} disabled={disabled||liveInvalid||Boolean(error&&live)} onClick={()=>selectEmpty(at)}>□</button>}
    {nodes.map((node,i)=>{
-    const active=selection===i&&JSON.stringify(path)===JSON.stringify(at);
+    const active=groupMode?grouping?.first===i&&JSON.stringify(grouping.path)===JSON.stringify(at):selection===i&&JSON.stringify(path)===JSON.stringify(at);
     const mark=active?"border-klasse-gold bg-klasse-gold/10 ring-2 ring-klasse-gold/20":"border-border bg-background";
     const control=(name:string,children:ReactNode,extra="")=><button type="button" disabled={disabled||liveInvalid||Boolean(error&&live)} aria-label={context+" · "+name} aria-pressed={active} onClick={()=>selectElement(at,i)} className={"inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-xl border px-2 text-base focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-klasse-gold/20 "+mark+" "+extra}>{children}</button>;
     const display=node.kind==="token"?(allSymbols.find(sym=>sym[1]===node.value)?.[0]??node.value):"";
@@ -150,24 +163,30 @@ export default function RecursiveFormulaEditor({initial,onInsert,onBack,disabled
   <div aria-label="Pré-visualização completa" className={previewStyle}><MathPreview source={source}/></div>
   <div className="flex flex-wrap items-center justify-between gap-1">
    <div className="flex gap-1"><Button type="button" size="sm" variant="ghost" disabled={disabled||!past.length} onClick={undo}><Undo2/> Desfazer</Button><Button type="button" size="sm" variant="ghost" disabled={disabled||!future.length} onClick={redo}><Redo2/> Refazer</Button></div>
-   <Button type="button" size="sm" variant="ghost" aria-expanded={advanced} disabled={disabled||liveInvalid} onClick={()=>setAdvanced(v=>!v)}><SlidersHorizontal/> Estrutura</Button>
+   <Button type="button" size="sm" variant="ghost" aria-expanded={advanced} disabled={disabled||groupMode||liveInvalid} onClick={()=>setAdvanced(v=>!v)}><SlidersHorizontal/> Estrutura</Button>
   </div>
-  <p className="text-xs text-muted-foreground">Toque no número, símbolo ou parte da fórmula para editar.</p>
+  <div className="flex flex-wrap items-center gap-2">
+   <Button type="button" size="sm" variant="outline" disabled={disabled||liveInvalid||Boolean(error&&live)} aria-pressed={groupMode} onClick={()=>{setGroupMode(v=>!v);setGrouping(null);setSelection(null);setPicker(null);setLive(false);setAdvanced(false);setError("");}}>{groupMode?"Cancelar agrupamento":"Agrupar termos"}</Button>
+   {groupMode&&<p role="status" className="text-xs text-muted-foreground">{grouping?"Toque no último elemento do grupo.":"Toque no primeiro elemento do grupo."}</p>}
+  </div>
+  {!groupMode&&<p className="text-xs text-muted-foreground">Toque no número, símbolo ou parte da fórmula para editar.</p>}
   <div role="group" aria-label="Elementos da expressão" className="min-w-0 overflow-x-auto rounded-xl border border-border bg-card p-3 py-6">{renderSequence(tree,[])}</div>
   {live&&selected?.kind==="token"&&<div className="space-y-2 rounded-xl border border-border p-3">
    <label className="grid gap-1 text-sm font-medium">Alterar valor ou variável
-    <input key={JSON.stringify(path)+":"+selection} aria-label="Valor ou variável" className={fieldStyle} ref={valueInput} inputMode={keyboard} autoCapitalize="off" autoComplete="off" spellCheck={false} maxLength={16} value={atom} onFocus={e=>e.currentTarget.select()} onChange={e=>editLive(e.target.value)} disabled={disabled} aria-invalid={liveInvalid||Boolean(error)}/>
+    <input aria-label="Valor ou variável" className={fieldStyle} ref={valueInput} inputMode={keyboard} autoCapitalize="off" autoComplete="off" spellCheck={false} maxLength={16} value={atom} onFocus={e=>e.currentTarget.select()} onChange={e=>editLive(e.target.value)} disabled={disabled} aria-invalid={liveInvalid||Boolean(error)}/>
    </label>
-   <Button type="button" variant="ghost" size="sm" disabled={disabled} onClick={()=>{flushSync(()=>setKeyboard(k=>k==="decimal"?"text":"decimal"));valueInput.current?.focus();}}> {keyboard==="decimal"?"Introduzir variável":"Teclado numérico"}</Button>
+   <div className="flex flex-wrap gap-1">{/^-?(?:\d+(?:[.,]\d+)?|[.,]\d+)$/.test(atom)&&<Button type="button" variant="outline" size="sm" disabled={disabled} aria-label="Alterar sinal" onClick={()=>{editLive(atom.startsWith("-")?atom.slice(1):"-"+atom);valueInput.current?.focus();}}>± Alterar sinal</Button>}
+   <Button type="button" variant="ghost" size="sm" disabled={disabled} onClick={()=>{flushSync(()=>setKeyboard(k=>k==="decimal"?"text":"decimal"));valueInput.current?.focus();}}> {keyboard==="decimal"?"Introduzir variável":"Teclado numérico"}</Button></div>
    {(liveInvalid||error)&&<div className="flex flex-wrap items-center gap-2"><p role="status" className="text-xs text-destructive">Introduza um número ou uma variável válida.</p><Button type="button" size="sm" variant="ghost" onClick={()=>{setAtom(selected.value);setError("");}}>Restaurar valor</Button></div>}
   </div>}
   {!live&&picker==="symbols"&&position==="replace"&&selected?.kind==="token"&&<div role="group" aria-label="Trocar símbolo" className="grid grid-cols-5 gap-1">
    {allSymbols.map(([display,value])=><button type="button" key={value} aria-label={"Símbolo "+display} aria-pressed={selected.value===value} disabled={disabled} onClick={()=>add([tokenNode(value)])} className="min-h-11 rounded-xl border border-border text-base focus-visible:ring-4 focus-visible:ring-klasse-gold/20">{display}</button>)}
   </div>}
-  {path.length>0&&!advanced&&<Button type="button" size="sm" variant="ghost" disabled={disabled||liveInvalid||Boolean(error&&live)} onClick={()=>navigate(0)}>Expressão inteira</Button>}
-  {advanced&&path.length>0&&<nav aria-label="Local da edição" className="flex flex-wrap gap-1"><button type="button" className="min-h-11 rounded-xl px-2" disabled={disabled||liveInvalid||Boolean(error&&live)} onClick={()=>navigate(0)}>Expressão</button>{crumbLabels.map((name,i)=><button key={i} type="button" disabled={disabled||liveInvalid||Boolean(error&&live)} className="min-h-11 rounded-xl px-2" onClick={()=>navigate(i+1)}>{name}</button>)}<Button type="button" size="sm" variant="outline" disabled={disabled||liveInvalid} onClick={()=>{const last=path[path.length-1];selectElement(path.slice(0,-1),last.index);}}>Seleccionar estrutura envolvente</Button></nav>}
-  {advanced&&!liveInvalid&&!(error&&live)&&(!picker||live)&&selected&&selection!==null&&<div className="space-y-2 rounded-xl border border-border p-3">
+  {!groupMode&&path.length>0&&!advanced&&<Button type="button" size="sm" variant="ghost" disabled={disabled||liveInvalid||Boolean(error&&live)} onClick={()=>navigate(0)}>Expressão inteira</Button>}
+  {!groupMode&&advanced&&path.length>0&&<nav aria-label="Local da edição" className="flex flex-wrap gap-1"><button type="button" className="min-h-11 rounded-xl px-2" disabled={disabled||liveInvalid||Boolean(error&&live)} onClick={()=>navigate(0)}>Expressão</button>{crumbLabels.map((name,i)=><button key={i} type="button" disabled={disabled||liveInvalid||Boolean(error&&live)} className="min-h-11 rounded-xl px-2" onClick={()=>navigate(i+1)}>{name}</button>)}<Button type="button" size="sm" variant="outline" disabled={disabled||liveInvalid} onClick={()=>{const last=path[path.length-1];selectElement(path.slice(0,-1),last.index);}}>Seleccionar estrutura envolvente</Button></nav>}
+  {!groupMode&&advanced&&!liveInvalid&&!(error&&live)&&(!picker||live)&&selected&&selection!==null&&<div className="space-y-2 rounded-xl border border-border p-3">
    <p className="text-sm font-medium">{mathNodeLabel(selected)}</p>
+   {selected.kind==="group"&&selected.open!=="{"&&<Button type="button" variant="outline" disabled={disabled||!ungroupMathRange(list,selection)} onClick={()=>{const next=ungroupMathRange(list,selection);const updated=next&&replaceMathAt(tree,path,next);if(!next||!updated||!validMathExpression(updated)){setError("Não é possível remover este grupo sem deixar a expressão incompleta.");return;}if(window.confirm("Remover os parênteses pode alterar a ordem das operações. Continuar?"))change(next,selection);}}>Desagrupar termos</Button>}
    {selected.kind==="grid"&&<div className="space-y-2"><p className="text-xs text-muted-foreground">{selected.env==="cases"?selected.rows.length+" equações":selected.rows.length+" × "+selected.rows[0].length}</p><div className="flex flex-wrap gap-1">
     <Button type="button" size="sm" variant="outline" disabled={disabled||selected.rows.length>=4||selected.env==="vmatrix"&&selected.rows[0].length>=4} onClick={()=>resizeGrid("row",1)}><Plus/> {selected.env==="cases"?"Equação":selected.env==="vmatrix"?"Dimensão":"Linha"}</Button>
     {selected.env==="pmatrix"&&<Button type="button" size="sm" variant="outline" disabled={disabled||selected.rows[0].length>=4} onClick={()=>resizeGrid("column",1)}><Plus/> Coluna</Button>}
@@ -186,7 +205,7 @@ export default function RecursiveFormulaEditor({initial,onInsert,onBack,disabled
     <Button type="button" size="sm" variant="ghost" className="text-destructive" onClick={()=>change(list.filter((_,i)=>i!==selection),null)} disabled={disabled}><Trash2/> Remover</Button>
    </div>
   </div>}
-  {!liveInvalid&&!(error&&live)&&(!picker||live)&&<div className="grid grid-cols-2 gap-2">
+  {!groupMode&&!liveInvalid&&!(error&&live)&&(!picker||live)&&<div className="grid grid-cols-2 gap-2">
    <Button type="button" variant="outline" disabled={disabled} onClick={()=>openPicker("numbers","end")}><Plus/> Número / variável</Button>
    <Button type="button" variant="outline" disabled={disabled} onClick={()=>openPicker("symbols","end")}><Plus/> Operador / símbolo</Button>
    <Button type="button" variant="outline" disabled={disabled} onClick={()=>openPicker("structures","end")}><Plus/> Estrutura</Button>
@@ -201,7 +220,7 @@ export default function RecursiveFormulaEditor({initial,onInsert,onBack,disabled
    {error&&<p role="alert" className="text-sm text-destructive">{error}</p>}
    {!valid&&<p className="text-xs text-muted-foreground">Complete as partes em falta para inserir a expressão.</p>}
 
-   <Button type="button" tone="gold" className="w-full" disabled={disabled||!valid||liveInvalid||Boolean(error)||(picker!==null&&!live&&!(picker==="symbols"&&position==="replace"&&selected?.kind==="token"))} onClick={()=>{if(valid&&!liveInvalid&&!error)onInsert(valid);}}>{label}</Button>
+   <Button type="button" tone="gold" className="w-full" disabled={disabled||groupMode||!valid||liveInvalid||Boolean(error)||(picker!==null&&!live&&!(picker==="symbols"&&position==="replace"&&selected?.kind==="token"))} onClick={()=>{if(valid&&!groupMode&&!liveInvalid&&!error)onInsert(valid);}}>{label}</Button>
   </div>
  </section>;
 }
