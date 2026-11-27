@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import dynamic from "next/dynamic";
 import AuditPageView from "@/components/audit/AuditPageView";
 import { usePortalDrawerNavigation } from "@/components/portal/ui/PortalDrawerNavigator";
@@ -9,9 +10,12 @@ import type { AcademicTab } from "@/components/aluno/academico/AcademicoWorkspac
 const loading = () => <p role="status" className="text-sm text-muted-foreground">A carregar informação…</p>;
 const Enrollment = dynamic(() => import("@/components/aluno/home/RematriculaBanner").then(module => module.RematriculaBanner));
 
-const Academic = dynamic(() => import("@/components/aluno/academico/AcademicoWorkspace").then(module => module.AcademicoWorkspace), { loading });
-const Finance = dynamic(() => import("@/components/aluno/tabs/TabFinanceiro").then(module => module.TabFinanceiro), { loading });
-const Documents = dynamic(() => import("@/components/aluno/tabs/TabDocumentos").then(module => module.TabDocumentos), { loading });
+const loadAcademic = () => import("@/components/aluno/academico/AcademicoWorkspace").then(module => module.AcademicoWorkspace);
+const Academic = dynamic(loadAcademic, { loading });
+const loadFinance = () => import("@/components/aluno/tabs/TabFinanceiro").then(module => module.TabFinanceiro);
+const Finance = dynamic(loadFinance, { loading });
+const loadDocuments = () => import("@/components/aluno/tabs/TabDocumentos").then(module => module.TabDocumentos);
+const Documents = dynamic(loadDocuments, { loading });
 
 export function StudentDrawerWorkspace({ scope, kind, initialTab, serviceCode }: {
   scope: string;
@@ -20,6 +24,12 @@ export function StudentDrawerWorkspace({ scope, kind, initialTab, serviceCode }:
   serviceCode?: string | null;
 }) {
   const navigation = usePortalDrawerNavigation();
+  useEffect(() => {
+    const prepare = kind === "finance" ? loadDocuments : kind === "documents" ? loadAcademic : kind === "enrollment" ? loadFinance : null;
+    if (!prepare) return;
+    const timer = window.setTimeout(() => { void prepare().catch(() => undefined); }, 250);
+    return () => window.clearTimeout(timer);
+  }, [kind]);
   const openNotices = () => navigation?.push({
     id: `${scope}:notices`, title: "Avisos", description: "Comunicações publicadas pela escola.",
     content: <><AuditPageView portal="aluno" acao="PAGE_VIEW" entity="avisos" /><TabNotificacoes /></>,
