@@ -1,13 +1,14 @@
 "use client";
 
 import { createContext, useCallback, useContext, useId, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { PortalSheet } from "@/components/portal/ui/PortalSheet";
+import { DashboardDrawerContext, PortalSheet } from "@/components/portal/ui/PortalSheet";
 
 export type PortalDrawerFrame = {
   id: string;
   title: string;
   description: string;
   content: ReactNode;
+  prepare?: () => Promise<unknown>;
   size?: "compact" | "medium" | "expanded";
 };
 
@@ -108,11 +109,19 @@ export function PortalDrawerNavigator({ root, open, onClose, onReopen, onChanged
     history.pushState({ ...history.state, [historyKey]: { token, depth: 0 } }, "");
   }, [open, root.id]);
   const push = useCallback((frame: PortalDrawerFrame) => {
-    if (!open || busy || dirty || frame.id === root.id) return;
+    if (!open || busy || dirty) return;
     const previousScroll = body.current?.scrollTop ?? 0;
     const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     const current = session.current;
-    if (!current || historyOwner !== current.token || travelling.current || entries.some(entry => entry.frame.id === frame.id)) return;
+    if (!current || historyOwner !== current.token || travelling.current) return;
+    const depth = frame.id === root.id ? 0 : entries.findIndex(entry => entry.frame.id === frame.id) + 1;
+    if (frame.id === root.id || depth > 0) {
+      if (depth < entries.length) {
+        travelling.current = true;
+        history.go(depth - entries.length);
+      }
+      return;
+    }
     const next = [...entries, { frame, previousScroll, opener }];
     current.trail = next;
     history.pushState({ ...history.state, [historyKey]: { token: current.token, depth: next.length } }, "");
@@ -207,7 +216,8 @@ export function PortalDrawerNavigator({ root, open, onClose, onReopen, onChanged
 
   return (
     <PortalSheet open={open} onClose={close} title={active.title} description={active.description}
-      size={active.size ?? "expanded"} busy={busy} onBack={entries.length ? back : undefined} navigationKey={active.id} bodyRef={body}>
+      size={root.size ?? "expanded"} busy={busy} onBack={entries.length ? back : undefined} navigationKey={active.id} bodyRef={body}>
+      <DashboardDrawerContext.Provider value={true}>
       <Context.Provider value={{ push, registerGuard, notifyChanged, busy, dirty }}>
         <div key={root.id} hidden={entries.length > 0} className={entries.length ? "hidden" : "space-y-4"}>
           <FrameContext.Provider value={root.id}>{root.content}</FrameContext.Provider>
@@ -218,6 +228,7 @@ export function PortalDrawerNavigator({ root, open, onClose, onReopen, onChanged
           </div>
         ))}
       </Context.Provider>
+      </DashboardDrawerContext.Provider>
     </PortalSheet>
   );
 }
@@ -227,5 +238,6 @@ export function PortalDrawerPushButton({ frame, className, children }: {
 }) {
   const navigation = usePortalDrawerNavigation();
   if (!navigation) return null;
-  return <button type="button" disabled={navigation.busy || navigation.dirty} className={className} onClick={() => navigation.push(frame)}>{children}</button>;
+  const prepare = () => { void frame.prepare?.().catch(() => undefined); };
+  return <button type="button" onFocus={prepare} onPointerEnter={prepare} onPointerDown={prepare} disabled={navigation.busy || navigation.dirty} className={className} onClick={() => navigation.push(frame)}>{children}</button>;
 }
