@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode, type Ref } from "react";
+import { createContext, useContext, useId, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode, type Ref } from "react";
 import { ArrowLeft, X } from "lucide-react";
 import { readMotionDuration } from "@/components/portal/motion/motion-tokens";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
@@ -26,8 +26,11 @@ type Props = {
 const sizes = { compact: "40dvh", medium: "65dvh", expanded: "90dvh" };
 
 /** Secondary operations can opt into an inline region inside the parent drawer. */
+export const DashboardDrawerContext = createContext(false);
+
 export function PortalSheet(props: Props) {
-  return props.inline ? <InlinePortalPanel {...props} /> : <ModalPortalSheet {...props} />;
+  const inDashboardDrawer = useContext(DashboardDrawerContext);
+  return props.inline || inDashboardDrawer ? <InlinePortalPanel {...props} /> : <ModalPortalSheet {...props} />;
 }
 
 function InlinePortalPanel({ open, onClose, title, description, busy = false, children, footer, closeLabel = "Voltar", contentId }: Props) {
@@ -46,7 +49,7 @@ function InlinePortalPanel({ open, onClose, title, description, busy = false, ch
     };
   }, [open]);
   if (!open) return null;
-  return <section id={contentId} role="region" aria-labelledby={titleId} aria-describedby={descriptionId} aria-busy={busy} className="min-w-0 space-y-4 rounded-xl border border-border bg-card p-4">
+  return <section id={contentId} role="region" aria-labelledby={titleId} aria-describedby={descriptionId} aria-busy={busy} className="min-w-0 space-y-4">
     <div className="flex items-start gap-3">
       <button type="button" onClick={onClose} disabled={busy} aria-label={closeLabel} className="flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-xl border border-border text-primary focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"><ArrowLeft size={18} aria-hidden="true" /></button>
       <div className="min-w-0"><h3 id={titleId} ref={header} tabIndex={-1} className="break-words text-base font-semibold text-primary focus:outline-none">{title}</h3><p id={descriptionId} className="text-xs text-muted-foreground">{description}</p></div>
