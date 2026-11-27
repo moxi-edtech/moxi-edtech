@@ -1,14 +1,13 @@
 "use client";
 
 import { createContext, useCallback, useContext, useId, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { DashboardDrawerContext, PortalSheet } from "@/components/portal/ui/PortalSheet";
+import { PortalPresentationContext, PortalSheet } from "@/components/portal/ui/PortalSheet";
 
 export type PortalDrawerFrame = {
   id: string;
   title: string;
   description: string;
   content: ReactNode;
-  prepare?: () => Promise<unknown>;
   size?: "compact" | "medium" | "expanded";
 };
 
@@ -217,7 +216,7 @@ export function PortalDrawerNavigator({ root, open, onClose, onReopen, onChanged
   return (
     <PortalSheet open={open} onClose={close} title={active.title} description={active.description}
       size={root.size ?? "expanded"} busy={busy} onBack={entries.length ? back : undefined} navigationKey={active.id} bodyRef={body}>
-      <DashboardDrawerContext.Provider value={true}>
+      <PortalPresentationContext.Provider value="drawer">
       <Context.Provider value={{ push, registerGuard, notifyChanged, busy, dirty }}>
         <div key={root.id} hidden={entries.length > 0} className={entries.length ? "hidden" : "space-y-4"}>
           <FrameContext.Provider value={root.id}>{root.content}</FrameContext.Provider>
@@ -228,7 +227,7 @@ export function PortalDrawerNavigator({ root, open, onClose, onReopen, onChanged
           </div>
         ))}
       </Context.Provider>
-      </DashboardDrawerContext.Provider>
+      </PortalPresentationContext.Provider>
     </PortalSheet>
   );
 }
@@ -238,6 +237,5 @@ export function PortalDrawerPushButton({ frame, className, children }: {
 }) {
   const navigation = usePortalDrawerNavigation();
   if (!navigation) return null;
-  const prepare = () => { void frame.prepare?.().catch(() => undefined); };
-  return <button type="button" onFocus={prepare} onPointerEnter={prepare} onPointerDown={prepare} disabled={navigation.busy || navigation.dirty} className={className} onClick={() => navigation.push(frame)}>{children}</button>;
+  return <button type="button" disabled={navigation.busy || navigation.dirty} className={className} onClick={() => navigation.push(frame)}>{children}</button>;
 }
