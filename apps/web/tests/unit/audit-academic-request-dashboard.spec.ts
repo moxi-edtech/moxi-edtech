@@ -91,7 +91,7 @@ test("secretaria usa geometria central de desktop sem alterar os drawers mobile 
   const css = source("app/globals.css");
   const fila = source("components/secretaria/FilaAtendimentoModal.tsx");
   const shell = source("components/ui/ModalShell.tsx");
-  const sheets = dashboard.match(/<PortalSheet\b[\s\S]*?>/g) ?? [];
+  const sheets = dashboard.match(/<PortalSheet\b[\s\S]*?\n      >/g) ?? [];
   assert.equal(sheets.length, 3);
   for (const item of sheets) assert.match(item, /desktopPresentation="centered"/);
   assert.match(banner, /size="compact" desktopPresentation="centered"/);
