@@ -826,6 +826,7 @@ export function Dashboard({
         title="Pesquisa global"
         description="Pesquisar alunos, matrículas e documentos"
         size="medium"
+        desktopPresentation="centered"
       >
         <GlobalSearch
           escolaId={escolaId}
@@ -844,6 +845,7 @@ export function Dashboard({
         title={selectedMetric?.label ?? "Indicador"}
         description={`Secretaria · ${anoLetivoLabel}`}
         size="compact"
+        desktopPresentation="centered"
       >
         {selectedMetric && (
           <>
@@ -882,6 +884,7 @@ export function Dashboard({
         title={noticeView === "fichas" ? "Fichas incompletas" : "Avisos gerais"}
         description={noticeView === "fichas" ? "Regularize os dados dos alunos." : "Consulte os avisos que precisam de atenção."}
         size="expanded"
+        desktopPresentation="centered"
       >
         {(!currentProductivity || currentProductivity.error) && (
           <div role="status" className="space-y-2 text-sm text-muted-foreground">
