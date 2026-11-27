@@ -7,6 +7,7 @@ import { resolveEscolaIdForUser } from '@/lib/tenant/resolveEscolaIdForUser'
 const UUID = z.string().uuid()
 const Body = z.discriminatedUnion('regime', [
   z.object({ turma_id: UUID, regime: z.literal('pluridocencia') }).strict(),
+  z.object({ turma_id: UUID, regime: z.literal('trocar_titular'), professor_anterior_id: UUID, professor_novo_id: UUID }).strict(),
   z.object({ turma_id: UUID, regime: z.literal('monodocencia'), professor_id: UUID }).strict(),
   z.object({ turma_id: UUID, regime: z.literal('misto'), professor_id: UUID, matriz_ids: z.array(UUID).min(1).max(100) }).strict(),
 ])
@@ -25,6 +26,21 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     if (resolved !== escolaId || !permission.allowed)
       return NextResponse.json({ ok: false, error: 'Sem permissão.' }, { status: 403 })
     const body = parsed.data
+    if (body.regime === 'trocar_titular') {
+      const { data, error } = await supabase.rpc('replace_teacher_titular_atomic', {
+        p_escola_id: escolaId, p_turma_id: body.turma_id,
+        p_professor_anterior_id: body.professor_anterior_id, p_professor_novo_id: body.professor_novo_id,
+      })
+      if (error) {
+        const message = /WORKLOAD_EXCEEDED|CARGA_EXCEEDED/.test(error.message)
+          ? 'A carga lectiva do novo professor não permite esta atribuição. Nenhuma disciplina foi alterada.'
+          : /TITULAR_CONFLICT|PREVIOUS_MISMATCH/.test(error.message)
+            ? 'A turma foi actualizada. Reabra os dados e confirme o professor titular.'
+            : 'Não foi possível trocar o professor titular. Nenhuma atribuição foi alterada.'
+        return NextResponse.json({ ok: false, error: message }, { status: 409 })
+      }
+      return NextResponse.json({ ok: true, processadas: data })
+    }
     const { data, error } = await supabase.rpc('assign_teacher_regime_atomic', {
       p_escola_id: escolaId, p_turma_id: body.turma_id, p_regime: body.regime,
       p_professor_id: body.regime === 'pluridocencia' ? null : body.professor_id,
