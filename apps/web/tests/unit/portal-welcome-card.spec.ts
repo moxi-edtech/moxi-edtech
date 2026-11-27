@@ -179,7 +179,8 @@ test("student dashboard reuses guarded academic and financial workspaces", () =>
   assert.match(academic, /if \(guarded\) return/);
   assert.match(navigator, /register\(id, sourceId, \{ dirty, busy \}\)/);
   assert.match(navigator, /notifyChanged/);
-  assert.match(sheet, /props.inline \? <InlinePortalPanel/);
+  assert.match(sheet, /props.inline \|\| surface === "drawer" \? <InlinePortalPanel/);
+  assert.match(navigator, /<PortalPresentationContext.Provider value="drawer">/);
   assert.match(finance, /inert=\{Boolean\(navigation && paymentOpen\)\}/);
   assert.match(notes, /<AcademicRequestPanel inline=\{Boolean\(navigation\)\}/);
   assert.match(absences, /usePortalDrawerGuard\(detailOpen && Boolean\(reason.trim\(\)\), sending\)/);
