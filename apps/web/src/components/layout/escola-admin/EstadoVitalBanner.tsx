@@ -59,7 +59,7 @@ export function EstadoVitalBanner({ estado, compact = false, calendarHref, showS
           </div>
           {showSignature && <PortalCulturalSignature />}
         </section>
-        <PortalSheet open={eventOpen && Boolean(estado.evento_hoje_nome) && !isBloqueado && !isExames} onClose={() => setOpenedEventKey(null)} title="Evento de hoje" description={`${estado.ano_ativo ?? "—"} · ${periodo}`} size="compact">
+        <PortalSheet open={eventOpen && Boolean(estado.evento_hoje_nome) && !isBloqueado && !isExames} onClose={() => setOpenedEventKey(null)} title="Evento de hoje" description={`${estado.ano_ativo ?? "—"} · ${periodo}`} size="compact" desktopPresentation="centered">
           <p className="break-words text-base font-semibold text-foreground">{estado.evento_hoje_nome}</p>
           <p className="text-sm text-muted-foreground">{faseLabel} · Diário liberado</p>
         </PortalSheet>
