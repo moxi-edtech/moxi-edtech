@@ -17,6 +17,7 @@ on:
       - 'supabase/migrations/2027111711*.sql'
       - 'supabase/migrations/2027111717*.sql'
       - 'supabase/tests/teacher_assignment_disposable_*.sql'
+      - 'supabase/migration_drafts/teacher_workload_docencia*.sql'
       - '.github/workflows/professor-assignment-safeguards.yml'
 
 jobs:
@@ -70,6 +71,10 @@ jobs:
           psql -v ON_ERROR_STOP=1 -f supabase/migrations/20271117111500_professor_assignment_roster_academic_year.sql
           psql -v ON_ERROR_STOP=1 -f supabase/migrations/20271117172000_trocar_professor_turma_disciplina_atomic.sql
           psql -v ON_ERROR_STOP=1 -f supabase/tests/teacher_assignment_disposable_cases.sql
+      - name: Validate new teacher workload and teaching regimes (PostgreSQL 17)
+        run: |
+          psql -v ON_ERROR_STOP=1 -f supabase/migration_drafts/teacher_workload_docencia.sql
+          psql -v ON_ERROR_STOP=1 -f supabase/migration_drafts/teacher_workload_docencia_cases.sql
 
   typecheck:
     name: TypeScript web
