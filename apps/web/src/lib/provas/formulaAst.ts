@@ -14,7 +14,7 @@ export type MathPath=readonly {index:number;slot:MathSlot}[];
 export const AST_LIMITS={depth:8,nodes:160,characters:300} as const;
 const closing={"(":")","[":"]","{":"}"} as const;
 const forbiddenCommands=new Set(["\\text","\\mathrm","\\mathbf","\\mathit","\\left","\\right","\\vec","\\overline","\\underline","\\hat","\\bar"]);
-const tokenPattern=/^(?:\\[A-Za-z]+|\\[,;! ]|\d+(?:\.\d+)?|\.\d+|[A-Za-z]|[+\-=*/.,:;|!′°→≤≥≠×÷±∞]| +)$/u;
+const tokenPattern=/^(?:\\[A-Za-z]+|\\[,;! ]|-?(?:\d+(?:\.\d+)?|\.\d+)|[A-Za-z]|[+\-=*/.,:;|!′°→≤≥≠×÷±∞]| +)$/u;
 export function tokenNode(value:string):MathNode{return {kind:"token",value};}
 export function mathSlots(node:MathNode):{key:MathSlot;label:string;nodes:MathNode[]}[]{
  switch(node.kind){
@@ -96,7 +96,10 @@ export function parseMath(source:string):MathNode[]|null{
     else throw Error("script");
     continue;
    }
-   const lexeme=source.slice(pos).match(/^(?:\\[A-Za-z]+|\\[,;! ]|\d+(?:\.\d+)?|\.\d+|[A-Za-z]|[+\-=*/.,:;|!′°→≤≥≠×÷±∞]| +)/u)?.[0];
+   // A minus is part of a literal only in unary position; binary subtraction stays a separate token.
+   const prior=nodes.filter(n=>n.kind!=="token"||n.value.trim()).at(-1);
+   const signed=c==="-"&&(!prior||prior.kind==="token"&&isMathOperator(prior.value))?source.slice(pos).match(/^-(?:\d+(?:\.\d+)?|\.\d+)/)?.[0]:undefined;
+   const lexeme=signed??source.slice(pos).match(/^(?:\\[A-Za-z]+|\\[,;! ]|\d+(?:\.\d+)?|\.\d+|[A-Za-z]|[+\-=*/.,:;|!′°→≤≥≠×÷±∞]| +)/u)?.[0];
    if(!lexeme||forbiddenCommands.has(lexeme))throw Error("token");
    pos+=lexeme.length;
    if(lexeme==="\\frac"||lexeme==="\\dfrac"||lexeme==="\\tfrac"){
@@ -143,5 +146,44 @@ export function mathNodeLabel(node:MathNode):string{
  }
 }
 export const mathSymbols=[["+", "+"],["−","-"],["×","\\times"],["÷","\\div"],["=","="],["±","\\pm"],["≤","\\leq"],["≥","\\geq"],["≠","\\neq"],["·","\\cdot"],["π","\\pi"],["∞","\\infty"],["sin","\\sin"],["cos","\\cos"],["tan","\\tan"],["log","\\log"],["ln","\\ln"],["∫","\\int"],["∑","\\sum"],["lim","\\lim"],["→","→"],["°","\\circ"],["!","!"],["′","′"],["σ","\\sigma"],["μ","\\mu"]] as const;
-export function editableMathToken(value:string):boolean{return /^(?:\d+(?:\.\d+)?|\.\d+|[A-Za-z])$/.test(value);}
+export function editableMathToken(value:string):boolean{return /^(?:-?(?:\d+(?:\.\d+)?|\.\d+)|[A-Za-z])$/.test(value);}
 export function validMathToken(value:string):boolean{return editableMathToken(value)&&value.length<=16;}
+
+/** Signs are unary only where an operand is expected. */
+function isMathOperator(value:string):boolean{
+ return /^(?:[+\-*/=×÷±≤≥≠]|\\(?:times|div|cdot|pm|mp|le|leq|ge|geq|ne|neq|approx|equiv|in|notin))$/.test(value);
+}
+function significant(nodes:readonly MathNode[]):MathNode[]{return nodes.filter(n=>n.kind!=="token"||n.value.trim());}
+/** Preserve an existing unary literal's notation. For a newly negative base or
+ * an operand following another token, use explicit parentheses to avoid
+ * accidental subtraction, sign concatenation or exponent precedence changes. */
+export function editableValueNode(value:string,before:readonly MathNode[],after:readonly MathNode[],previous?:MathNode):MathNode{
+ const literal=tokenNode(value);
+ if(!value.startsWith("-")||previous?.kind==="token"&&previous.value.startsWith("-"))return literal;
+ const prior=significant(before).at(-1),following=significant(after)[0];
+ if(following?.kind==="script"||prior&&!(prior.kind==="token"&&prior.value==="=")){
+  return {kind:"group",open:"(",body:[literal]};
+ }
+ return literal;
+}
+/** Contiguous sibling range only; never detach an exponent or index from its base. */
+export function groupMathRange(nodes:MathNode[],first:number,last:number):MathNode[]|null{
+ const start=Math.min(first,last),end=Math.max(first,last);
+ if(!Number.isInteger(start)||!Number.isInteger(end)||start<0||end>=nodes.length)return null;
+ const body=nodes.slice(start,end+1),visible=significant(body);
+ if(!visible.length||visible[0].kind==="script"||visible.at(-1)?.kind==="token"&&isMathOperator((visible.at(-1) as {value:string}).value))return null;
+ const head=visible[0];
+ if(head.kind==="token"&&isMathOperator(head.value)&&head.value!=="-"&&head.value!=="+")return null;
+ if(significant(nodes.slice(end+1))[0]?.kind==="script")return null;
+ const next:MathNode[]=[...nodes.slice(0,start),{kind:"group",open:"(",body},...nodes.slice(end+1)];
+ return mathTreeValid(next,true)?next:null;
+}
+/** Removing visible parentheses is an explicit mathematical operation.
+ * Retain TeX-only braces; those are structural and cannot be ungrouped. */
+export function ungroupMathRange(nodes:MathNode[],index:number):MathNode[]|null{
+ const group=nodes[index];
+ if(group?.kind!=="group"||group.open==="{"||!group.body.length)return null;
+ if(significant(nodes.slice(index+1))[0]?.kind==="script")return null;
+ const next=[...nodes.slice(0,index),...group.body,...nodes.slice(index+1)];
+ return mathTreeValid(next,true)?next:null;
+}
