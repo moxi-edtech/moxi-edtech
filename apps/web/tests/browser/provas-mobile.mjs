@@ -460,6 +460,46 @@ try{
   console.log("Mobile professor fixture passed:",width);
  }
 
+ // Imported formula fixture: no normalization on open, safe value editing, then replacement.
+ const importPage=await browser.newPage({viewport:{width:390,height:844},hasTouch:true,isMobile:true});
+ const importedLatex="\\left(2+\\frac{3}{4}\\right)";
+ let imported={...base,tipo_prova:"trimestral",estado:"rascunho",versao:1,conteudo:[{tipo:"calculo",texto:importedLatex,linhas:2,rich:{version:1,segments:[{kind:"math",latex:importedLatex}]}}]};
+ await importPage.route("**/api/escola/**/provas**",async route=>{
+  const url=new URL(route.request().url());
+  if(url.searchParams.has("branding"))return route.fulfill({json:{logo:null}});
+  if(url.searchParams.has("contexto"))return route.fulfill({json:{items:url.searchParams.has("ano")?[{ano_letivo_id:year,curso_matriz_id:matrix,ano_lectivo:"2026/2027",classe:"8.ª Classe",disciplina:"Física",curso:"Ensino Geral",trimestre:1,cotacao_max_cent:2000}]:[{id:year,ativo:true,label:"2026/2027"}]}});
+  if(url.searchParams.has("prova"))return route.fulfill({json:{prova:imported}});
+  return route.fulfill({json:{provas:[imported],escola:"Escola de teste",permissions:{author:true,admin:false,userId:user}}});
+ });
+ await importPage.goto("http://127.0.0.1:6006/provas.html");
+ await importPage.getByRole("list",{name:"Provas",exact:true}).getByRole("button",{name:"Editar",exact:true}).click();
+ const importDialog=importPage.getByRole("dialog");
+ await importDialog.getByRole("button",{name:"Perguntas",exact:true}).click();
+ await importDialog.getByRole("button",{name:"Editar conteúdo formatado",exact:true}).click();
+ const importedQuestion=importDialog.getByRole("textbox",{name:"Enunciado 1",exact:true});
+ await importedQuestion.locator("math").click();
+ await importDialog.getByRole("button",{name:"Editar fórmula",exact:true}).click();
+ const fallback=importDialog.getByRole("region",{name:"Editor matemático",exact:true});
+ const importPreview=fallback.getByLabel("Pré-visualização da expressão");
+ assert.equal(await importPreview.locator("annotation").textContent(),importedLatex);
+ await fallback.getByRole("button",{name:"Valor 1: 2",exact:true}).click();
+ await fallback.getByLabel("Valor 1",{exact:true}).fill("8");
+ assert.equal(await importPreview.locator("annotation").textContent(),"\\left(8+\\frac{3}{4}\\right)");
+ await fallback.getByRole("button",{name:"Cancelar",exact:true}).click();
+ assert.equal(await importedQuestion.locator("annotation").textContent(),importedLatex);
+ await importedQuestion.locator("math").click();
+ await importDialog.getByRole("button",{name:"Editar fórmula",exact:true}).click();
+ await fallback.getByRole("button",{name:"Edição avançada (LaTeX)",exact:true}).click();
+ const raw=fallback.getByLabel("Expressão em LaTeX", {exact:true});
+ await raw.fill("\\htmlClass{bad}{x}");
+ assert.equal(await fallback.getByRole("button",{name:"Actualizar fórmula",exact:true}).isDisabled(),true);
+ await raw.fill("\\left(7+\\frac{3}{4}\\right)");
+ await fallback.getByRole("button",{name:"Actualizar fórmula",exact:true}).click();
+ assert.equal(await importedQuestion.locator("annotation").textContent(),"\\left(7+\\frac{3}{4}\\right)");
+ assert.equal(await importedQuestion.locator("math").count(),1);
+ await noOverflow(importPage,"imported formula");
+ await importPage.close();
+
  // Shared system exams arrive already scoped by the database/API; no author reassignment.
  const sharedPage=await browser.newPage({viewport:{width:1280,height:900}});
  let shared={...base,autor_id:null,estado:"rascunho",versao:1,conteudo:[{tipo:"discursiva",texto:"Questão original",linhas:2,cotacao_cent:2000}]};
