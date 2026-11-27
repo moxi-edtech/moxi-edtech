@@ -50,3 +50,21 @@ test("o professor recebe apenas os próprios pedidos e não pode decidir", () =>
   assert.match(api, /\.eq\("solicitado_por", user\.id\)/);
   assert.doesNotMatch(api, /export async function PATCH/);
 });
+
+test("secretaria prioriza a fila partilhada sem duplicar indicadores", () => {
+  const dashboard = source("app/secretaria/(portal-secretaria)/Dashboard.tsx");
+  const cash = source("components/secretaria/ResumoCaixaSecretaria.tsx");
+  const activity = source("components/secretaria/MinhaProdutividade.tsx");
+  const hub = source("components/layout/operacoes/OperacoesPainelHub.tsx");
+  const queue = dashboard.indexOf("<OperacoesPainelHub escolaId={escolaId} onlyReopen inlineReopen");
+  assert.ok(queue > dashboard.indexOf('aria-labelledby="secretaria-caixa-title"'));
+  assert.ok(queue < dashboard.indexOf('aria-labelledby="secretaria-atendimento-title"'));
+  assert.equal((dashboard.match(/<OperacoesPainelHub\b/g) ?? []).length, 1);
+  assert.doesNotMatch(dashboard, /RadarOperacional|showSignature=\{false\}/);
+  assert.doesNotMatch(cash, /Pagamentos parciais|showPartialPayments/);
+  assert.doesNotMatch(activity, /Minhas admissões/);
+  assert.match(activity, /Fichas incompletas/);
+  assert.match(dashboard, /Matrículas de hoje/);
+  assert.match(hub, /const embeddedReopen = onlyReopen && inlineReopen/);
+  assert.match(hub, /if \(onlyReopen && !authorized\) return null/);
+});
