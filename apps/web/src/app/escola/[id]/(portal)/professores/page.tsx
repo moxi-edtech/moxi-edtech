@@ -1064,8 +1064,8 @@ export default function ProfessoresPage() {
       if (!teacherForm.nome_completo.trim()) return "Informe o nome completo"
       if (!teacherForm.email.trim()) return "Informe o email"
       if (!teacherForm.data_nascimento) return "Informe a data de nascimento"
-      if (!teacherForm.numero_bi.trim()) return "Informe o número de BI"
-      if (!/^[A-Za-z0-9]{14}$/.test(teacherForm.numero_bi.trim())) return "O BI deve ter 14 caracteres alfanuméricos"
+      const bi = teacherForm.numero_bi.trim()
+      if (bi && (!/^[A-Za-z0-9]{14}$/.test(bi) || /^0+$/.test(bi))) return "Informe um BI válido ou deixe em branco"
       if (!teacherForm.telefone_principal.trim()) return "Informe o telefone"
     }
     if (step === 1) {
@@ -1302,9 +1302,9 @@ export default function ProfessoresPage() {
               <input className={inputCls} type="date" value={teacherForm.data_nascimento}
                 onChange={(e) => updateTeacher("data_nascimento", e.target.value)} />
               <div>
-                <input className={inputCls} placeholder="Número do BI (14 caracteres)" value={teacherForm.numero_bi}
-                  maxLength={14} onChange={(e) => updateTeacher("numero_bi", e.target.value)} />
-                <p className="text-[10px] text-muted-foreground mt-1 ml-1">14 caracteres alfanuméricos.</p>
+                <input className={inputCls} placeholder="Número do BI (opcional)" value={teacherForm.numero_bi}
+                  maxLength={14} onChange={(e) => updateTeacher("numero_bi", e.target.value.toUpperCase())} />
+                <p className="text-[10px] text-muted-foreground mt-1 ml-1">Se ainda não tiver o BI, deixe em branco.</p>
               </div>
               <input className={inputCls} type="email" placeholder="Email institucional" value={teacherForm.email}
                 onChange={(e) => updateTeacher("email", e.target.value)} />
