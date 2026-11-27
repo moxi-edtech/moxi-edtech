@@ -13,7 +13,9 @@ const FormulaInput=dynamic(()=>import("./FormulaInput"),{ssr:false,loading:()=> 
 function FormulaView({node,selected,editor,getPos}:NodeViewProps){
  const latex=String(node.attrs.latex??"");
  const html=mathMarkup(latex);
- return <NodeViewWrapper as="span" contentEditable={false} onClick={()=>{if(!editor.isEditable)return;const pos=getPos();if(typeof pos==="number")editor.commands.setNodeSelection(pos);}} className={"inline-block max-w-full cursor-pointer overflow-x-auto rounded-xl px-1 align-middle "+(selected?"ring-2 ring-primary":"")}>
+ return <NodeViewWrapper as="span" contentEditable={false}
+  onMouseDown={event=>{if(!editor.isEditable||event.button!==0)return;event.preventDefault();event.stopPropagation();}}
+  onClick={event=>{if(!editor.isEditable)return;event.stopPropagation();const pos=getPos();if(typeof pos==="number")editor.commands.setNodeSelection(pos);}} className={"inline-block max-w-full cursor-pointer overflow-x-auto rounded-xl px-1 align-middle "+(selected?"ring-2 ring-primary":"")}>
   {html?<span aria-label={latex} dangerouslySetInnerHTML={{__html:html}}/>:<span>{latex}</span>}
  </NodeViewWrapper>;
 }
@@ -61,7 +63,7 @@ export default function RichQuestionEditor({block,onChange,onDone,disabled,label
   onCreate:({editor})=>{if(startWithFormula){const pos=editor.state.doc.content.size-1;editor.commands.setTextSelection(pos);setFormula({latex:"",from:pos,to:pos});}},
   onUpdate:({editor})=>{const rich=fromEditor(editor.getJSON());changeRef.current({texto:richText(rich),rich:rich.segments.length?rich:undefined});}
  });
- const state=useEditorState({editor,selector:({editor:e})=>({bold:e?.isActive("bold")??false,italic:e?.isActive("italic")??false,underline:e?.isActive("underline")??false,formula:e?.isActive("formula")??false})});
+ const state=useEditorState({editor,selector:({editor:e})=>({bold:e?.isActive("bold")??false,italic:e?.isActive("italic")??false,underline:e?.isActive("underline")??false,formula:((selection,node)=>Boolean(node?.type.name==="formula"&&selection&&selection.to-selection.from===node.nodeSize))(e?.state.selection,e?.state.doc.nodeAt(e.state.selection.from))})});
  useEffect(()=>{editor?.setEditable(!disabled&&!formula,false);},[editor,disabled,formula]);
  useEffect(()=>{if(editor){const scroll=surface.current?.closest<HTMLElement>("[data-modal-scroll]");if(scroll)scroll.scrollTop=0;}},[editor,formula]);
  if(!editor)return <p role="status" className="text-sm text-muted-foreground">A carregar editor...</p>;
@@ -73,7 +75,25 @@ export default function RichQuestionEditor({block,onChange,onDone,disabled,label
   const latex=selectedNode?.type.name==="formula"&&to-from===selectedNode.nodeSize?String(selectedNode.attrs.latex??""):"";
   editor.commands.blur();setFormula({latex,from,to});
  }
- const returnFocus=()=>requestAnimationFrame(()=>document.getElementById("provas-formula-trigger")?.focus({preventScroll:true}));
+ const returnFocus=()=>requestAnimationFrame(()=>{
+  // Do not steal focus from a subsequent interaction with the question.
+  const active=document.activeElement;
+  if(active&&active!==document.body&&active.isConnected)return;
+  surface.current?.querySelector<HTMLButtonElement>("#provas-formula-trigger")?.focus({preventScroll:true});
+ });
+ function cancelFormula(){
+  if(!formula)return;
+  editor.setEditable(!disabled,false);
+  // Blur/hiding the contenteditable can collapse a DOM selection. Restore the
+  // original atomic node selection explicitly before returning to the toolbar.
+  const node=editor.state.doc.nodeAt(formula.from);
+  if(formula.latex&&node?.type.name==="formula"&&formula.to-formula.from===node.nodeSize&&node.attrs.latex===formula.latex){
+   editor.commands.setNodeSelection(formula.from);
+  }else if(formula.from>=0&&formula.to<=editor.state.doc.content.size){
+   editor.commands.setTextSelection({from:formula.from,to:formula.to});
+  }
+  setFormula(null);returnFocus();
+ }
  return <div ref={surface} className="min-w-0 space-y-3 [&_button]:max-sm:min-h-11 [&_button]:max-sm:whitespace-normal">
   <div className={"flex min-w-0 flex-col overflow-hidden rounded-xl border border-border focus-within:ring-4 focus-within:ring-klasse-gold/20 "+(formula?"hidden":"")}>
    <div className="order-first sm:order-last"><EditorContent editor={editor}/></div>
@@ -89,7 +109,7 @@ export default function RichQuestionEditor({block,onChange,onDone,disabled,label
     </div>
    </div>
   </div>
-  {formula&&<FormulaInput initial={formula.latex} disabled={disabled} onCancel={()=>{setFormula(null);editor.setEditable(!disabled,false);returnFocus();}} onInsert={latex=>{
+  {formula&&<FormulaInput initial={formula.latex} disabled={disabled} onCancel={cancelFormula} onInsert={latex=>{
     if(disabled)return;
     editor.setEditable(true,false);
     if(!editor.chain().insertContentAt({from:formula.from,to:formula.to},{type:"formula",attrs:{latex}}).run()){editor.setEditable(false,false);return;}
