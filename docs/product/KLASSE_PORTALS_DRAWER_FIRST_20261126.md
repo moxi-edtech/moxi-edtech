@@ -142,7 +142,9 @@ Testes estáticos/contratos cobrem integração de triggers, wrappers, navegaç�
 | Rematrícula | O cartão abre o fluxo existente no drawer. O estado `failed` permite corrigir o comprovativo na mesma intenção. Um envio pendente com comprovativo apresenta o estado de análise. A rematrícula opera sobre o aluno da sessão e a janela activa; o cartão é omitido quando existe selecção explícita de educando ou ano. |
 | Avisos | A definição versionada em `populate_student_portal_life.sql` projecta `notices.conteudo AS resumo`. O detalhe já apresenta esse campo integral, enquanto o cartão limita visualmente o texto a duas linhas. A definição efectiva em produção requer confirmação. |
 
-A lista abaixo regista os critérios originais. Os testes com contas de homologação, a concorrência entre sessões e a confirmação financeira pelo fornecedor exigem evidência própria. A decisão de integrar depende dessa homologação.
+A homologação financeira real foi dispensada pelo responsável do produto nesta revisão. O ambiente local executou o percurso Back → Forward → Escape em Chromium com 390 e 1366 px. A fixture da grelha executou gravações sobrepostas nas escalas 10 e 20, manteve o valor da edição mais recente e repetiu o lote após uma resposta 409. Os pedidos dessa fixture são sintéticos.
+
+A lista abaixo regista os critérios originais. Os testes académicos com contas de homologação e a concorrência entre sessões exigem evidência própria. A decisão de integrar depende dessa homologação.
 
 Não considerar a PR pronta só porque testes de contrato passaram. Antes de merge/deploy:
 

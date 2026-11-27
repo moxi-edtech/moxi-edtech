@@ -5,7 +5,7 @@ const source = readFileSync(new URL('../../src/app/professor/page.tsx', import.m
 test('dashboard retries without full reload or loss of local selection', () => {
   assert.doesNotMatch(source, /window\.location\.reload\s*\(/);
   assert.match(source, /setRetryVersion\(\(current\) => current \+ 1\)/);
-  assert.match(source, /\[retryVersion\]/);
+  assert.match(source, /\[retryVersion, requestedAcademicYearId, escolaParam\]/);
 });
 test('dashboard polling skips hidden tabs and overlapping requests and backs off', () => {
   assert.match(source, /document\.hidden \|\| pollingInFlight\.current/);

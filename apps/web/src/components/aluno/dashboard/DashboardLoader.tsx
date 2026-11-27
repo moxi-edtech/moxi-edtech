@@ -123,7 +123,7 @@ export default function DashboardLoader() {
     documentos: screen.catalogo?.documentos,
     rematricula: scopedQuery ? null : screen.rematricula,
     academic: screen.raa?.result,
-  }) : [], [screen]);
+  }) : [], [screen, scopedQuery]);
   if (loading || (!error && lastLoadedScope.current !== drawerScope)) return <LoadingDashboard/>;
   if (error || !screen) return <div className="mx-auto max-w-6xl px-4 py-8"><ErrorState title="Não foi possível carregar" description={error || "Tenta novamente."} onRetry={refresh}/></div>;
   const lesson = nextLessonLabel(screen.dashboard.proxima_aula);
