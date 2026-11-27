@@ -9,7 +9,6 @@ import {
   CalendarX,
   CalendarCheck,
   FileEdit,
-  UserPlus,
   UsersRound,
   RefreshCcw,
   Upload,
@@ -43,10 +42,6 @@ import type { EstadoVital } from "@/components/layout/escola-admin/dashboard.typ
 import { PortalSheet } from "@/components/portal/ui/PortalSheet";
 import AcaoRapidaCard from "@/components/shared/AcaoRapidaCard";
 import ExpedienteDashboardCard from "@/components/secretaria/ExpedienteDashboardCard";
-import {
-  RadarOperacional,
-  type OperationalAlert,
-} from "@/components/feedback/FeedbackSystem";
 import { FichaRapidaModal } from "@/components/secretaria/FichaRapidaModal";
 import type { DashboardCounts, DashboardRecentes } from "./types";
 
@@ -173,7 +168,6 @@ export function Dashboard({
   const [nowMs] = useState(() => Date.now());
   const [userName, setUserName] = useState<string | null>(null);
   const [produtividadeAlerts, setProdutividadeAlerts] = useState<any[]>([]);
-  const [totalPendentesFicha, setTotalPendentesFicha] = useState(0);
   const [selectedAlunoIdForFicha, setSelectedAlunoIdForFicha] = useState<
     string | null
   >(null);
@@ -189,8 +183,6 @@ export function Dashboard({
   const handleProdutividadeData = useCallback((data: any) => {
     if (data.alertas_notificacoes)
       setProdutividadeAlerts(data.alertas_notificacoes);
-    if (data.documentos_pendentes !== undefined)
-      setTotalPendentesFicha(data.documentos_pendentes);
   }, []);
 
   const refreshProdutividade = useCallback(
@@ -407,59 +399,6 @@ export function Dashboard({
     produtividadeAlerts,
     escolaParam,
   ]);
-  const alerts = useMemo(() => {
-    const items: OperationalAlert[] = [];
-    const pendencias = recentes?.pendencias ?? counts?.pendencias ?? 0;
-    if (pendencias > 0) {
-      items.push({
-        id: "pendencias",
-        severity: pendencias >= 5 ? "critical" : "warning",
-        categoria: "academico",
-        titulo: `${pendencias} pendência${pendencias !== 1 ? "s" : ""} no painel`,
-        descricao: "Há matrículas ou importações que precisam de validação.",
-        count: pendencias,
-        link: buildPortalHref(escolaParam, "/secretaria/alertas"),
-        link_label: "Ver pendências",
-      });
-    }
-
-    const avisos = recentes?.avisos_recentes?.length ?? 0;
-    if (avisos > 0) {
-      items.push({
-        id: "avisos",
-        severity: "info",
-        categoria: "documentos",
-        titulo: "Avisos recentes do dia",
-        descricao: "Revise os avisos mais recentes antes de encerrar o turno.",
-        count: avisos,
-        link: buildPortalHref(escolaParam, "/secretaria/avisos"),
-        link_label: "Abrir avisos",
-      });
-    }
-
-    if (totalPendentesFicha > 0) {
-      items.push({
-        id: "fichas-incompletas",
-        severity: totalPendentesFicha > 20 ? "critical" : "warning",
-        categoria: "documentos",
-        titulo: `${totalPendentesFicha} alunos com ficha incompleta`,
-        descricao:
-          "Existem alunos ativos com falta de BI, Data de Nasc. ou Documentos.",
-        count: totalPendentesFicha,
-        link: buildPortalHref(escolaParam, "/secretaria/alunos"),
-        link_label: "Regularizar Fichas",
-      });
-    }
-
-    return items;
-  }, [
-    counts?.pendencias,
-    escolaParam,
-    recentes?.avisos_recentes?.length,
-    recentes?.pendencias,
-    totalPendentesFicha,
-  ]);
-
   const publicLandingUrl = useMemo(() => {
     if (!escolaSlug || escolaId !== contextEscolaId) return null;
     return `https://klasse.ao/admissoes/${escolaSlug}`;
@@ -493,15 +432,6 @@ export function Dashboard({
       description: `Matrículas confirmadas · ${anoLetivoLabel}`,
       href: matriculadosHref,
       action: "Ver alunos matriculados",
-    },
-    {
-      key: "matriculas",
-      label: "Matrículas de hoje",
-      value: counts?.matriculas,
-      icon: UserPlus,
-      description: "Matrículas criadas hoje na escola.",
-      href: buildPortalHref(escolaParam, "/secretaria/matriculas"),
-      action: "Consultar matrículas",
     },
     {
       key: "turmas",
@@ -570,7 +500,6 @@ export function Dashboard({
           <EstadoVitalBanner
             estado={academicState}
             compact
-            showSignature={false}
             calendarHref={buildPortalHref(
               escolaParam,
               "/secretaria/calendario",
@@ -604,14 +533,61 @@ export function Dashboard({
             )}
           </div>
         )}
-        {alerts.length > 0 && (
-          <RadarOperacional
-            alerts={alerts}
-            role="secretaria"
-            variant="compact"
-          />
-        )}
       </div>
+
+      <section
+        aria-labelledby="secretaria-caixa-title"
+        className="min-w-0 space-y-4"
+      >
+        <h2
+          id="secretaria-caixa-title"
+          className="text-base font-semibold text-foreground"
+        >
+          O meu caixa hoje
+        </h2>
+        {escolaId && showOperationalPanels ? (
+          <ResumoCaixaSecretaria escolaId={escolaId} refreshKey={refreshKey} showPartialPayments={false} />
+        ) : (
+          <div className="grid min-w-0 gap-4 @min-[520px]:grid-cols-2">
+            {[0, 1].map((key) => (
+              <OperationalMetricSkeleton key={key} />
+            ))}
+          </div>
+        )}
+      </section>
+
+      <section
+        aria-labelledby="secretaria-resumo-title"
+        className="min-w-0 space-y-4"
+      >
+        <div className="flex flex-wrap items-baseline justify-between gap-2">
+          <h2
+            id="secretaria-resumo-title"
+            className="text-base font-semibold text-foreground"
+          >
+            Visão geral da secretaria
+          </h2>
+          <p className="text-xs text-muted-foreground">
+            Ano lectivo {anoLetivoLabel}
+          </p>
+        </div>
+        <div className="operations-daily-grid grid">
+          {metrics.map((metric) => (
+            <OperationalMetricCard
+              key={metric.key}
+              label={metric.label}
+              value={metric.value}
+              icon={metric.icon}
+              description={metric.description}
+              needsAttention={
+                metric.key === "pendencias" && (metric.value ?? 0) > 0
+              }
+              onClick={() => setMetricKey(metric.key)}
+              dialogOpen={metricKey === metric.key}
+            />
+          ))}
+        </div>
+      </section>
 
       <section
         aria-labelledby="secretaria-atendimento-title"
@@ -753,60 +729,6 @@ export function Dashboard({
         </div>
       </section>
 
-      <section
-        aria-labelledby="secretaria-caixa-title"
-        className="min-w-0 space-y-4"
-      >
-        <h2
-          id="secretaria-caixa-title"
-          className="text-base font-semibold text-foreground"
-        >
-          O meu caixa hoje
-        </h2>
-        {escolaId && showOperationalPanels ? (
-          <ResumoCaixaSecretaria escolaId={escolaId} refreshKey={refreshKey} />
-        ) : (
-          <div className="operations-daily-grid grid">
-            {[0, 1, 2].map((key) => (
-              <OperationalMetricSkeleton key={key} />
-            ))}
-          </div>
-        )}
-      </section>
-
-      <section
-        aria-labelledby="secretaria-resumo-title"
-        className="min-w-0 space-y-4"
-      >
-        <div className="flex flex-wrap items-baseline justify-between gap-2">
-          <h2
-            id="secretaria-resumo-title"
-            className="text-base font-semibold text-foreground"
-          >
-            Visão geral da secretaria
-          </h2>
-          <p className="text-xs text-muted-foreground">
-            Ano lectivo {anoLetivoLabel}
-          </p>
-        </div>
-        <div className="operations-kpi-grid grid">
-          {metrics.map((metric) => (
-            <OperationalMetricCard
-              key={metric.key}
-              label={metric.label}
-              value={metric.value}
-              icon={metric.icon}
-              description={metric.description}
-              needsAttention={
-                metric.key === "pendencias" && (metric.value ?? 0) > 0
-              }
-              onClick={() => setMetricKey(metric.key)}
-              dialogOpen={metricKey === metric.key}
-            />
-          ))}
-        </div>
-      </section>
-
       <div className="grid min-w-0 gap-6 @min-[920px]:grid-cols-2">
         <section
           aria-label="Acompanhamento do dia"
@@ -817,6 +739,7 @@ export function Dashboard({
               key={refreshKey}
               escolaId={escolaId}
               onData={handleProdutividadeData}
+              fichasHref={buildPortalHref(escolaParam, "/secretaria/alunos")}
               onAtenderAluno={(alunoId) => {
                 setSelectedAlunoIdForBalcao(alunoId);
                 setBalcaoModal("atendimento_aluno");
@@ -935,6 +858,17 @@ export function Dashboard({
                 ? "Dados indisponíveis."
                 : selectedMetric.description}
             </p>
+            {selectedMetric.key === "alunos" && (
+              <div className="rounded-xl border border-border p-3 text-sm">
+                <p className="text-muted-foreground">Matrículas de hoje</p>
+                <p className="mt-1 text-xl font-semibold tabular-nums text-foreground">
+                  {counts?.matriculas?.toLocaleString("pt-AO") ?? "—"}
+                </p>
+                <Link href={buildPortalHref(escolaParam, "/secretaria/matriculas")} className="mt-2 inline-flex text-sm font-medium text-foreground underline-offset-4 hover:underline">
+                  Consultar matrículas
+                </Link>
+              </div>
+            )}
             <Link
               href={selectedMetric.href}
               className="inline-flex min-h-11 items-center justify-center rounded-xl border border-border px-4 text-sm font-semibold text-foreground hover:bg-muted"
@@ -949,9 +883,7 @@ export function Dashboard({
         <FichaRapidaModal
           alunoId={selectedAlunoIdForFicha}
           onClose={() => setSelectedAlunoIdForFicha(null)}
-          onSuccess={() => {
-            // Opcional: recarregar dados ou apenas deixar o aviso sumir no próximo refresh
-          }}
+          onSuccess={refreshProdutividade}
         />
       )}
 
