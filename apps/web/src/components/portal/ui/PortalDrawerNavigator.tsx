@@ -16,6 +16,9 @@ type Guard = { dirty: boolean; busy: boolean };
 type Navigation = { push: (frame: PortalDrawerFrame) => void; registerGuard: (frameId: string, sourceId: string, guard: Guard | null) => void; notifyChanged: () => void; busy: boolean; dirty: boolean };
 const FrameContext = createContext<string | null>(null);
 const Context = createContext<Navigation | null>(null);
+// A page may mount separate turma, lesson and operation navigators. Only the
+// latest root owns its history. Never reopen a previous root or scope by token.
+let historyOwner: string | null = null;
 
 export function usePortalDrawerNavigation() {
   return useContext(Context);
@@ -73,29 +76,44 @@ export function PortalDrawerNavigator({ root, open, onClose, onReopen, onChanged
   const session = useRef<{ token: string; rootId: string; trail: Entry[]; reopen: () => void; url: string } | null>(null);
   const travelling = useRef(false);
   const historyKey = "klassePortalDrawer";
+  const invalidate = useCallback(() => {
+    if (historyOwner === session.current?.token) historyOwner = null;
+    session.current = null;
+    travelling.current = false;
+    approved.current = false;
+  }, []);
+  useLayoutEffect(() => () => invalidate(), [invalidate]);
   useLayoutEffect(() => {
     if (!open) return;
     const current = session.current;
-    if (current?.rootId === root.id && history.state?.[historyKey]?.token === current.token) return;
+    if (current?.rootId === root.id && historyOwner === current.token && history.state?.[historyKey]?.token === current.token) return;
     const token = crypto.randomUUID();
+    historyOwner = token;
     session.current = { token, rootId: root.id, trail: [], reopen: onReopen, url: location.href };
-    history.pushState({ [historyKey]: { token, depth: 0 } }, "");
+    history.pushState({ ...history.state, [historyKey]: { token, depth: 0 } }, "");
   }, [open, root.id]);
   const push = useCallback((frame: PortalDrawerFrame) => {
     if (!open || busy || dirty || frame.id === root.id) return;
     const previousScroll = body.current?.scrollTop ?? 0;
     const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     const current = session.current;
-    if (!current || travelling.current || entries.some(entry => entry.frame.id === frame.id)) return;
+    if (!current || historyOwner !== current.token || travelling.current || entries.some(entry => entry.frame.id === frame.id)) return;
     const next = [...entries, { frame, previousScroll, opener }];
     current.trail = next;
-    history.pushState({ [historyKey]: { token: current.token, depth: next.length } }, "");
+    history.pushState({ ...history.state, [historyKey]: { token: current.token, depth: next.length } }, "");
     setStack({ rootId: root.id, entries: next });
   }, [open, root.id, busy, dirty, entries]);
 
   const approved = useRef(false);
   const travel = (delta: number) => {
     if (travelling.current) return;
+    const current = session.current;
+    if (!current || historyOwner !== current.token || location.href !== current.url || history.state?.[historyKey]?.token !== current.token) {
+      invalidate();
+      onClose();
+      if (changed.current) { changed.current = false; onChanged?.(); }
+      return;
+    }
     approved.current = true;
     travelling.current = true;
     history.go(delta);
@@ -110,12 +128,20 @@ export function PortalDrawerNavigator({ root, open, onClose, onReopen, onChanged
   useLayoutEffect(() => {
     const traverse = (event: PopStateEvent) => {
       const current = session.current;
-      if (!current || current.url !== location.href) return;
+      if (!current || historyOwner !== current.token) return;
+      if (current.url !== location.href) {
+        // A different route/scope is not a drawer entry. Never restore a
+        // captured ReactNode from that route. Browser multi-entry jumps
+        // cannot be reliably cancelled by popstate; normal Back is guarded below.
+        invalidate();
+        if (open) onClose();
+        return;
+      }
       const mark = event.state?.[historyKey];
-      const depth = mark?.token === current.token ? mark.depth : -1;
+      const depth = mark?.token === current.token && Number.isSafeInteger(mark.depth) && mark.depth >= 0 ? mark.depth : -1;
       if ((!open && depth < 0) || depth > current.trail.length) return;
       const position = open ? entries.length : -1;
-      if (depth === position) { travelling.current = false; return; }
+      if (depth === position) { travelling.current = false; approved.current = false; return; }
       if (open && !approved.current && !canLeave(depth < 0 ? activeIds : depth < position ? entries.slice(depth).map(entry => entry.frame.id) : activeIds)) {
         travelling.current = true;
         history.go(position - depth);
@@ -137,13 +163,14 @@ export function PortalDrawerNavigator({ root, open, onClose, onReopen, onChanged
     const guardLink = (event: MouseEvent) => {
       const link = event.target instanceof Element ? event.target.closest<HTMLAnchorElement>("a[href]") : null;
       if (!link || link.download || link.hasAttribute("download") || link.target === "_blank" || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
-      if (!canLeave(activeIds)) { event.preventDefault(); event.stopPropagation(); }
+      if (!canLeave(activeIds)) { event.preventDefault(); event.stopPropagation(); return; }
+      // Invalidate on an approved same-tab navigation, but not on a download,
+      // a new tab or an anchor to the current URL.
+      if (link.href !== location.href) invalidate();
     };
     window.addEventListener("popstate", traverse);
-    if (open && (dirty || busy)) {
-      window.addEventListener("beforeunload", unload);
-      document.addEventListener("click", guardLink, true);
-    }
+    if (open) document.addEventListener("click", guardLink, true);
+    if (open && (dirty || busy)) window.addEventListener("beforeunload", unload);
     return () => {
       window.removeEventListener("popstate", traverse);
       window.removeEventListener("beforeunload", unload);
@@ -186,5 +213,5 @@ export function PortalDrawerPushButton({ frame, className, children }: {
 }) {
   const navigation = usePortalDrawerNavigation();
   if (!navigation) return null;
-  return <button type="button" className={className} onClick={() => navigation.push(frame)}>{children}</button>;
+  return <button type="button" disabled={navigation.busy || navigation.dirty} className={className} onClick={() => navigation.push(frame)}>{children}</button>;
 }
