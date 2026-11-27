@@ -610,24 +610,35 @@ export function Dashboard({
             />
           ))}
           {escolaId && <OperacoesPainelHub escolaId={escolaId} onlyReopen inlineReopen key={escolaId} />}
-          <OperationalMetricCard
-            label="Fichas incompletas"
-            icon={FileWarning}
-            value={currentProductivity?.count ?? null}
-            needsAttention={(currentProductivity?.count ?? 0) > 0}
-            description="Alunos com dados ou documentos em falta"
-            onClick={() => setNoticeView("fichas")}
-            dialogOpen={noticeView === "fichas"}
-          />
-          <OperationalMetricCard
-            label="Avisos gerais"
-            icon={Megaphone}
-            value={currentProductivity && !currentProductivity.error ? generalAvisos.length : null}
-            needsAttention={generalAvisos.some(item => item.is_priority)}
-            description="Avisos disponíveis nesta consulta"
-            onClick={() => setNoticeView("general")}
-            dialogOpen={noticeView === "general"}
-          />
+          {escolaId && !currentProductivity ? (
+            <>
+              <div role="status" aria-label="A carregar fichas incompletas e avisos" aria-busy="true">
+                <OperationalMetricSkeleton />
+              </div>
+              <OperationalMetricSkeleton />
+            </>
+          ) : (
+            <>
+              <OperationalMetricCard
+                label="Fichas incompletas"
+                icon={FileWarning}
+                value={currentProductivity?.count ?? null}
+                needsAttention={(currentProductivity?.count ?? 0) > 0}
+                description="Alunos com dados ou documentos em falta"
+                onClick={() => setNoticeView("fichas")}
+                dialogOpen={noticeView === "fichas"}
+              />
+              <OperationalMetricCard
+                label="Avisos gerais"
+                icon={Megaphone}
+                value={currentProductivity && !currentProductivity.error ? generalAvisos.length : null}
+                needsAttention={generalAvisos.some(item => item.is_priority)}
+                description="Avisos disponíveis nesta consulta"
+                onClick={() => setNoticeView("general")}
+                dialogOpen={noticeView === "general"}
+              />
+            </>
+          )}
         </div>
       </section>
 
