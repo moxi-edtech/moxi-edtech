@@ -533,3 +533,49 @@ test("assessment calendar separates class schedules, escapes names and excludes 
  assert.match(html,/@page\{size:A4/);assert.match(html,/7A &lt;script&gt;/);assert.match(html,/Curtume &amp; Escola/);assert.match(html,/08:00 – 09:30/);assert.match(html,/14:00 – 15:30/);assert.equal((html.match(/<section>/g)||[]).length,2);assert.doesNotMatch(html,/RASCUNHO_TEST|CANCELADO_TEST/);
  const draft=assessmentCalendarHtml({...input,conference:true});assert.match(draft,/DOCUMENTO DE CONFERÊNCIA/);assert.match(draft,/RASCUNHO_TEST/);assert.doesNotMatch(draft,/CANCELADO_TEST/);
 });
+
+
+test("signed operands preserve unary minus, subtraction and power precedence",()=>{
+ const {parseMath,serializeMath,editableValueNode,validMathToken,validMathExpression}=require("../../src/lib/provas/formulaAst.ts");
+ for(const source of ["-3","2-3","2+(-3)","-3^{2}","(-3)^{2}","x^{-2}","\\frac{-7}{-5}","\\begin{pmatrix}-1&2\\\\3&-4\\end{pmatrix}"]){
+  const tree=parseMath(source);assert.ok(tree,source);assert.equal(serializeMath(tree),source);assert.equal(validMathExpression(tree),source);
+ }
+ assert.equal(parseMath("-3")[0].value,"-3");
+ assert.equal(parseMath("2-3")[1].value,"-");
+ assert.equal(validMathToken("-3.5"),true);
+ assert.equal(validMathToken("-"),false);
+ const power=parseMath("3^{2}");
+ assert.equal(serializeMath([editableValueNode("-3",[],power.slice(1),power[0]),...power.slice(1)]),"(-3)^{2}");
+ const sum=parseMath("2+3");
+ assert.equal(serializeMath([...sum.slice(0,2),editableValueNode("-3",sum.slice(0,2),[],sum[2])]),"2+(-3)");
+ const negative=parseMath("-3^{2}");
+ assert.equal(serializeMath([editableValueNode("-4",[],negative.slice(1),negative[0]),...negative.slice(1)]),"-4^{2}");
+});
+test("grouping contiguous siblings preserves scripts and rejects unsafe ungrouping",()=>{
+ const {parseMath,serializeMath,groupMathRange,ungroupMathRange}=require("../../src/lib/provas/formulaAst.ts");
+ const t=parseMath("2+3+4");
+ const grouped=groupMathRange(t,2,4);assert.ok(grouped);
+ assert.equal(serializeMath(grouped),"2+(3+4)");
+ assert.equal(serializeMath(ungroupMathRange(grouped,2)),"2+3+4");
+ assert.equal(groupMathRange(t,1,2),null);
+ const power=parseMath("2^{3}+4");
+ assert.equal(groupMathRange(power,0,0),null);
+ assert.equal(groupMathRange(power,1,2),null);
+ assert.equal(serializeMath(groupMathRange(power,0,1)),"(2^{3})+4");
+ assert.equal(ungroupMathRange(parseMath("(2+3)^{2}"),0),null);
+ assert.equal(ungroupMathRange(parseMath("2(3+4)"),1),null);
+ assert.equal(ungroupMathRange(parseMath("{2}"),0),null);
+});
+test("imported formulas retain unsupported notation and numeric slot boundaries",()=>{
+ const {parseMath,serializeMath}=require("../../src/lib/provas/formulaAst.ts");
+ const {formulaValueSlots,updateFormulaValues}=require("../../src/lib/provas/formulaRecovery.ts");
+ const source="\\left(2+\\frac{3}{4}\\right)";
+ assert.equal(parseMath(source),null);
+ const slots=formulaValueSlots(source);assert.deepEqual(slots.map(s=>s.value),["2","3","4"]);
+ assert.equal(updateFormulaValues(source,slots.map(s=>s.value)),source);
+ assert.equal(updateFormulaValues(source,["7","3","4"]),"\\left(7+\\frac{3}{4}\\right)");
+ assert.equal(updateFormulaValues(source,["","3","4"]),null);
+ assert.equal(updateFormulaValues(source,["\\htmlClass{x}{2}","3","4"]),null);
+ const recognized="\\frac{-7}{5}+x^{-2}";
+ assert.equal(serializeMath(parseMath(recognized)),recognized);
+});
