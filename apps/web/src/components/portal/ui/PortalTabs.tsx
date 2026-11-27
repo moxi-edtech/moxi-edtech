@@ -12,12 +12,11 @@ export type PortalTabItem<T extends string> = {
  * Navigation/URL state belongs to the calling portal, so no router refresh.
  */
 export function PortalTabs<T extends string>({
-  items, value, onChange, onPrepare, label, idPrefix, className = "", testId, layout = "scroll",
+  items, value, onChange, label, idPrefix, className = "", testId, layout = "scroll",
 }: {
   items: readonly PortalTabItem<T>[];
   value: T;
   onChange: (id: T) => void;
-  onPrepare?: (id: T) => void;
   label: string;
   idPrefix: string;
   className?: string;
@@ -63,9 +62,6 @@ export function PortalTabs<T extends string>({
           tabIndex={value === tab.id ? 0 : -1}
           role="tab"
           type="button"
-          onFocus={() => onPrepare?.(tab.id)}
-          onPointerEnter={() => onPrepare?.(tab.id)}
-          onPointerDown={() => onPrepare?.(tab.id)}
           onClick={() => onChange(tab.id)}
           onKeyDown={(event) => onTabKeyDown(event, tab.id)}
           className={`klasse-portal-press relative inline-flex min-h-12 min-w-0 flex-1 items-center justify-center border-b-2 font-semibold ${layout === "compact" ? "flex-col gap-1 px-0.5 py-1.5 text-xs leading-[1.35] sm:flex-row sm:gap-2 sm:px-2 sm:text-sm" : "gap-1.5 whitespace-nowrap px-2 text-sm"} transition-colors motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${layout === "scroll" ? "sm:gap-2 sm:px-4" : ""} ${value === tab.id ? (sliding ? "border-transparent text-klasse-green" : "border-klasse-gold text-klasse-green") : "border-transparent text-muted-foreground hover:text-foreground"}`}
