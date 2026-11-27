@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Pencil, Check, Loader2 } from "lucide-react";
+import { parseTeacherWorkload } from "@/lib/professores/teacher-workload-form";
 
 export type TeacherWorkloadConfig = {
   unidade: "tempos" | "minutos";
@@ -53,13 +54,11 @@ export default function TeacherWorkloadEditor({ escolaId, profileId, name, disab
 
   async function save() {
     if (!config || saving || disabled) return;
-    const parsed = Number(limit);
-    const value = unit === "minutos" ? Math.round(parsed * 60) : parsed;
-    const contractual = contract.trim() === "" ? null : Math.round(Number(contract) * 60);
-    if (!limit.trim() || !Number.isInteger(value) || value <= 0 || value > (unit === "tempos" ? 100 : 10080)
-      || (contractual !== null && (!Number.isInteger(contractual) || contractual <= 0 || contractual > 10080 || (unit === "minutos" && value > contractual)))) {
-      setError("Informe um limite válido e compatível com a carga contratual."); return;
-    }
+    let workload;
+    try { workload = parseTeacherWorkload({ unidade: unit, limite: limit, contratual: contract }); }
+    catch (err) { setError(err instanceof Error ? err.message : "Informe a carga lectiva."); return; }
+    const value = workload.carga_lectiva_limite;
+    const contractual = workload.carga_contratual_minutos;
     setSaving(true); setError("");
     try {
       const res = await fetch(endpoint, { method: "POST", headers: { "Content-Type": "application/json" },
