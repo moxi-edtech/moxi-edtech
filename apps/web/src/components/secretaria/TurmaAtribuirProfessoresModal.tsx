@@ -5,10 +5,9 @@ import { X, UserCheck, UserX, BookOpen, AlertCircle, Loader2, Check, Plus, Chevr
 import { useToast } from "@/components/feedback/FeedbackSystem";
 import { planTurmaModalBatch, selectedProfessorForLegacyId } from "@/lib/professores/turma-modal-assignment";
 import type { AssignmentCandidate } from "@/lib/professores/assignment-candidates";
-import type { TurmaItem } from "~/types/turmas";
 
 interface TurmaAtribuirProfessoresModalProps {
-  turma: Pick<TurmaItem, "id" | "nome" | "turno" | "ano_letivo" | "curso_nome" | "classe_nome"> & Partial<Pick<TurmaItem, "turma_codigo">>;
+  turma: { id: string; nome?: string | null; turno?: string | null; ano_letivo?: number | string | null; curso_nome?: string | null; classe_nome?: string | null; turma_codigo?: string | null };
   initialDisciplinaId?: string | null;
   escolaId: string;
   isOpen: boolean;
