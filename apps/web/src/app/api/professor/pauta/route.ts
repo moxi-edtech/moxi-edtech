@@ -14,7 +14,7 @@ import { AcademicYearContextError, assertAcademicYearEntity, resolveAcademicYear
 import { resolveProfessorAcademicContext } from '@/lib/professor/resolveProfessorAcademicContext'
 import { resolveRegimeAcademico } from '@/lib/academico/regime-academico'
 
-type TurmaRow = { id: string; curso_id: string | null; classe_id: string | null }
+type TurmaRow = { id: string; curso_id: string | null; classe_id: string | null; ano_letivo: number }
 type TurmaDisciplinaRow = { id: string; curso_matriz_id: string | null; professor_id: string | null }
 type CursoMatrizRow = {
   id: string
@@ -89,7 +89,7 @@ export async function GET(req: Request) {
 
     const { data: turma } = await admin
       .from('turmas')
-      .select('id, curso_id, classe_id')
+      .select('id, curso_id, classe_id, ano_letivo')
       .eq('id', turmaIdValue)
       .eq('escola_id', escolaId)
       .maybeSingle()
@@ -263,12 +263,15 @@ export async function GET(req: Request) {
       }
     >()
 
+    type Revision = { id: string; updated_at: string | null; valor: number | null; is_isento: boolean | null }
+    const revisions = new Map<string, Record<string, Revision>>()
     if (matriculaIds.length > 0) {
       let notasQuery = admin
         .from('notas')
-        .select('valor, matricula_id, avaliacoes ( trimestre, turma_disciplina_id, tipo, nome, peso )')
+        .select('id, updated_at, is_isento, valor, matricula_id, avaliacoes!inner ( trimestre, turma_disciplina_id, tipo, nome, peso, ano_letivo )')
         .eq('escola_id', escolaId)
         .eq('avaliacoes.turma_disciplina_id', turmaDisciplina.id)
+        .eq('avaliacoes.ano_letivo', turmaRow.ano_letivo)
         .in('matricula_id', matriculaIds)
 
       if (detalhado && trimestreValue && usarTrimestres) {
@@ -282,6 +285,9 @@ export async function GET(req: Request) {
       }
 
       for (const row of (notasRows || []) as Array<{
+        id: string
+        updated_at: string | null
+        is_isento: boolean | null
         valor: number | null
         matricula_id: string
         avaliacoes:
@@ -290,6 +296,11 @@ export async function GET(req: Request) {
           | null
       }>) {
         const avaliacao = Array.isArray(row.avaliacoes) ? row.avaliacoes[0] : row.avaliacoes
+        if (detalhado && trimestreValue && avaliacao?.trimestre === trimestreValue && ['MAC', 'NPP', 'NPT'].includes(avaliacao.tipo ?? '')) {
+          const prior = revisions.get(row.matricula_id) ?? {}
+          prior[avaliacao.tipo!] = { id: row.id, updated_at: row.updated_at, valor: row.valor, is_isento: row.is_isento }
+          revisions.set(row.matricula_id, prior)
+        }
         const trimestre = usarTrimestres
           ? (typeof avaliacao?.trimestre === 'number' ? avaliacao.trimestre : 0)
           : 0
@@ -383,6 +394,7 @@ export async function GET(req: Request) {
           npt,
           mt,
           componentes,
+          ...(academicContext.mode === 'CURRENT' ? { versions: { MAC: null, NPP: null, NPT: null, ...revisions.get(row.id) } } : {}),
         }
       })
 
