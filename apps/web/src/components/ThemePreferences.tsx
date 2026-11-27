@@ -40,7 +40,7 @@ export default function ThemePreferences() {
             }}
             className={[
               "flex min-h-10 w-full items-center gap-2 rounded-xl px-3 text-sm",
-              "text-foreground transition-colors hover:bg-muted",
+              "text-foreground hover:bg-muted",
               "focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-amber/20",
               active ? "bg-muted font-semibold" : "",
             ].join(" ")}
