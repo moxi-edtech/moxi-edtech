@@ -178,6 +178,13 @@ try{
    assert.equal(await previewMath.locator("annotation").textContent(),"\\frac{7}{4}");
    await visual.getByRole("button",{name:"Refazer",exact:true}).click();
    assert.equal(await previewMath.locator("annotation").textContent(),"\\frac{7}{5}");
+   await visual.getByRole("button",{name:"Numerador · 7",exact:true}).click();
+   await visual.getByRole("button",{name:"Alterar sinal",exact:true}).click();
+   assert.equal(await value.inputValue(),"-7");
+   assert.equal(await previewMath.locator("annotation").textContent(),"\\frac{-7}{5}");
+   await visual.getByRole("button",{name:"Alterar sinal",exact:true}).click();
+   assert.equal(await previewMath.locator("annotation").textContent(),"\\frac{7}{5}");
+   await visual.getByRole("button",{name:"Expressão inteira",exact:true}).click();
    if(width===320){
     await visual.getByRole("button",{name:"Operador / símbolo",exact:true}).click();
     await visual.getByRole("button",{name:"Símbolo +",exact:true}).click();
@@ -189,6 +196,11 @@ try{
     await value.fill("3");
     assert.equal(await previewMath.locator("annotation").textContent(),"\\frac{7}{5}+2^{3}");
     assert.equal(await previewMath.locator("msup").count(),1);
+    await visual.getByRole("button",{name:"Expressão · 2",exact:true}).click();
+    await visual.getByRole("button",{name:"Alterar sinal",exact:true}).click();
+    assert.equal(await previewMath.locator("annotation").textContent(),"\\frac{7}{5}+(-2)^{3}");
+    await visual.getByRole("button",{name:"Desfazer",exact:true}).click();
+    assert.equal(await previewMath.locator("annotation").textContent(),"\\frac{7}{5}+2^{3}");
    }
    await page.setViewportSize({width,height:360});await noOverflow(page,"short formula viewport "+width);
    await visual.getByRole("button",{name:"Inserir fórmula",exact:true}).scrollIntoViewIfNeeded();
@@ -284,6 +296,14 @@ try{
    await recursive.getByRole("button",{name:"Operador / símbolo",exact:true}).click();
    await recursive.getByRole("button",{name:"Símbolo =",exact:true}).click();
    assert.ok((await nested.locator("annotation").textContent()).endsWith("="));
+   const beforeGrouping=await nested.locator("annotation").textContent();
+   await recursive.getByRole("button",{name:"Agrupar termos",exact:true}).click();
+   await recursive.getByRole("button",{name:"Expressão · Seleccionar fracção",exact:true}).first().click();
+   await recursive.getByRole("button",{name:"Expressão · Seleccionar fracção",exact:true}).last().click();
+   assert.equal(await nested.locator("annotation").textContent(),"("+beforeGrouping.slice(0,-1)+")=");
+   page.once("dialog",d=>d.accept());
+   await recursive.getByRole("button",{name:"Desagrupar termos",exact:true}).click();
+   assert.equal(await nested.locator("annotation").textContent(),beforeGrouping);
    await noOverflow(page,"estrutura matemática "+width);
    page.once("dialog",d=>d.accept());
    await recursive.getByRole("button",{name:"Voltar",exact:true}).click();
