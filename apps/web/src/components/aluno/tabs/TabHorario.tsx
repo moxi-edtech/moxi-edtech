@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Clock, Calendar, FileCheck } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import AcaoRapidaCard from "@/components/shared/AcaoRapidaCard";
@@ -59,7 +59,12 @@ const DIAS_SEMANA = [
   { id: 5, nome: "Sexta" },
 ];
 
-export function TabHorario({ dailyOnly = false }: { dailyOnly?: boolean } = {}) {
+type TimetableSnapshot = { key: string; data: TimetableData };
+export function TabHorario({ dailyOnly = false, snapshot, children }: {
+  dailyOnly?: boolean;
+  snapshot?: TimetableSnapshot;
+  children?: (snapshot: TimetableSnapshot) => ReactNode;
+} = {}) {
   const searchParams = useSearchParams();
   const studentId = searchParams?.get("aluno") ?? null;
   const academicYearId = searchParams?.get("ano_letivo_id") ?? null;
@@ -70,8 +75,9 @@ export function TabHorario({ dailyOnly = false }: { dailyOnly?: boolean } = {}) 
   const [horarioRetry, setHorarioRetry] = useState(0);
   const requestKey = `${studentId ?? "default"}:${academicYearId ?? "active"}`;
   const [resolvedRequestKey, setResolvedRequestKey] = useState<string | null>(null);
-  const visibleData = resolvedRequestKey === requestKey ? data : null;
-  const timetableLoading = loading || resolvedRequestKey !== requestKey;
+  const initial = snapshot?.key === requestKey ? snapshot.data : null;
+  const visibleData = initial ?? (resolvedRequestKey === requestKey ? data : null);
+  const timetableLoading = !initial && (loading || resolvedRequestKey !== requestKey);
   const [activeDay, setActiveDay] = useState<number>(() => {
     const day = new Intl.DateTimeFormat("en-US", { timeZone: "Africa/Luanda", weekday: "short" }).format(new Date());
     return ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].indexOf(day);
@@ -80,9 +86,11 @@ export function TabHorario({ dailyOnly = false }: { dailyOnly?: boolean } = {}) 
   const [academicEvents, setAcademicEvents] = useState<AcademicEvent[]>([]);
   const [agendaLoading, setAgendaLoading] = useState(false);
   const [agendaError, setAgendaError] = useState<string | null>(null);
+  const [agendaRequested, setAgendaRequested] = useState(false);
   const [agendaRetry, setAgendaRetry] = useState(0);
 
   useEffect(() => {
+    if (initial) return;
     const ctrl = new AbortController();
     setLoading(true);
     setData(null);
@@ -113,7 +121,7 @@ export function TabHorario({ dailyOnly = false }: { dailyOnly?: boolean } = {}) 
       }
     })();
     return () => ctrl.abort();
-  }, [studentId, academicYearId, horarioRetry, requestKey]);
+  }, [studentId, academicYearId, horarioRetry, requestKey, initial]);
 
   const slotsPorDia = useMemo(() => {
     if (!visibleData?.slots) return [];
@@ -127,7 +135,7 @@ export function TabHorario({ dailyOnly = false }: { dailyOnly?: boolean } = {}) 
   // Fonte: calendário oficial, autorizado pela API para aluno/ano/curso/escola.
   // Não construir provas a partir do horário nem inventar datas.
   useEffect(() => {
-    if (activeTab !== "agenda") return;
+    if (!agendaRequested) return;
     const ctrl = new AbortController();
     const params = new URLSearchParams();
     if (studentId) params.set("studentId", studentId);
@@ -161,7 +169,7 @@ export function TabHorario({ dailyOnly = false }: { dailyOnly?: boolean } = {}) 
       }
     })();
     return () => ctrl.abort();
-  }, [studentId, academicYearId, activeTab, agendaRetry]);
+  }, [studentId, academicYearId, agendaRequested, agendaRetry]);
 
   return (
     <div className="min-w-0 space-y-6">
@@ -191,7 +199,7 @@ export function TabHorario({ dailyOnly = false }: { dailyOnly?: boolean } = {}) 
         </button>
         <button
           type="button"
-          onClick={() => setActiveTab("agenda")}
+          onClick={() => { setAgendaRequested(true); setActiveTab("agenda"); }}
           aria-pressed={activeTab === "agenda"}
           className={`min-h-11 flex-1 rounded-xl py-2 text-sm font-semibold focus-visible:ring-2 focus-visible:ring-ring transition-colors ${
             activeTab === "agenda"
@@ -316,6 +324,7 @@ export function TabHorario({ dailyOnly = false }: { dailyOnly?: boolean } = {}) 
         </section>
       )}
 
+      {visibleData && children?.({ key: requestKey, data: visibleData })}
     </div>
   );
 }
