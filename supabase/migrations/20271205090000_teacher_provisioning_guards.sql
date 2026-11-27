@@ -98,6 +98,7 @@ BEGIN
     RAISE EXCEPTION 'INVALID_SKILLS' USING ERRCODE = '22023';
   END IF;
 
+  PERFORM pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended('klasse:teacher-assign:'||p_escola_id::text,0));
   INSERT INTO public.profiles (
     user_id,
     email,
@@ -200,11 +201,15 @@ BEGIN
     habilitacoes = EXCLUDED.habilitacoes,
     area_formacao = EXCLUDED.area_formacao,
     vinculo_contratual = EXCLUDED.vinculo_contratual,
-    carga_horaria_maxima = EXCLUDED.carga_horaria_maxima,
+    carga_horaria_maxima = CASE WHEN p_teacher ? 'carga_lectiva_unidade' THEN public.teachers.carga_horaria_maxima ELSE EXCLUDED.carga_horaria_maxima END,
     turnos_disponiveis = EXCLUDED.turnos_disponiveis,
     is_diretor_turma = EXCLUDED.is_diretor_turma,
     updated_at = now()
   RETURNING id INTO v_teacher_id;
+
+  IF p_teacher ? 'carga_lectiva_unidade' THEN
+    PERFORM public.apply_teacher_workload_internal(p_escola_id,p_user_id,p_teacher->>'carga_lectiva_unidade',(p_teacher->>'carga_lectiva_limite')::integer,(p_teacher->>'carga_contratual_minutos')::integer);
+  END IF;
 
   DELETE FROM public.teacher_skills
   WHERE teacher_id = v_teacher_id;

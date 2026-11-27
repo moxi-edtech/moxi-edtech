@@ -20,6 +20,7 @@ import { downloadHorarioTurmaPdf } from "@/lib/horarios/downloadHorarioTurmaPdf"
 import { ACADEMIC_YEAR_PARAM } from "@/lib/academic-year/context";
 import { gradePeriodState } from "@/lib/academico/grade-period-context";
 import { ImprimirListaTurmaButton } from "@/components/secretaria/ImprimirListaTurmaButton";
+import TurmaAtribuirProfessoresModal from "@/components/secretaria/TurmaAtribuirProfessoresModal";
 import type { NominalNameOrder } from "@/lib/documentos/nominalExportOptions";
 import { DesistenciaMatriculaAction } from "@/components/matriculas/DesistenciaMatriculaAction";
 
@@ -545,6 +546,7 @@ export default function TurmaDetailClient({
   const [alunoSearch, setAlunoSearch] = useState("");
   const [estadoFilter, setEstadoFilter] = useState<"ativos" | "desistentes" | "todos">("ativos");
   const [rosterRevision, setRosterRevision] = useState(0);
+  const [teacherModal, setTeacherModal] = useState<{ matrizId: string | null } | null>(null);
   const [alunoFinanceiroFilter, setAlunoFinanceiroFilter] = useState<"todos" | "em_dia" | "atraso">("todos");
   const [selectedProfessorUserId, setSelectedProfessorUserId] = useState("");
   const [assigningProfessor, setAssigningProfessor] = useState(false);
@@ -1738,6 +1740,11 @@ export default function TurmaDetailClient({
                     >
                       Ver no quadro
                     </Link>
+                    <button type="button"
+                      onClick={() => setTeacherModal({ matrizId: null })}
+                      className="inline-flex items-center justify-center gap-2 rounded-xl border border-border bg-card px-4 py-2 text-sm font-semibold text-klasse-green transition-colors hover:bg-muted">
+                      <UserCheck size={16}/> Gerir professores
+                    </button>
                     <button
                       onClick={() => setShowOnlySemProfessor((prev) => !prev)}
                       className={`inline-flex items-center justify-center rounded-xl px-4 py-2 text-sm font-semibold transition-colors ${
@@ -1811,7 +1818,7 @@ export default function TurmaDetailClient({
                       </span>
                       {d.carga_horaria_semanal ? (
                         <span className="rounded-full bg-muted px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
-                          {d.carga_horaria_semanal}h/semana
+                          {d.carga_horaria_semanal} tempos/semana
                         </span>
                       ) : null}
                     </div>
@@ -1844,18 +1851,7 @@ export default function TurmaDetailClient({
                       <button
                         className="w-full py-2 text-xs font-bold bg-klasse-gold/10 text-klasse-gold-700 dark:text-klasse-gold-300 rounded-lg border border-klasse-gold/20 hover:bg-klasse-gold/20 transition-colors"
                         onClick={() =>
-                          setActionModal({
-                            type: "professor",
-                            disciplina: {
-                              id: d.id,
-                              nome: d.nome,
-                              professor: d.professor ?? null,
-                              turma_disciplina_id: d.turma_disciplina_id ?? null,
-                              curso_matriz_id: d.curso_matriz_id ?? null,
-                              disciplina_id: d.disciplina_id ?? null,
-                              carga_horaria_semanal: d.carga_horaria_semanal ?? null,
-                            },
-                          })
+                          setTeacherModal({ matrizId: d.curso_matriz_id ?? null })
                         }
                       >
                         {d.professor ? "Trocar Professor" : "Atribuir Professor"}
@@ -2079,6 +2075,12 @@ export default function TurmaDetailClient({
       />
       <UpgradeModal open={upgradeOpen} onClose={() => setUpgradeOpen(false)} />
       <Toast toast={toast} onDismiss={() => setToast(null)} />
+      {teacherModal && escolaId && <TurmaAtribuirProfessoresModal
+        key={`${turma.id}:${teacherModal.matrizId ?? "all"}`}
+        turma={turma} escolaId={escolaId} isOpen initialDisciplinaId={teacherModal.matrizId}
+        onClose={() => setTeacherModal(null)}
+        onUpdated={() => { setTeacherModal(null); setRosterRevision((n) => n + 1); }}
+      />}
       {actionModal && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-klasse-dark/70 backdrop-blur-sm p-4">
           <div

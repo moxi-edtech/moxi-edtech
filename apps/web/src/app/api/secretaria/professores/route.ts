@@ -121,15 +121,17 @@ export async function GET(req: Request) {
       }>
     >()
     const cargaRealByProfile = new Map<string, number>()
+    const workloadByProfile = new Map<string, { tempos_atribuidos: number | null; minutos_atribuidos: number | null }>()
     const profileByTeacherId = new Map<string, string>()
 
     if (profileIds.length > 0) {
-      const { data: teachersRows } = await rlsClient
+      const { data: teachersRows, error: teacherMetaError } = await (rlsClient as any)
         .from('teachers')
-        .select('id, profile_id, nome_completo, genero, data_nascimento, numero_bi, carga_horaria_maxima, turnos_disponiveis, telefone_principal, habilitacoes, area_formacao, vinculo_contratual, is_diretor_turma')
+        .select('id, profile_id, nome_completo, genero, data_nascimento, numero_bi, carga_horaria_maxima, carga_lectiva_limite_minutos, carga_contratual_minutos, turnos_disponiveis, telefone_principal, habilitacoes, area_formacao, vinculo_contratual, is_diretor_turma')
         .eq('escola_id', escolaId)
         .in('profile_id', profileIds)
 
+      if (teacherMetaError) throw teacherMetaError
       for (const row of teachersRows || []) {
         if (row?.profile_id && row?.id) {
           teacherByProfile.set(row.profile_id, row.id)
@@ -197,6 +199,12 @@ export async function GET(req: Request) {
         }
       }
 
+      const { data: workloads, error: workloadError } = await (rlsClient as any).rpc('get_teacher_workloads_by_profiles', {
+        p_escola_id: escolaId, p_profile_ids: profileIds,
+      })
+      if (!workloadError && Array.isArray(workloads)) {
+        for (const row of workloads) workloadByProfile.set(row.profile_id, row)
+      }
       for (const row of atribuicoesRows) {
         if (!row?.profile_id) continue
         const profileId = row.profile_id
@@ -415,6 +423,9 @@ export async function GET(req: Request) {
         data_nascimento: meta?.data_nascimento ?? null,
         numero_bi: meta?.numero_bi ?? null,
         carga_horaria_maxima: meta?.carga_horaria_maxima ?? null,
+        carga_lectiva_limite_minutos: meta?.carga_lectiva_limite_minutos ?? null,
+        carga_contratual_minutos: meta?.carga_contratual_minutos ?? null,
+        carga_lectiva_minutos: workloadByProfile.get(p.user_id)?.minutos_atribuidos ?? null,
         turnos_disponiveis: meta?.turnos_disponiveis ?? [],
         telefone_principal: meta?.telefone_principal ?? null,
         habilitacoes: meta?.habilitacoes ?? null,
@@ -422,7 +433,7 @@ export async function GET(req: Request) {
         vinculo_contratual: meta?.vinculo_contratual ?? null,
         is_diretor_turma: meta?.is_diretor_turma ?? false,
         atribuicoes,
-        carga_horaria_real: cargaRealByProfile.get(p.user_id) ?? null,
+        carga_horaria_real: workloadByProfile.get(p.user_id)?.tempos_atribuidos ?? cargaRealByProfile.get(p.user_id) ?? null,
         compliance_status: complianceStatus,
         pendencias_total: pendenciasTotal,
         profiles: { numero_processo_login: p.numero_processo_login }

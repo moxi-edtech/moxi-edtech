@@ -1,5 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { contrastRatio } from "../../scripts/visual/color-contrast.mjs";
 
 test("RGB black/white contrast is 21:1", () => {
@@ -16,4 +17,12 @@ test("transparent or unsupported CSS values fail explicitly", () => {
   assert.throws(() => contrastRatio("rgba(0,0,0,0)", "rgb(255,255,255)"));
   assert.throws(() => contrastRatio("transparent", "rgb(255,255,255)"));
   assert.throws(() => contrastRatio("oklch(1 0 0 / 0.2)", "rgb(255,255,255)"));
+});
+
+test("theme controls switch semantic foreground and background without intermediate contrast loss", () => {
+  for (const file of ["ThemeToggle.tsx", "ThemePreferences.tsx"]) {
+    const source = readFileSync(new URL("../../src/components/" + file, import.meta.url), "utf8");
+    assert.match(source, /text-foreground hover:bg-muted/);
+    assert.doesNotMatch(source, /\btransition-(?:colors|all)\b/);
+  }
 });
