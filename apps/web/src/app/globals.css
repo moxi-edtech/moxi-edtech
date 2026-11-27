@@ -325,6 +325,21 @@
     --portal-sheet-offset: translateX(100%);
   }
 }
+/* Desktop dashboards keep the same accessible sheet primitive, but use
+   viewport-centered geometry. No translate(-50%) to conflict with motion. */
+@media (min-width: 768px) {
+  .klasse-portal-theme.klasse-context-sheet[data-desktop-presentation="centered"] {
+    inset: 0;
+    margin: auto;
+    width: min(36rem, calc(100% - 3rem));
+    max-width: none;
+    height: max-content;
+    max-height: min(var(--portal-sheet-limit, 90dvh), calc(100dvh - 3rem));
+    border-radius: 0.75rem;
+    padding: 0;
+    --portal-sheet-offset: translateY(12px);
+  }
+}
 @keyframes klasse-context-sheet-enter { from { transform: var(--portal-sheet-offset, translateY(100%)); } to { transform: translate(0, 0); } }
 @keyframes klasse-context-sheet-exit { from { transform: translate(0, 0); } to { transform: var(--portal-sheet-offset, translateY(100%)); } }
 @keyframes klasse-context-overlay-enter { from { opacity: 0; } to { opacity: 1; } }
