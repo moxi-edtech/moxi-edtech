@@ -1,0 +1,59 @@
+name: Teacher workload — full Supabase schema
+on:
+  pull_request:
+    paths:
+      - 'supabase/migration_drafts/teacher_workload_docencia*.sql'
+      - 'supabase/migrations/**'
+      - '.github/workflows/teacher-workload-full-schema.yml'
+permissions:
+  contents: read
+jobs:
+  full-schema:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: supabase/setup-cli@v3
+        with:
+          version: 2.84.2
+      - name: Generate migration with CLI in an isolated project
+        run: |
+          set -euo pipefail
+          supabase --version
+          supabase migration new --help
+          mkdir -p "$RUNNER_TEMP/klasse-workload"
+          cd "$RUNNER_TEMP/klasse-workload"
+          supabase init
+          sed -i -E 's/^major_version = [0-9]+/major_version = 17/' supabase/config.toml
+          supabase migration new teacher_workload_docencia
+          generated="$(find supabase/migrations -name '*_teacher_workload_docencia.sql' -type f -print -quit)"
+          test -n "$generated"
+          cp "$GITHUB_WORKSPACE/supabase/migration_drafts/teacher_workload_docencia.sql" "$generated"
+          cp "$generated" "$RUNNER_TEMP/generated_teacher_workload.sql"
+          echo "CLI generated: $generated"
+          cp "$GITHUB_WORKSPACE"/supabase/migrations/*.sql supabase/migrations/
+          # Reversion explicitly after the current maximum repository version.
+          last="$(find "$GITHUB_WORKSPACE/supabase/migrations" -maxdepth 1 -type f -name '*.sql' -printf '%f\n' | sort | tail -1)"
+          echo "Highest existing migration: $last"
+          version="${last%%_*}"
+          test "$version" -lt 20271204034000
+          mv "$generated" supabase/migrations/20271204034000_teacher_workload_docencia.sql
+          echo "Versioned candidate: 20271204034000_teacher_workload_docencia.sql"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: teacher-workload-generated-migration
+          path: ${{ runner.temp }}/generated_teacher_workload.sql
+      - name: Replay complete migration history locally (no seed, no linked project)
+        working-directory: ${{ runner.temp }}/klasse-workload
+        run: |
+          set -euo pipefail
+          supabase start
+          supabase db reset --local --no-seed
+          psql 'postgresql://postgres:postgres@127.0.0.1:54322/postgres' -v ON_ERROR_STOP=1 \
+            -f "$GITHUB_WORKSPACE/supabase/migration_drafts/teacher_workload_full_schema_checks.sql"
+      - name: Stop isolated stack
+        if: always()
+        working-directory: ${{ runner.temp }}/klasse-workload
+        run: supabase stop --no-backup
