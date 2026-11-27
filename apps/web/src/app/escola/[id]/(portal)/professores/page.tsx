@@ -1,4 +1,5 @@
 "use client"
+import { isTeacherBiValid } from "@/lib/escola/teacher-bi"
 import { PORTAL_PAGE_INSET } from "@/lib/layout/portal-page";
 
 import React, { useEffect, useMemo, useState, useCallback, useRef } from "react"
@@ -1064,8 +1065,7 @@ export default function ProfessoresPage() {
       if (!teacherForm.nome_completo.trim()) return "Informe o nome completo"
       if (!teacherForm.email.trim()) return "Informe o email"
       if (!teacherForm.data_nascimento) return "Informe a data de nascimento"
-      const bi = teacherForm.numero_bi.trim()
-      if (bi && (!/^[A-Za-z0-9]{14}$/.test(bi) || /^0+$/.test(bi))) return "Informe um BI válido ou deixe em branco"
+      if (!isTeacherBiValid(teacherForm.numero_bi)) return "Informe um BI válido ou deixe em branco"
       if (!teacherForm.telefone_principal.trim()) return "Informe o telefone"
     }
     if (step === 1) {
