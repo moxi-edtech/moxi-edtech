@@ -3,7 +3,7 @@ import { useRef,useState } from "react";
 import { ArrowLeft,Plus,Pencil,Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { mathMarkup } from "@/lib/provas/math";
-import { parseMath,type MathNode } from "@/lib/provas/formulaAst";
+import { parseMath,modelMathTree,type MathNode } from "@/lib/provas/formulaAst";
 import RecursiveFormulaEditor from "./RecursiveFormulaEditor";
 import { recoverEditableExpression,formulaValueSlots,updateFormulaValues } from "@/lib/provas/formulaRecovery";
 import { composeExpression,formulaCategories,formulaModels,formulaOperators,partExpression,modelExpression,completeExpression,modelStarter,MAX_FORMULA_PARTS,type FormulaCategory,type FormulaModelId,type FormulaOperator,type FormulaPart } from "@/lib/provas/formulaModels";
@@ -15,7 +15,8 @@ function Formula({value}:{value:string|null}){
 export default function MobileFormulaInput({initial,onInsert,onCancel,disabled=false}:{initial:string;onInsert:(latex:string)=>void;onCancel:()=>void;disabled?:boolean}){
  const [recovered]=useState(()=>recoverEditableExpression(initial));
  const [parts,setParts]=useState<FormulaPart[]>(recovered.parts);
- const [recursive,setRecursive]=useState<MathNode[]|null>(null);
+ const [recursive,setRecursive]=useState<MathNode[]|null>(()=>initial?parseMath(initial):null);
+ const [recursiveOrigin,setRecursiveOrigin]=useState<"existing"|"model"|"legacy">("existing");
  const [ending,setEnding]=useState(recovered.ending);
  const [groupStart,setGroupStart]=useState<number|null>(null);
  const [operatorOpen,setOperatorOpen]=useState<number|null>(null);
@@ -35,6 +36,7 @@ export default function MobileFormulaInput({initial,onInsert,onCancel,disabled=f
  const [error,setError]=useState("");
  function choose(id:FormulaModelId){
   const m=formulaModels.find(v=>v.id===id);if(!m)return;
+  if(editing===null&&!parts.length){const tree=modelMathTree(id);if(tree){setRecursiveOrigin("model");setRecursive(tree);setError("");return;}}
   if(id==="soma_fracoes"&&editing===null){
    if(parts.length+2>MAX_FORMULA_PARTS){setError("Limite de 12 termos.");return;}
    const seed=modelStarter(id,m.fields.map(f=>f.example)).map(p=>({...p,id:nextId.current++}));
@@ -72,9 +74,9 @@ export default function MobileFormulaInput({initial,onInsert,onCancel,disabled=f
  function groupAt(index:number){if(groupStart===null){setGroupStart(index);return;}const from=Math.min(groupStart,index),to=Math.max(groupStart,index);const next=parts.map((p,i)=>({...p,opens:(p.opens??0)+(i===from?1:0),closes:(p.closes??0)+(i===to?1:0)}));if(composeExpression(next,ending))setParts(next);else setError("Não foi possível agrupar estes termos.");setGroupStart(null);}
  function submit(){if(disabled)return;if(!current){setError("A expressão está incompleta ou excede o limite de 300 caracteres.");return;}onInsert(current);}
  const insertLabel=initial?"Actualizar fórmula":"Inserir fórmula";
- function openRecursive(source:string|null){if(disabled)return;const tree=source===null?null:parseMath(source);if(!tree){setError("Esta expressão contém uma estrutura ainda não reconhecida. Pode manter a fórmula original ou editar os valores disponíveis.");return;}setRecursive(tree);setError("");}
+ function openRecursive(source:string|null){if(disabled)return;const tree=source===null?null:parseMath(source);if(!tree){setError("Esta expressão contém uma estrutura ainda não reconhecida. Pode manter a fórmula original ou editar os valores disponíveis.");return;}setRecursiveOrigin("legacy");setRecursive(tree);setError("");}
  function customizeDraft(){if(!chosen||!draft)return;const previous=parts.find(p=>p.id===editing);const item:FormulaPart={id:previous?.id??nextId.current,operator:previous?.operator??"+",opens:previous?.opens,closes:previous?.closes,model:chosen,values:[...values]};const next=editing===null?[...parts,item]:parts.map(p=>p.id===editing?item:p);openRecursive(composeExpression(next,ending));}
- if(recursive)return <RecursiveFormulaEditor initial={recursive} onInsert={onInsert} onBack={()=>setRecursive(null)} disabled={disabled} label={insertLabel}/>;
+ if(recursive)return <RecursiveFormulaEditor initial={recursive} onInsert={onInsert} onBack={()=>{if(recursiveOrigin==="existing")onCancel();else setRecursive(null);}} disabled={disabled} label={insertLabel}/>;
  return <section aria-label="Editor matemático" className="min-w-0 space-y-3">
   <div><h3 className="text-base font-semibold text-klasse-green dark:text-foreground">Expressão matemática</h3><p className="text-xs text-muted-foreground">Escolha um modelo ou combine termos e operadores.</p></div>
   {picking?(parameterSource!==null?<div className="space-y-3">
