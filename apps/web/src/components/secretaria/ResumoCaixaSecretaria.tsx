@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Wallet, Receipt, BadgePercent } from "lucide-react";
+import { Wallet, Receipt } from "lucide-react";
 import { formatKwanza } from "@/lib/formatters";
 import {
   OperationalMetricCard,
@@ -11,7 +11,6 @@ import {
 type CaixaSummary = {
   cobrado_hoje?: number | string | null;
   recibos_emitidos?: number | string | null;
-  pagamentos_parciais?: number | string | null;
 };
 
 function amount(value: number | string | null | undefined): number | null {
@@ -24,13 +23,10 @@ function amount(value: number | string | null | undefined): number | null {
 export function ResumoCaixaSecretaria({
   escolaId,
   refreshKey = 0,
-  showPartialPayments = true,
 }: {
   escolaId: string;
   /** Refresh after a successful payment; the key also scopes pending reads. */
   refreshKey?: number;
-  /** Keep the detailed Balcão summary; the dashboard only needs two cash metrics. */
-  showPartialPayments?: boolean;
 }) {
   const [retryKey, setRetryKey] = useState(0);
   const scope = JSON.stringify([escolaId, refreshKey, retryKey]);
@@ -65,9 +61,7 @@ export function ResumoCaixaSecretaria({
     };
   }, [escolaId, scope]);
 
-  const gridClass = showPartialPayments
-    ? "operations-daily-grid grid"
-    : "grid min-w-0 gap-4 @min-[520px]:grid-cols-2";
+  const gridClass = "grid min-w-0 gap-4 @min-[520px]:grid-cols-2";
 
   if (isLoading)
     return (
@@ -77,7 +71,7 @@ export function ResumoCaixaSecretaria({
           aria-label="A carregar resumo de caixa"
           className={gridClass}
         >
-          {(showPartialPayments ? [0, 1, 2] : [0, 1]).map((key) => (
+          {[0, 1].map((key) => (
             <OperationalMetricSkeleton key={key} />
           ))}
         </div>
@@ -100,14 +94,6 @@ export function ResumoCaixaSecretaria({
           icon={Receipt}
           description="Hoje"
         />
-        {showPartialPayments && (
-          <OperationalMetricCard
-            label="Pagamentos parciais"
-            value={error ? null : amount(data?.pagamentos_parciais)}
-            icon={BadgePercent}
-            description="Hoje"
-          />
-        )}
       </div>
       {error && (
         <div
