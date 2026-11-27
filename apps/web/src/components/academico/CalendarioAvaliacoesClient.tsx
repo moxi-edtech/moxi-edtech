@@ -93,7 +93,6 @@ export default function CalendarioAvaliacoesClient({escolaId,embedded=false,acti
   const subjectMap = new Map((data?.disciplinas || []).map((s) => [s.id, s]));
   const periodMap = new Map((data?.periodos || []).map((p) => [p.id, p]));
   const items = (data?.items || []).filter((i) => periodMap.get(i.periodo_letivo_id)?.numero === num);
-  const draft = items.filter((i) => i.estado === "rascunho");
   const days = Array.from({length:7},(_,n)=>stepDay(week,n));
   const visible = items.filter(i => (!classFilter || i.turma_id === classFilter) &&
     (mode === "lista" || days.includes(i.data)) &&
@@ -169,7 +168,7 @@ export default function CalendarioAvaliacoesClient({escolaId,embedded=false,acti
         setErr("O novo horário coincide com outra avaliação desta turma. Ajuste a data ou as horas."); return;
       }
       if (await mutate({ action: "edit", id: editing, tipo: kind, data: date, inicio: start, fim: end || null, descricao: details || null },
-        "Alteração guardada e auditada.")) { setEditing(null); setDetails(""); }
+        "Alteração guardada.")) { setEditing(null); setDetails(""); }
       return;
     }
     if (!rows.length) { setErr("Selecione pelo menos uma disciplina."); return; }
@@ -183,7 +182,7 @@ export default function CalendarioAvaliacoesClient({escolaId,embedded=false,acti
 
   const publish = () => {
     if (!selectedDrafts.length || saving || !window.confirm("Publicar apenas as " + selectedDrafts.length + " avaliações selecionadas? Os alunos e professores poderão consultá-las.")) return;
-    void mutate({ action: "publish", ids: selectedDrafts.map((i) => i.id) }, "Avaliações selecionadas publicadas com sucesso.").then((ok) => { if (ok) setSelectedIds([]); });
+    void mutate({ action: "publish", ids: selectedDrafts.map((i) => i.id) }, "Avaliações publicadas.").then((ok) => { if (ok) setSelectedIds([]); });
   };
 
   const showHistory = async (id: string) => {
@@ -246,7 +245,7 @@ export default function CalendarioAvaliacoesClient({escolaId,embedded=false,acti
     {notice && <p role="status" className="rounded-xl border border-border p-3 text-sm text-primary">{notice}</p>}
     {!data?.ano ? <p className="rounded-xl border p-6 text-sm">Configure um ano letivo ativo antes de planear avaliações.</p> : <>
 
-      <section className="grid gap-3 rounded-xl border border-border bg-card p-3 shadow-sm sm:grid-cols-[minmax(180px,1fr)_auto_auto] sm:items-end sm:p-4">
+      <section className="grid gap-3 rounded-xl border border-border bg-card p-3 shadow-sm sm:grid-cols-[minmax(180px,320px)_1fr] sm:items-end sm:p-4">
         <div className="min-w-0">
           <p className="text-xs font-medium text-muted-foreground">Ano letivo {data.ano.ano}/{data.ano.ano + 1}</p>
           <label htmlFor="ava-period" className="mt-1 block text-xs font-semibold text-foreground">Trimestre</label>
@@ -257,11 +256,7 @@ export default function CalendarioAvaliacoesClient({escolaId,embedded=false,acti
             if (p) { const d = today() >= p.data_inicio && today() <= p.data_fim ? today() : p.data_inicio; setDate(d); setWeek(startWeek(d)); }
           }}>{numbers.map((n) => <option key={n} value={n}>{n}.º Trimestre</option>)}</select>
         </div>
-        <div className="flex items-center gap-3 text-xs text-muted-foreground sm:pb-2">
-          <span><strong className="text-lg font-semibold text-foreground">{draft.length}</strong> rascunhos</span>
-          <span><strong className="text-lg font-semibold text-foreground">{items.filter((i) => i.estado === "publicado").length}</strong> publicados</span>
-        </div>
-        {(!embedded||planningOpen)&&<a href="#avaliacoes-agenda" className={action + " min-h-10 border border-border bg-card text-foreground hover:bg-muted"}>Ver agenda</a>}
+        {(!embedded||planningOpen)&&<a href="#avaliacoes-agenda" className={action + " min-h-10 border border-border bg-card text-foreground hover:bg-muted sm:justify-self-end"}>Ver agenda</a>}
       </section>
 
       {editing ? (
@@ -475,7 +470,7 @@ export default function CalendarioAvaliacoesClient({escolaId,embedded=false,acti
               }}><Pencil size={16} /> Editar</button>}
               <button type="button" className={action + " border border-border"} onClick={() => void showHistory(item.id)}><History size={16} /> Histórico</button>
               {item.estado !== "cancelado" && <button type="button" className={action + " border border-border"} onClick={() => {
-                if (window.confirm("Cancelar avaliação? O histórico será preservado.")) void mutate({ action: "cancel", id: item.id }, "Avaliação cancelada e auditada.");
+                if (window.confirm("Cancelar esta avaliação?")) void mutate({ action: "cancel", id: item.id }, "Avaliação cancelada.");
               }}><X size={16} /> Cancelar</button>}
             </div>
           </div>
