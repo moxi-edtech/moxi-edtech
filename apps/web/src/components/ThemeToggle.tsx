@@ -15,7 +15,7 @@ export default function ThemeToggle({ className = "", iconOnly = false }: Props)
       onClick={() => setTheme(isDark ? "light" : "dark")}
       className={[
         "inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-border bg-card px-3",
-        "text-sm font-medium text-foreground transition-colors hover:bg-muted",
+        "text-sm font-medium text-foreground hover:bg-muted",
         "focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-amber/20 disabled:opacity-60",
         className,
       ].join(" ")}
