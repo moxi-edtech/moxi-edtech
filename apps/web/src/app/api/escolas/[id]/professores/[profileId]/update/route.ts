@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
+import { isTeacherBiValid, normalizeTeacherBi } from '@/lib/escola/teacher-bi'
 import { createRouteClient } from '@/lib/supabase/route-client'
 import { resolveEscolaIdForUser } from '@/lib/tenant/resolveEscolaIdForUser'
 import { authorizeTeacherManage } from '@/lib/escola/disciplinas'
@@ -13,7 +14,7 @@ const BodySchema = z.object({
   nome_completo: z.string().trim().min(3, 'Informe o nome completo').max(160),
   genero: z.enum(['M', 'F']),
   data_nascimento: z.string().trim().nullable().optional(),
-  numero_bi: z.string().trim().transform(v => v.toUpperCase()).refine(v => !v || (/^[A-Z0-9]{14}$/.test(v) && !/^0+$/.test(v)), 'Informe um BI válido de 14 caracteres ou deixe em branco').nullish(),
+  numero_bi: z.string().nullish().refine(isTeacherBiValid, 'Informe um BI válido de 14 caracteres ou deixe em branco').transform(normalizeTeacherBi),
   telefone_principal: z.string().trim().max(40).nullable().optional(),
   habilitacoes: z.enum(['Ensino Médio', 'Bacharelato', 'Licenciatura', 'Mestrado', 'Doutoramento']),
   area_formacao: z.string().trim().max(200).nullable().optional(),
