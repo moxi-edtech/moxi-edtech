@@ -131,13 +131,7 @@ export function MinhaProdutividade({
       <h2 className="text-base font-semibold text-foreground">
         Acompanhamento do dia
       </h2>
-      <div className="grid min-w-0 gap-4 sm:grid-cols-2">
-        <OperationalMetricCard
-          label="Minhas admissões"
-          value={data.admissoes_hoje}
-          icon={UserPlus}
-          description="Hoje"
-        />
+      <div className="grid min-w-0 gap-4">
         <OperationalMetricCard
           label="Fichas incompletas"
           value={data.documentos_pendentes}
