@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { estados, provaDisplayTitle, type ProvaResumo } from "@/lib/provas/schema";
 
 export function ProfessorExamList({ school, yearId, editor }: { school: string; yearId: string; editor: string }) {
@@ -9,15 +9,14 @@ export function ProfessorExamList({ school, yearId, editor }: { school: string; 
 }
 
 function ExamPages({ school, yearId, editor }: { school: string; yearId: string; editor: string }) {
-  const pages = useRef(new Map<number, ProvaResumo[]>());
+  const [pages, setPages] = useState(() => new Map<number, ProvaResumo[]>());
   const [offset, setOffset] = useState(0);
   const [retry, setRetry] = useState(0);
-  const [, redraw] = useState(0);
-  const rows = pages.current.get(offset);
+  const rows = pages.get(offset);
   const [failed, setFailed] = useState(false);
   useEffect(() => {
     setFailed(false);
-    if (pages.current.has(offset)) return;
+    if (rows) return;
     const controller = new AbortController();
     const query = new URLSearchParams({ offset: String(offset) });
     if (yearId) query.set("ano_letivo_id", yearId);
@@ -26,17 +25,16 @@ function ExamPages({ school, yearId, editor }: { school: string; yearId: string;
         const response = await fetch(`/api/escola/${encodeURIComponent(school)}/provas?${query}`, { cache: "no-store", signal: controller.signal });
         const data = await response.json();
         if (controller.signal.aborted) return;
-        if (response.status === 401 || response.status === 403 || !data.permissions?.author) pages.current.clear();
+        if (response.status === 401 || response.status === 403 || !data.permissions?.author) setPages(new Map());
         if (!response.ok || !data.permissions?.author || !Array.isArray(data.provas)) throw new Error();
-        pages.current.set(offset, data.provas);
-        redraw(value => value + 1);
+        setPages(current => new Map(current).set(offset, data.provas));
       } catch {
         if (!controller.signal.aborted) setFailed(true);
       }
     }
     void load();
     return () => controller.abort();
-  }, [school, yearId, offset, retry]);
+  }, [school, yearId, offset, retry, rows]);
 
   return <section className="space-y-4">
     <Link href={editor} className="inline-flex min-h-11 items-center rounded-xl bg-klasse-gold px-4 text-sm font-semibold text-white">Elaborar ou editar prova</Link>
