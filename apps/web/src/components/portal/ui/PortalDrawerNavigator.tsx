@@ -82,7 +82,16 @@ export function PortalDrawerNavigator({ root, open, onClose, onReopen, onChanged
     travelling.current = false;
     approved.current = false;
   }, []);
-  useLayoutEffect(() => () => invalidate(), [invalidate]);
+  const mounted = useRef(false);
+  useLayoutEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+      // StrictMode replays effect cleanup/setup in development. Preserve the
+      // session through that replay; invalidate only an actual unmount.
+      queueMicrotask(() => { if (!mounted.current) invalidate(); });
+    };
+  }, [invalidate]);
   useLayoutEffect(() => {
     if (!open) return;
     const current = session.current;
