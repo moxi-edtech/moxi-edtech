@@ -101,7 +101,14 @@ test("contrato HTTP rejeita educando não autorizado e propaga o ano selecionado
   assert.match(route, /\.eq\("versao_id", versao\.id\)/);
   assert.doesNotMatch(route, /\.in\(['"]status['"],\s*\[['"]ativo/);
   assert.match(ui, /params\.set\("ano_letivo_id", academicYearId\)/);
-  assert.match(ui, /\[studentId, academicYearId, horarioRetry, requestKey\]/);
+  assert.match(ui, /const requestKey = `\$\{studentId \?\? "default"\}:\$\{academicYearId \?\? "active"\}`;/);
+  assert.match(ui, /const initial = snapshot\?\.key === requestKey \? snapshot\.data : null/);
+  assert.match(ui, /const visibleData = initial \?\? \(resolvedRequestKey === requestKey \? data : null\)/);
+  assert.match(ui, /useEffect\(\(\) => \{\s*if \(initial\) return;\s*const ctrl = new AbortController\(\)/);
+  assert.match(ui, /if \(studentId\) params\.set\("studentId", studentId\)/);
+  assert.match(ui, /fetch\(url, \{ cache: "no-store", signal: ctrl\.signal \}\)/);
+  assert.match(ui, /if \(!ctrl\.signal\.aborted\) \{\s*setData\(json\);\s*setResolvedRequestKey\(requestKey\)/);
+  assert.match(ui, /return \(\) => ctrl\.abort\(\);\s*\}, \[studentId, academicYearId, horarioRetry, requestKey, initial\]\)/);
   assert.match(ui, /visibleData\?\.reason === "NO_ENROLLMENT"/);
   assert.match(route, /Cache-Control": "private, no-store"/);
 });
