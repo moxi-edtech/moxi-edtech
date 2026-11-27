@@ -1,5 +1,6 @@
 "use client";
-import { useState,type ReactNode } from "react";
+import { useRef,useState,type ReactNode } from "react";
+import { flushSync } from "react-dom";
 import { ArrowLeft,Plus,Trash2,MoveLeft,MoveRight,Undo2,Redo2,SlidersHorizontal,ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { mathMarkup } from "@/lib/provas/math";
@@ -37,6 +38,8 @@ export default function RecursiveFormulaEditor({initial,onInsert,onBack,disabled
  const [error,setError]=useState("");
  const [advanced,setAdvanced]=useState(false);
  const [live,setLive]=useState(false);
+ const valueInput=useRef<HTMLInputElement>(null);
+ const [keyboard,setKeyboard]=useState<"decimal"|"text">("decimal");
  const [past,setPast]=useState<MathNode[][]>([]);
  const [future,setFuture]=useState<MathNode[][]>([]);
  const liveInvalid=live&&!validMathToken(atom.replace(",","."));
@@ -62,6 +65,7 @@ export default function RecursiveFormulaEditor({initial,onInsert,onBack,disabled
   const next=[...list];next.splice(index,remove,...nodes);change(next,index);
  }
  function openPicker(kind:Picker,at:typeof position){
+  if(disabled||liveInvalid||error&&live)return;
   setLive(false);setPosition(at);setPicker(kind);setAtom(kind==="numbers"&&at==="replace"&&selected?.kind==="token"?selected.value:"1");setError("");
  }
  function openSlot(index:number,slot:MathPath[number]["slot"]){
@@ -71,10 +75,14 @@ export default function RecursiveFormulaEditor({initial,onInsert,onBack,disabled
  function selectElement(at:MathPath,index:number){
   if(disabled||liveInvalid||error&&live)return;
   const node=mathAt(tree,at)?.[index];if(!node)return;
-  setPath(at);setSelection(index);setPosition("replace");setError("");
   const numeric=node.kind==="token"&&editableMathToken(node.value);
-  setLive(numeric);setPicker(numeric?"numbers":node.kind==="token"?"symbols":null);
-  if(numeric)setAtom(node.value);else if(node.kind!=="token")setAdvanced(true);
+  const select=()=>{
+   setPath(at);setSelection(index);setPosition("replace");setError("");
+   setLive(numeric);setPicker(numeric?"numbers":node.kind==="token"?"symbols":null);
+   setAdvanced(node.kind!=="token");
+   if(numeric&&node.kind==="token"){setAtom(node.value);setKeyboard(/^[A-Za-z]$/.test(node.value)?"text":"decimal");}
+  };
+  if(numeric){flushSync(select);valueInput.current?.focus();valueInput.current?.select();}else select();
  }
  function selectEmpty(at:MathPath){
   if(disabled||liveInvalid)return;
@@ -89,16 +97,16 @@ export default function RecursiveFormulaEditor({initial,onInsert,onBack,disabled
  function renderSequence(nodes:MathNode[],at:MathPath,context="Expressão"):ReactNode{
   const slot=(i:number,key:MathPath[number]["slot"],children:MathNode[],label:string)=>renderSequence(children,[...at,{index:i,slot:key}],label);
   return <span className="inline-flex w-max max-w-none items-center gap-1 align-middle">
-   {nodes.length===0&&<button type="button" className="min-h-11 min-w-11 rounded-xl border border-dashed border-border" aria-label={"Preencher "+context} disabled={disabled||liveInvalid} onClick={()=>selectEmpty(at)}>□</button>}
+   {nodes.length===0&&<button type="button" className="min-h-11 min-w-11 rounded-xl border border-dashed border-border" aria-label={"Preencher "+context} disabled={disabled||liveInvalid||Boolean(error&&live)} onClick={()=>selectEmpty(at)}>□</button>}
    {nodes.map((node,i)=>{
     const active=selection===i&&JSON.stringify(path)===JSON.stringify(at);
     const mark=active?"border-klasse-gold bg-klasse-gold/10 ring-2 ring-klasse-gold/20":"border-border bg-background";
-    const control=(name:string,children:ReactNode,extra="")=><button type="button" disabled={disabled||liveInvalid} aria-label={context+" · "+name} aria-pressed={active} onClick={()=>selectElement(at,i)} className={"inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-xl border px-2 text-base focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-klasse-gold/20 "+mark+" "+extra}>{children}</button>;
+    const control=(name:string,children:ReactNode,extra="")=><button type="button" disabled={disabled||liveInvalid||Boolean(error&&live)} aria-label={context+" · "+name} aria-pressed={active} onClick={()=>selectElement(at,i)} className={"inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-xl border px-2 text-base focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-klasse-gold/20 "+mark+" "+extra}>{children}</button>;
     const display=node.kind==="token"?(allSymbols.find(sym=>sym[1]===node.value)?.[0]??node.value):"";
-    if(node.kind==="token")return <span key={i}>{control(display.trim()?display:"Espaço",display.trim()?display:"␣")}</span>;
+    if(node.kind==="token")return <span key={i}>{control(display.trim()?display:"Espaço",display.startsWith("\\")?<MathPreview source={display}/>:display.trim()?display:"␣")}</span>;
     if(node.kind==="fraction")return <span key={i} className={"inline-flex shrink-0 flex-col items-stretch gap-1 rounded-xl border p-1 "+(active?"border-klasse-gold":"border-transparent")}>
      <span className="flex justify-center">{slot(i,"numerator",node.numerator,"Numerador")}</span>
-     <button type="button" aria-label={context+" · Seleccionar fracção"} aria-pressed={active} disabled={disabled||liveInvalid} onClick={()=>selectElement(at,i)} className="flex min-h-11 items-center justify-center rounded-xl focus-visible:ring-4 focus-visible:ring-klasse-gold/20"><span className="h-px w-full bg-current"/></button>
+     <button type="button" aria-label={context+" · Seleccionar fracção"} aria-pressed={active} disabled={disabled||liveInvalid||Boolean(error&&live)} onClick={()=>selectElement(at,i)} className="flex min-h-11 items-center justify-center rounded-xl focus-visible:ring-4 focus-visible:ring-klasse-gold/20"><span className="h-px w-full bg-current"/></button>
      <span className="flex justify-center">{slot(i,"denominator",node.denominator,"Denominador")}</span>
     </span>;
     if(node.kind==="script")return <span key={i} className={"inline-flex shrink-0 "+(node.symbol==="^"?"-translate-y-3 self-start":"translate-y-3 self-end")}>{slot(i,"body",node.body,node.symbol==="^"?"Expoente":"Índice")}</span>;
@@ -148,14 +156,15 @@ export default function RecursiveFormulaEditor({initial,onInsert,onBack,disabled
   <div role="group" aria-label="Elementos da expressão" className="min-w-0 overflow-x-auto rounded-xl border border-border bg-card p-3 py-6">{renderSequence(tree,[])}</div>
   {live&&selected?.kind==="token"&&<div className="space-y-2 rounded-xl border border-border p-3">
    <label className="grid gap-1 text-sm font-medium">Alterar valor ou variável
-    <input key={JSON.stringify(path)+":"+selection} aria-label="Valor ou variável" className={fieldStyle} inputMode={/^[A-Za-z]$/.test(selected.value)?"text":"decimal"} autoCapitalize="off" autoComplete="off" spellCheck={false} maxLength={16} value={atom} onFocus={e=>e.currentTarget.select()} onChange={e=>editLive(e.target.value)} disabled={disabled} aria-invalid={liveInvalid||Boolean(error)}/>
+    <input key={JSON.stringify(path)+":"+selection} aria-label="Valor ou variável" className={fieldStyle} ref={valueInput} inputMode={keyboard} autoCapitalize="off" autoComplete="off" spellCheck={false} maxLength={16} value={atom} onFocus={e=>e.currentTarget.select()} onChange={e=>editLive(e.target.value)} disabled={disabled} aria-invalid={liveInvalid||Boolean(error)}/>
    </label>
+   <Button type="button" variant="ghost" size="sm" disabled={disabled} onClick={()=>{flushSync(()=>setKeyboard(k=>k==="decimal"?"text":"decimal"));valueInput.current?.focus();}}> {keyboard==="decimal"?"Introduzir variável":"Teclado numérico"}</Button>
    {(liveInvalid||error)&&<div className="flex flex-wrap items-center gap-2"><p role="status" className="text-xs text-destructive">Introduza um número ou uma variável válida.</p><Button type="button" size="sm" variant="ghost" onClick={()=>{setAtom(selected.value);setError("");}}>Restaurar valor</Button></div>}
   </div>}
   {!live&&picker==="symbols"&&position==="replace"&&selected?.kind==="token"&&<div role="group" aria-label="Trocar símbolo" className="grid grid-cols-5 gap-1">
    {allSymbols.map(([display,value])=><button type="button" key={value} aria-label={"Símbolo "+display} aria-pressed={selected.value===value} disabled={disabled} onClick={()=>add([tokenNode(value)])} className="min-h-11 rounded-xl border border-border text-base focus-visible:ring-4 focus-visible:ring-klasse-gold/20">{display}</button>)}
   </div>}
-  {advanced&&path.length>0&&<nav aria-label="Local da edição" className="flex flex-wrap gap-1"><button type="button" className="min-h-11 rounded-xl px-2" disabled={liveInvalid} onClick={()=>navigate(0)}>Expressão</button>{crumbLabels.map((name,i)=><button key={i} type="button" disabled={liveInvalid} className="min-h-11 rounded-xl px-2" onClick={()=>navigate(i+1)}>{name}</button>)}<Button type="button" size="sm" variant="outline" disabled={disabled||liveInvalid} onClick={()=>{const last=path[path.length-1];selectElement(path.slice(0,-1),last.index);}}>Seleccionar estrutura envolvente</Button></nav>}
+  {advanced&&path.length>0&&<nav aria-label="Local da edição" className="flex flex-wrap gap-1"><button type="button" className="min-h-11 rounded-xl px-2" disabled={disabled||liveInvalid||Boolean(error&&live)} onClick={()=>navigate(0)}>Expressão</button>{crumbLabels.map((name,i)=><button key={i} type="button" disabled={disabled||liveInvalid||Boolean(error&&live)} className="min-h-11 rounded-xl px-2" onClick={()=>navigate(i+1)}>{name}</button>)}<Button type="button" size="sm" variant="outline" disabled={disabled||liveInvalid} onClick={()=>{const last=path[path.length-1];selectElement(path.slice(0,-1),last.index);}}>Seleccionar estrutura envolvente</Button></nav>}
   {advanced&&!liveInvalid&&!(error&&live)&&selected&&selection!==null&&<div className="space-y-2 rounded-xl border border-border p-3">
    <p className="text-sm font-medium">{mathNodeLabel(selected)}</p>
    {selected.kind==="grid"&&<div className="space-y-2"><p className="text-xs text-muted-foreground">{selected.env==="cases"?selected.rows.length+" equações":selected.rows.length+" × "+selected.rows[0].length}</p><div className="flex flex-wrap gap-1">
