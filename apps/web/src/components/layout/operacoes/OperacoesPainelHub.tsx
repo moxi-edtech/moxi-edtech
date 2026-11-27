@@ -35,6 +35,8 @@ type Props = {
   charts?: DashboardCharts;
   /** Mostra apenas a fila de decisões, sem replicar os restantes KPIs. */
   onlyReopen?: boolean;
+  /** Place the decision card directly inside an existing dashboard grid. */
+  inlineReopen?: boolean;
   /** Conteúdo entre os contadores e os painéis secundários; mantém um só hub. */
   afterCounters?: ReactNode;
   onRefreshDashboard?: () => void;
@@ -43,7 +45,7 @@ type Props = {
 
 type PainelId = "aulas" | "planos" | "reabertura" | "foco" | "graficos";
 
-export default function OperacoesPainelHub({ escolaId, operationalSnapshot, charts, onlyReopen = false, afterCounters, onRefreshDashboard, dashboardRefreshing = false }: Props) {
+export default function OperacoesPainelHub({ escolaId, operationalSnapshot, charts, onlyReopen = false, inlineReopen = false, afterCounters, onRefreshDashboard, dashboardRefreshing = false }: Props) {
   const { escolaSlug } = useEscolaId();
   const escolaParam = escolaSlug || escolaId;
   const { summary, authorized, loading, refreshing, error, refresh } = useOperacoesPendencias({ onlyReopen });
@@ -93,10 +95,12 @@ export default function OperacoesPainelHub({ escolaId, operationalSnapshot, char
 
   if (onlyReopen && !authorized) return null;
 
+  const embeddedReopen = onlyReopen && inlineReopen;
+
   return (
-    <section aria-label={onlyReopen ? "Solicitações académicas" : "Operação"} className={afterCounters ? "operations-dashboard-flow min-w-0" : "space-y-5 min-[1700px]:space-y-8"}>
+    <section aria-label={onlyReopen ? "Solicitações académicas" : "Operação"} className={embeddedReopen ? "min-w-0" : afterCounters ? "operations-dashboard-flow min-w-0" : "space-y-5 min-[1700px]:space-y-8"}>
       <div>
-        <div className="flex flex-wrap items-center justify-between gap-3">
+        {!embeddedReopen && <div className="flex flex-wrap items-center justify-between gap-3">
           {afterCounters ? <h2 className="text-base font-semibold text-foreground">Acompanhamento diário</h2> : <SecaoLabel>{onlyReopen ? "Solicitações académicas" : "Operação"}</SecaoLabel>}
           <div className="flex items-center gap-2">
             {operationalSnapshot && !onlyReopen && (
@@ -119,23 +123,23 @@ export default function OperacoesPainelHub({ escolaId, operationalSnapshot, char
               {onRefreshDashboard ? "Atualizar painel" : "Atualizar"}
             </button>
           </div>
-        </div>
+        </div>}
 
         {error ? (
-          <div className="mt-4 rounded-xl border border-rose-100 bg-rose-50 p-4 text-sm text-rose-700">
+          <div className={embeddedReopen ? "rounded-xl border border-border bg-card p-4 text-sm text-foreground" : "mt-4 rounded-xl border border-rose-100 bg-rose-50 p-4 text-sm text-rose-700"}>
             <p className="font-semibold">{error}</p>
             <button type="button" onClick={refresh} disabled={refreshing} className="mt-2 font-bold underline disabled:opacity-60">
               Tentar novamente
             </button>
           </div>
         ) : (
-          <div className={afterCounters ? "operations-daily-grid mt-4 grid" : "mt-3 grid grid-cols-2 gap-3 min-[1280px]:grid-cols-3 min-[1700px]:mt-4 min-[1700px]:gap-4"}>
+          <div className={embeddedReopen ? "grid min-w-0" : afterCounters ? "operations-daily-grid mt-4 grid" : "mt-3 grid grid-cols-2 gap-3 min-[1280px]:grid-cols-3 min-[1700px]:mt-4 min-[1700px]:gap-4"}>
             {loading
               ? (onlyReopen ? [0] : [0, 1, 2]).map((i) => (
-                  afterCounters ? <OperationalMetricSkeleton key={i} /> : <div key={i} className="h-[104px] motion-safe:animate-pulse rounded-xl border border-border bg-card" />
+                  (afterCounters || embeddedReopen) ? <OperationalMetricSkeleton key={i} /> : <div key={i} className="h-[104px] motion-safe:animate-pulse rounded-xl border border-border bg-card" />
                 ))
               : contadores.filter(({ id }) => !onlyReopen || id === "reabertura").map(({ id, icon: Icon, label, value, tone }) => (
-                  afterCounters ? (
+                  (afterCounters || embeddedReopen) ? (
                     <OperationalMetricCard
                       key={id}
                       label={label}

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Wallet, Receipt, BadgePercent } from "lucide-react";
+import { Wallet, Receipt } from "lucide-react";
 import { formatKwanza } from "@/lib/formatters";
 import {
   OperationalMetricCard,
@@ -11,7 +11,6 @@ import {
 type CaixaSummary = {
   cobrado_hoje?: number | string | null;
   recibos_emitidos?: number | string | null;
-  pagamentos_parciais?: number | string | null;
 };
 
 function amount(value: number | string | null | undefined): number | null {
@@ -62,15 +61,17 @@ export function ResumoCaixaSecretaria({
     };
   }, [escolaId, scope]);
 
+  const gridClass = "grid min-w-0 gap-4 @min-[520px]:grid-cols-2";
+
   if (isLoading)
     return (
       <div style={{ containerType: "inline-size" }}>
         <div
           role="status"
           aria-label="A carregar resumo de caixa"
-          className="operations-daily-grid grid"
+          className={gridClass}
         >
-          {[0, 1, 2].map((key) => (
+          {[0, 1].map((key) => (
             <OperationalMetricSkeleton key={key} />
           ))}
         </div>
@@ -80,7 +81,7 @@ export function ResumoCaixaSecretaria({
   const received = error ? null : amount(data?.cobrado_hoje);
   return (
     <div className="min-w-0 space-y-3" style={{ containerType: "inline-size" }}>
-      <div className="operations-daily-grid grid">
+      <div className={gridClass}>
         <OperationalMetricCard
           label="Cobrado por mim"
           value={received == null ? null : formatKwanza(received)}
@@ -91,12 +92,6 @@ export function ResumoCaixaSecretaria({
           label="Recibos emitidos"
           value={error ? null : amount(data?.recibos_emitidos)}
           icon={Receipt}
-          description="Hoje"
-        />
-        <OperationalMetricCard
-          label="Pagamentos parciais"
-          value={error ? null : amount(data?.pagamentos_parciais)}
-          icon={BadgePercent}
           description="Hoje"
         />
       </div>

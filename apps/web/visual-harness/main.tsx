@@ -2,6 +2,9 @@ import React, { useState } from "react";
 import { TabFinanceiro } from "../src/components/aluno/tabs/TabFinanceiro";
 import { TabFaltas } from "../src/components/aluno/tabs/TabFaltas";
 import { EstadoVitalBanner } from "../src/components/layout/escola-admin/EstadoVitalBanner";
+import { PortalSheet } from "../src/components/portal/ui/PortalSheet";
+import { ModalShell } from "../src/components/ui/ModalShell";
+import { FilaAtendimentoModal } from "../src/components/secretaria/FilaAtendimentoModal";
 import ProfessorCalendarioPage from "../src/app/professor/calendario/page";
 import { PaymentDrawer } from "../src/components/aluno/financeiro-portal/PaymentDrawer";
 import { emitFixtureAuth } from "./auth-fixture";
@@ -380,6 +383,20 @@ function BalcaoFinancialRefreshFixture(){
   </main>;
 }
 
+function DashboardDialogFixture() {
+  const [open,setOpen]=useState<"compact"|"medium"|"expanded"|"modal"|"queue"|null>(null);
+  return <main className="min-h-screen p-4" style={{transform:"translateX(40px)"}}>
+    {(["compact","medium","expanded","modal","queue"] as const).map(mode=>
+      <button key={mode} type="button" onClick={()=>setOpen(mode)}>Abrir {mode}</button>)}
+    <PortalSheet open={open==="compact"||open==="medium"||open==="expanded"} onClose={()=>setOpen(null)}
+      desktopPresentation="centered" size={open==="compact"||open==="medium"||open==="expanded"?open:"medium"}
+      title="Consulta sintética" description="Geometria da dashboard" navigationKey="fixture">
+      <div className="space-y-3">{Array.from({length:30},(_,i)=><p key={i}>Registo sintético {i+1}</p>)}</div>
+    </PortalSheet>
+    <ModalShell open={open==="modal"} title="Operação sintética" onClose={()=>setOpen(null)}><p>Conteúdo sintético</p></ModalShell>
+    <FilaAtendimentoModal open={open==="queue"} onClose={()=>setOpen(null)}/>
+  </main>;
+}
 function PortalPaymentSheetFixture() {
   const [open,setOpen]=useState(false);
   const [received,setReceived]=useState(false);
@@ -391,7 +408,8 @@ function PortalPaymentSheetFixture() {
       dadosPagamento={null} studentId="00000000-0000-4000-8000-000000000402" />
   </main>;
 }
-if (target && name === "portal-finance-context") createRoot(target).render(<main className="klasse-portal-theme klasse-academic-mobile min-h-screen p-4"><TabFinanceiro /></main>);
+if (target && name === "dashboard-dialog-geometry") createRoot(target).render(<DashboardDialogFixture />);
+else if (target && name === "portal-finance-context") createRoot(target).render(<main className="klasse-portal-theme klasse-academic-mobile min-h-screen p-4"><TabFinanceiro /></main>);
 else if (target && name === "portal-absence-context") createRoot(target).render(<main className="klasse-portal-theme klasse-academic-mobile min-h-screen p-4"><TabFaltas /></main>);
 else if (target && name === "operations-academic-card") createRoot(target).render(<main className="mx-auto min-h-screen max-w-6xl p-4"><EstadoVitalBanner compact calendarHref="/escola/fixture/operacoes/calendario" estado={{escola_id:"fixture",session_id:null,ano_ativo:2026,periodo_id:null,periodo_tipo:"TRIMESTRE",periodo_numero:1,hoje_bloqueado_pedagogico:false,evento_hoje_nome:"Reunião pedagógica sintética",fase_operacional:"REGULAR"}} /></main>);
 else if (target && name === "professor-calendar-context") createRoot(target).render(<main className="klasse-portal-theme klasse-academic-mobile min-h-screen"><ProfessorCalendarioPage /></main>);

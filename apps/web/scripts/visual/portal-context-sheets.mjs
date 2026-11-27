@@ -9,6 +9,51 @@ await mkdir(dir,{recursive:true});
 const browser=await chromium.launch({headless:true});
 const results=[];
 try {
+  for (const viewport of [{width:390,height:844},{width:768,height:1024},{width:1024,height:768},{width:1366,height:768}]) {
+    for (const reducedMotion of ["reduce","no-preference"]) {
+      const ctx=await browser.newContext({viewport,reducedMotion});
+      try {
+        const page=await ctx.newPage();
+        await page.route("**/api/secretaria/atendimentos?*",route=>route.fulfill({json:{ok:true,items:[]}}));
+        await page.goto(base+"/?story=dashboard-dialog-geometry");
+        for (const mode of ["compact","medium","expanded","modal","queue"]) {
+          const opener=page.getByRole("button",{name:"Abrir "+mode,exact:true});
+          await opener.click();
+          const dialog=page.getByRole("dialog",{name:mode==="modal"?"Operação sintética":mode==="queue"?"Fila de Atendimento":"Consulta sintética"});
+          await dialog.waitFor();
+          await dialog.evaluate(async el=>{await Promise.all(el.getAnimations().map(a=>a.finished.catch(()=>{})))});
+          const geometry=await dialog.evaluate(el=>{
+            // ModalShell owns the full viewport; its inner section is the visible panel.
+            const panel=el.querySelector(":scope > section")??el;
+            const r=panel.getBoundingClientRect();
+            return {x:r.x,y:r.y,w:r.width,h:r.height,vw:innerWidth,vh:innerHeight,focus:el.contains(document.activeElement)};
+          });
+          assert.ok(Math.abs(geometry.x+geometry.w/2-geometry.vw/2)<=2,JSON.stringify({mode,geometry}));
+          assert.ok(geometry.x>=-1&&geometry.y>=-1&&geometry.y+geometry.h<=geometry.vh+1,JSON.stringify({mode,geometry}));
+          if(viewport.width>=768||mode==="modal"||mode==="queue"){
+            assert.ok(Math.abs(geometry.y+geometry.h/2-geometry.vh/2)<=2,JSON.stringify({mode,geometry}));
+          }else{
+            assert.ok(Math.abs(geometry.y+geometry.h-geometry.vh)<=2,JSON.stringify({mode,geometry}));
+          }
+          assert.ok(geometry.focus,"initial dialog focus: "+mode);
+          await page.keyboard.press("Escape");
+          await dialog.waitFor({state:"hidden"});
+          if(mode!=="queue"&&mode!=="modal") await page.waitForFunction(label=>document.activeElement?.textContent?.trim()===label,"Abrir "+mode);
+        }
+        if(viewport.width>=768){
+          await page.goto(base+"/?story=operations-academic-card");
+          await page.getByRole("button",{name:"Evento de hoje"}).click();
+          const event=page.getByRole("dialog",{name:"Evento de hoje"});
+          await event.waitFor();
+          await event.evaluate(async el=>{await Promise.all(el.getAnimations().map(a=>a.finished.catch(()=>{})))});
+          assert.ok(await event.evaluate(el=>{const r=el.getBoundingClientRect();return Math.abs(r.x+r.width/2-innerWidth/2)<=2&&Math.abs(r.y+r.height/2-innerHeight/2)<=2;}),"academic banner modal not centered");
+          await page.keyboard.press("Escape");
+          await event.waitFor({state:"hidden"});
+        }
+        results.push({viewport,reducedMotion,centeredDialogs:true});
+      } finally { await ctx.close(); }
+    }
+  }
   for(const reduced of ["no-preference","reduce"]){
     const ctx=await browser.newContext({viewport:{width:390,height:844},isMobile:true,hasTouch:true,reducedMotion:reduced});
     const page=await ctx.newPage();

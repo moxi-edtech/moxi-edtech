@@ -5,11 +5,12 @@ import dynamic from "next/dynamic";
 import {
   Users,
   FileText,
+  FileWarning,
+  Megaphone,
   Banknote,
   CalendarX,
   CalendarCheck,
   FileEdit,
-  UserPlus,
   UsersRound,
   RefreshCcw,
   Upload,
@@ -33,6 +34,7 @@ import { GlobalSearch } from "@/components/GlobalSearch";
 import { BuscaBalcaoRapido } from "@/components/secretaria/BuscaBalcaoRapido";
 import { ModalShell } from "@/components/ui/ModalShell";
 import { DashboardHeader, NoticePanel } from "@/components/dashboard";
+import type { NoticeItemData } from "@/components/dashboard/NoticePanel";
 import OperacoesPainelHub from "@/components/layout/operacoes/OperacoesPainelHub";
 import {
   OperationalMetricCard,
@@ -43,10 +45,6 @@ import type { EstadoVital } from "@/components/layout/escola-admin/dashboard.typ
 import { PortalSheet } from "@/components/portal/ui/PortalSheet";
 import AcaoRapidaCard from "@/components/shared/AcaoRapidaCard";
 import ExpedienteDashboardCard from "@/components/secretaria/ExpedienteDashboardCard";
-import {
-  RadarOperacional,
-  type OperationalAlert,
-} from "@/components/feedback/FeedbackSystem";
 import { FichaRapidaModal } from "@/components/secretaria/FichaRapidaModal";
 import type { DashboardCounts, DashboardRecentes } from "./types";
 
@@ -62,23 +60,6 @@ const ResumoCaixaSecretaria = dynamic(
         role="status"
         aria-label="A carregar resumo de caixa"
         className="h-20 rounded-xl border border-border bg-card motion-safe:animate-pulse"
-      />
-    ),
-  },
-);
-
-const MinhaProdutividade = dynamic(
-  () =>
-    import("@/components/secretaria/MinhaProdutividade").then(
-      (mod) => mod.MinhaProdutividade,
-    ),
-  {
-    ssr: false,
-    loading: () => (
-      <div
-        role="status"
-        aria-label="A carregar produtividade"
-        className="h-40 rounded-xl bg-muted motion-safe:animate-pulse"
       />
     ),
   },
@@ -172,8 +153,13 @@ export function Dashboard({
   const [balcaoModal, setBalcaoModal] = useState<BalcaoModal>(null);
   const [nowMs] = useState(() => Date.now());
   const [userName, setUserName] = useState<string | null>(null);
-  const [produtividadeAlerts, setProdutividadeAlerts] = useState<any[]>([]);
-  const [totalPendentesFicha, setTotalPendentesFicha] = useState(0);
+  const [noticeView, setNoticeView] = useState<"general" | "fichas" | null>(null);
+  const [productivity, setProductivity] = useState<{
+    scope: string;
+    count: number | null;
+    alerts: any[];
+    error: boolean;
+  } | null>(null);
   const [selectedAlunoIdForFicha, setSelectedAlunoIdForFicha] = useState<
     string | null
   >(null);
@@ -186,12 +172,34 @@ export function Dashboard({
   const [refreshKey, setRefreshKey] = useState(0);
   const [showOperationalPanels, setShowOperationalPanels] = useState(false);
 
-  const handleProdutividadeData = useCallback((data: any) => {
-    if (data.alertas_notificacoes)
-      setProdutividadeAlerts(data.alertas_notificacoes);
-    if (data.documentos_pendentes !== undefined)
-      setTotalPendentesFicha(data.documentos_pendentes);
-  }, []);
+  const productivityScope = JSON.stringify([escolaId, refreshKey]);
+  const currentProductivity = productivity?.scope === productivityScope ? productivity : null;
+  const produtividadeAlerts = useMemo(() => currentProductivity?.alerts ?? [], [currentProductivity]);
+
+  useEffect(() => {
+    if (!escolaId || !showOperationalPanels) return;
+    const controller = new AbortController();
+    const scope = productivityScope;
+    void fetch(`/api/secretaria/balcao/produtividade?escolaId=${encodeURIComponent(escolaId)}`, {
+      cache: "no-store",
+      signal: controller.signal,
+    }).then(async response => {
+      const body = await response.json();
+      if (!response.ok || !body?.ok) throw new Error("Avisos indisponíveis");
+      if (!controller.signal.aborted) setProductivity({
+        scope,
+        count: typeof body.documentos_pendentes === "number" && Number.isFinite(body.documentos_pendentes)
+          ? body.documentos_pendentes : null,
+        alerts: Array.isArray(body.alertas_notificacoes) ? body.alertas_notificacoes : [],
+        error: false,
+      });
+    }).catch(() => {
+      if (!controller.signal.aborted) setProductivity({ scope, count: null, alerts: [], error: true });
+    });
+    return () => controller.abort();
+  }, [escolaId, productivityScope, showOperationalPanels]);
+
+  useEffect(() => { setNoticeView(null); }, [escolaId]);
 
   const refreshProdutividade = useCallback(
     () => setRefreshKey((prev) => prev + 1),
@@ -294,6 +302,7 @@ export function Dashboard({
 
   const handleNoticeAction = (item: any) => {
     if (item.type === "FICHA_RAPIDA" && item.aluno_id) {
+      setNoticeView(null);
       setSelectedAlunoIdForFicha(item.aluno_id);
     } else if (item.type === "BIRTHDAY_WHATSAPP") {
       const msg = encodeURIComponent(
@@ -301,15 +310,18 @@ export function Dashboard({
       );
       const phone = item.telefone_whatsapp?.replace(/\D/g, "");
       if (phone) window.open(`https://wa.me/${phone}?text=${msg}`, "_blank");
-    } else if (item.type === "DEBT_PAYMENT") {
+    } else if (item.type === "DEBT_PAYMENT" && item.aluno_id) {
+      setNoticeView(null);
       // Abre o balcão de atendimento no modal para este aluno
       setSelectedAlunoIdForBalcao(item.aluno_id);
       setBalcaoModal("atendimento_aluno");
-    } else if (item.type === "CANDIDATURA_PENDENTE") {
+    } else if (item.type === "CANDIDATURA_PENDENTE" && item.candidatura_id) {
+      setNoticeView(null);
       // Abre o wizard de admissão no modal com a candidatura selecionada
       setSelectedCandidaturaId(item.candidatura_id);
       setBalcaoModal("matricular");
-    } else if (item.id === "fecho-trimestre") {
+    } else if (item.type === "FECHO_TRIMESTRE") {
+      setNoticeView(null);
       setBalcaoModal("notas");
     } else if (item.action_href) {
       window.location.href = item.action_href;
@@ -335,6 +347,7 @@ export function Dashboard({
         : `Faltam ${days} ${diaLabel} para o fecho das pautas. Verifique os professores com notas em atraso.`;
     return {
       id: "fecho-trimestre",
+      type: "FECHO_TRIMESTRE",
       titulo,
       resumo,
       data: prazo.toISOString(),
@@ -390,7 +403,7 @@ export function Dashboard({
       id: buildNoticeId("base", item, `base-${index}`),
     }));
 
-    const deduped = new Map<string, (typeof base)[number]>();
+    const deduped = new Map<string, NoticeItemData>();
     for (const item of [
       ...(extras as typeof base),
       ...prodAlerts,
@@ -407,59 +420,8 @@ export function Dashboard({
     produtividadeAlerts,
     escolaParam,
   ]);
-  const alerts = useMemo(() => {
-    const items: OperationalAlert[] = [];
-    const pendencias = recentes?.pendencias ?? counts?.pendencias ?? 0;
-    if (pendencias > 0) {
-      items.push({
-        id: "pendencias",
-        severity: pendencias >= 5 ? "critical" : "warning",
-        categoria: "academico",
-        titulo: `${pendencias} pendência${pendencias !== 1 ? "s" : ""} no painel`,
-        descricao: "Há matrículas ou importações que precisam de validação.",
-        count: pendencias,
-        link: buildPortalHref(escolaParam, "/secretaria/alertas"),
-        link_label: "Ver pendências",
-      });
-    }
-
-    const avisos = recentes?.avisos_recentes?.length ?? 0;
-    if (avisos > 0) {
-      items.push({
-        id: "avisos",
-        severity: "info",
-        categoria: "documentos",
-        titulo: "Avisos recentes do dia",
-        descricao: "Revise os avisos mais recentes antes de encerrar o turno.",
-        count: avisos,
-        link: buildPortalHref(escolaParam, "/secretaria/avisos"),
-        link_label: "Abrir avisos",
-      });
-    }
-
-    if (totalPendentesFicha > 0) {
-      items.push({
-        id: "fichas-incompletas",
-        severity: totalPendentesFicha > 20 ? "critical" : "warning",
-        categoria: "documentos",
-        titulo: `${totalPendentesFicha} alunos com ficha incompleta`,
-        descricao:
-          "Existem alunos ativos com falta de BI, Data de Nasc. ou Documentos.",
-        count: totalPendentesFicha,
-        link: buildPortalHref(escolaParam, "/secretaria/alunos"),
-        link_label: "Regularizar Fichas",
-      });
-    }
-
-    return items;
-  }, [
-    counts?.pendencias,
-    escolaParam,
-    recentes?.avisos_recentes?.length,
-    recentes?.pendencias,
-    totalPendentesFicha,
-  ]);
-
+  const fichaAvisos = useMemo(() => Array.from(new Map<string, NoticeItemData>(avisos.filter(item => item.type === "FICHA_RAPIDA").map(item => [item.aluno_id ?? item.id, item])).values()), [avisos]);
+  const generalAvisos = useMemo(() => avisos.filter(item => item.type !== "FICHA_RAPIDA"), [avisos]);
   const publicLandingUrl = useMemo(() => {
     if (!escolaSlug || escolaId !== contextEscolaId) return null;
     return `https://klasse.ao/admissoes/${escolaSlug}`;
@@ -493,15 +455,6 @@ export function Dashboard({
       description: `Matrículas confirmadas · ${anoLetivoLabel}`,
       href: matriculadosHref,
       action: "Ver alunos matriculados",
-    },
-    {
-      key: "matriculas",
-      label: "Matrículas de hoje",
-      value: counts?.matriculas,
-      icon: UserPlus,
-      description: "Matrículas criadas hoje na escola.",
-      href: buildPortalHref(escolaParam, "/secretaria/matriculas"),
-      action: "Consultar matrículas",
     },
     {
       key: "turmas",
@@ -570,7 +523,6 @@ export function Dashboard({
           <EstadoVitalBanner
             estado={academicState}
             compact
-            showSignature={false}
             calendarHref={buildPortalHref(
               escolaParam,
               "/secretaria/calendario",
@@ -604,14 +556,91 @@ export function Dashboard({
             )}
           </div>
         )}
-        {alerts.length > 0 && (
-          <RadarOperacional
-            alerts={alerts}
-            role="secretaria"
-            variant="compact"
-          />
-        )}
       </div>
+
+      <section
+        aria-labelledby="secretaria-caixa-title"
+        className="min-w-0 space-y-4"
+      >
+        <h2
+          id="secretaria-caixa-title"
+          className="text-base font-semibold text-foreground"
+        >
+          O meu caixa hoje
+        </h2>
+        {escolaId && showOperationalPanels ? (
+          <ResumoCaixaSecretaria escolaId={escolaId} refreshKey={refreshKey} />
+        ) : (
+          <div className="grid min-w-0 gap-4 @min-[520px]:grid-cols-2">
+            {[0, 1].map((key) => (
+              <OperationalMetricSkeleton key={key} />
+            ))}
+          </div>
+        )}
+      </section>
+
+      <section
+        aria-labelledby="secretaria-resumo-title"
+        className="min-w-0 space-y-4"
+      >
+        <div className="flex flex-wrap items-baseline justify-between gap-2">
+          <h2
+            id="secretaria-resumo-title"
+            className="text-base font-semibold text-foreground"
+          >
+            Visão geral da secretaria
+          </h2>
+          <p className="text-xs text-muted-foreground">
+            Ano lectivo {anoLetivoLabel}
+          </p>
+        </div>
+        <div className="operations-daily-grid grid">
+          {metrics.map((metric) => (
+            <OperationalMetricCard
+              key={metric.key}
+              label={metric.label}
+              value={metric.value}
+              icon={metric.icon}
+              description={metric.description}
+              needsAttention={
+                metric.key === "pendencias" && (metric.value ?? 0) > 0
+              }
+              onClick={() => setMetricKey(metric.key)}
+              dialogOpen={metricKey === metric.key}
+            />
+          ))}
+          {escolaId && <OperacoesPainelHub escolaId={escolaId} onlyReopen inlineReopen key={escolaId} />}
+          {escolaId && !currentProductivity ? (
+            <>
+              <div role="status" aria-label="A carregar fichas incompletas e avisos" aria-busy="true">
+                <OperationalMetricSkeleton />
+              </div>
+              <OperationalMetricSkeleton />
+            </>
+          ) : (
+            <>
+              <OperationalMetricCard
+                label="Fichas incompletas"
+                icon={FileWarning}
+                value={currentProductivity?.count ?? null}
+                needsAttention={(currentProductivity?.count ?? 0) > 0}
+                description="Alunos com dados ou documentos em falta"
+                onClick={() => setNoticeView("fichas")}
+                dialogOpen={noticeView === "fichas"}
+              />
+              <OperationalMetricCard
+                label="Avisos gerais"
+                icon={Megaphone}
+                value={currentProductivity && !currentProductivity.error ? generalAvisos.length : null}
+                needsAttention={generalAvisos.some(item => item.is_priority)}
+                description="Avisos disponíveis nesta consulta"
+                onClick={() => setNoticeView("general")}
+                dialogOpen={noticeView === "general"}
+              />
+            </>
+          )}
+        </div>
+      </section>
 
       <section
         aria-labelledby="secretaria-atendimento-title"
@@ -754,103 +783,6 @@ export function Dashboard({
       </section>
 
       <section
-        aria-labelledby="secretaria-caixa-title"
-        className="min-w-0 space-y-4"
-      >
-        <h2
-          id="secretaria-caixa-title"
-          className="text-base font-semibold text-foreground"
-        >
-          O meu caixa hoje
-        </h2>
-        {escolaId && showOperationalPanels ? (
-          <ResumoCaixaSecretaria escolaId={escolaId} refreshKey={refreshKey} />
-        ) : (
-          <div className="operations-daily-grid grid">
-            {[0, 1, 2].map((key) => (
-              <OperationalMetricSkeleton key={key} />
-            ))}
-          </div>
-        )}
-      </section>
-
-      <section
-        aria-labelledby="secretaria-resumo-title"
-        className="min-w-0 space-y-4"
-      >
-        <div className="flex flex-wrap items-baseline justify-between gap-2">
-          <h2
-            id="secretaria-resumo-title"
-            className="text-base font-semibold text-foreground"
-          >
-            Visão geral da secretaria
-          </h2>
-          <p className="text-xs text-muted-foreground">
-            Ano lectivo {anoLetivoLabel}
-          </p>
-        </div>
-        <div className="operations-kpi-grid grid">
-          {metrics.map((metric) => (
-            <OperationalMetricCard
-              key={metric.key}
-              label={metric.label}
-              value={metric.value}
-              icon={metric.icon}
-              description={metric.description}
-              needsAttention={
-                metric.key === "pendencias" && (metric.value ?? 0) > 0
-              }
-              onClick={() => setMetricKey(metric.key)}
-              dialogOpen={metricKey === metric.key}
-            />
-          ))}
-        </div>
-      </section>
-
-      <div className="grid min-w-0 gap-6 @min-[920px]:grid-cols-2">
-        <section
-          aria-label="Acompanhamento do dia"
-          className="min-w-0 space-y-4"
-        >
-          {escolaId && showOperationalPanels ? (
-            <MinhaProdutividade
-              key={refreshKey}
-              escolaId={escolaId}
-              onData={handleProdutividadeData}
-              onAtenderAluno={(alunoId) => {
-                setSelectedAlunoIdForBalcao(alunoId);
-                setBalcaoModal("atendimento_aluno");
-              }}
-            />
-          ) : (
-            <div
-              role="status"
-              aria-label="A carregar atividade do dia"
-              className="h-40 rounded-xl bg-muted motion-safe:animate-pulse"
-            />
-          )}
-          {escolaId && <OperacoesPainelHub escolaId={escolaId} onlyReopen />}
-        </section>
-        <section
-          aria-labelledby="secretaria-avisos-title"
-          className="min-w-0 space-y-4"
-        >
-          <h2
-            id="secretaria-avisos-title"
-            className="text-base font-semibold text-foreground"
-          >
-            Avisos gerais
-          </h2>
-          <NoticePanel
-            items={avisos}
-            showHeader={false}
-            onAction={handleNoticeAction}
-            onSnooze={refreshProdutividade}
-          />
-        </section>
-      </div>
-
-      <section
         aria-labelledby="secretaria-gestao-title"
         className="min-w-0 space-y-4"
       >
@@ -863,21 +795,9 @@ export function Dashboard({
         <div className="operations-actions-grid grid">
           <AcaoRapidaCard
             dashboardCompact
-            icon={<Users className="h-5 w-5" />}
-            label="Alunos"
-            href={buildPortalHref(escolaParam, "/secretaria/alunos")}
-          />
-          <AcaoRapidaCard
-            dashboardCompact
             icon={<UserCheck className="h-5 w-5" />}
             label="Professores"
             href={buildPortalHref(escolaParam, "/secretaria/professores")}
-          />
-          <AcaoRapidaCard
-            dashboardCompact
-            icon={<UsersRound className="h-5 w-5" />}
-            label="Turmas"
-            href={buildPortalHref(escolaParam, "/secretaria/turmas")}
           />
           <AcaoRapidaCard
             dashboardCompact
@@ -906,6 +826,7 @@ export function Dashboard({
         title="Pesquisa global"
         description="Pesquisar alunos, matrículas e documentos"
         size="medium"
+        desktopPresentation="centered"
       >
         <GlobalSearch
           escolaId={escolaId}
@@ -924,6 +845,7 @@ export function Dashboard({
         title={selectedMetric?.label ?? "Indicador"}
         description={`Secretaria · ${anoLetivoLabel}`}
         size="compact"
+        desktopPresentation="centered"
       >
         {selectedMetric && (
           <>
@@ -935,6 +857,17 @@ export function Dashboard({
                 ? "Dados indisponíveis."
                 : selectedMetric.description}
             </p>
+            {selectedMetric.key === "alunos" && (
+              <div className="rounded-xl border border-border p-3 text-sm">
+                <p className="text-muted-foreground">Matrículas de hoje</p>
+                <p className="mt-1 text-xl font-semibold tabular-nums text-foreground">
+                  {counts?.matriculas?.toLocaleString("pt-AO") ?? "—"}
+                </p>
+                <Link href={buildPortalHref(escolaParam, "/secretaria/matriculas")} className="mt-2 inline-flex text-sm font-medium text-foreground underline-offset-4 hover:underline">
+                  Consultar matrículas
+                </Link>
+              </div>
+            )}
             <Link
               href={selectedMetric.href}
               className="inline-flex min-h-11 items-center justify-center rounded-xl border border-border px-4 text-sm font-semibold text-foreground hover:bg-muted"
@@ -945,13 +878,39 @@ export function Dashboard({
         )}
       </PortalSheet>
 
+      <PortalSheet
+        open={noticeView !== null}
+        onClose={() => setNoticeView(null)}
+        title={noticeView === "fichas" ? "Fichas incompletas" : "Avisos gerais"}
+        description={noticeView === "fichas" ? "Regularize os dados dos alunos." : "Consulte os avisos que precisam de atenção."}
+        size="expanded"
+        desktopPresentation="centered"
+      >
+        {(!currentProductivity || currentProductivity.error) && (
+          <div role="status" className="space-y-2 text-sm text-muted-foreground">
+            <p>{currentProductivity?.error ? "Não foi possível carregar todos os avisos." : "A carregar avisos..."}</p>
+            {currentProductivity?.error && <button type="button" className="min-h-10 rounded-xl border border-border px-3 text-foreground" onClick={refreshProdutividade}>Tentar novamente</button>}
+          </div>
+        )}
+        <NoticePanel
+          key={noticeView ?? "closed"}
+          items={noticeView === "fichas" ? fichaAvisos : generalAvisos}
+          showHeader={false}
+          availableFiltersOnly
+          onAction={handleNoticeAction}
+          onSnooze={refreshProdutividade}
+        />
+        {noticeView === "fichas" && <Link
+          href={buildPortalHref(escolaParam, "/secretaria/alunos")}
+          className="inline-flex min-h-11 items-center rounded-xl border border-border px-4 text-sm font-medium text-foreground"
+        >Consultar todos os alunos</Link>}
+      </PortalSheet>
+
       {selectedAlunoIdForFicha && (
         <FichaRapidaModal
           alunoId={selectedAlunoIdForFicha}
           onClose={() => setSelectedAlunoIdForFicha(null)}
-          onSuccess={() => {
-            // Opcional: recarregar dados ou apenas deixar o aviso sumir no próximo refresh
-          }}
+          onSuccess={refreshProdutividade}
         />
       )}
 

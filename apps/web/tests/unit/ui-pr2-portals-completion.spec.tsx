@@ -47,7 +47,9 @@ test("secretary dashboard skeletons are accessible, theme-aware and non-blocking
   assert.match(skeleton, /motion-safe:animate-pulse/);
   assert.doesNotMatch(skeleton, /rounded-2xl|space-y-8 animate-pulse/);
   assert.match(dashboard, /A carregar resumo de caixa/);
-  assert.match(dashboard, /A carregar produtividade/);
+  assert.match(dashboard, /aria-label="A carregar fichas incompletas e avisos" aria-busy="true"/);
+  assert.match(dashboard, /escolaId && !currentProductivity \? \([\s\S]*?<OperationalMetricSkeleton/);
+  assert.doesNotMatch(dashboard, /<MinhaProdutividade/);
   assert.match(dashboard, /A carregar formulário/);
 });
 

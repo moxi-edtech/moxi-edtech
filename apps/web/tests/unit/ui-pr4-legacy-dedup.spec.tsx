@@ -24,7 +24,9 @@ test("duplicate dashboard/secretary panels are removed; live widgets keep their 
   assert.match(activeTask, /EstadoVazio/);
   assert.match(activeNotice, /itemsFiltrados/);
   assert.match(activeNotice, /onSnooze/);
-  assert.match(activeNotice, /aria-pressed=\{filtro === cat\.id\}/);
+  assert.match(activeNotice, /aria-pressed=\{filtroAtivo === cat\.id\}/);
+  assert.match(activeNotice, /const filtroAtivo = categorias\.some\(cat => cat\.id === filtro\) \? filtro : 'all'/);
+  assert.match(activeNotice, /items\.some\(item => item\.type === cat\.id\)/);
   assert.match(activeNotice, /bg-card/);
   assert.match(activeTask, /<TaskItem/);
   assert.match(source("app/secretaria/(portal-secretaria)/Dashboard.tsx"), /@\/components\/dashboard/);
