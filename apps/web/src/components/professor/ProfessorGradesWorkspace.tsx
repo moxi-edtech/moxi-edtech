@@ -165,6 +165,8 @@ export function ProfessorGradesWorkspace({ embedded = false, requestedAnoLetivoI
   const [academicMode, setAcademicMode] = useState<"CURRENT" | "HISTORICAL_READ">("CURRENT")
   const [loading, setLoading] = useState(false)
   const [periodosAtivos, setPeriodosAtivos] = useState<Array<1 | 2 | 3>>([])
+  const periodScope = JSON.stringify([turmaId, anoLetivoId])
+  const [loadedPeriodScope, setLoadedPeriodScope] = useState<string | null>(null)
   const [periodosDetalhes, setPeriodosDetalhes] = useState<GradePeriodRow[]>([])
   const [loadingPeriodos, setLoadingPeriodos] = useState(false)
   const [periodosError, setPeriodosError] = useState<string | null>(null)
@@ -177,6 +179,7 @@ export function ProfessorGradesWorkspace({ embedded = false, requestedAnoLetivoI
   const requestedTrimestre = Number(requestedTerm)
   const requestedTrimestreValid = requestedTrimestre === 1 || requestedTrimestre === 2 || requestedTrimestre === 3
   const [trimestreSelecionado, setTrimestreSelecionado] = useState<1 | 2 | 3>(requestedTrimestreValid ? requestedTrimestre as 1 | 2 | 3 : 1)
+  const selectedPeriodReady = loadedPeriodScope === periodScope && periodosAtivos.includes(trimestreSelecionado)
   const [savingNow, setSavingNow] = useState(false)
   const [contextOpen, setContextOpen] = useState(false)
   const [completingGrades, setCompletingGrades] = useState(false)
@@ -199,7 +202,7 @@ export function ProfessorGradesWorkspace({ embedded = false, requestedAnoLetivoI
   const raaInFlight = useRef(false)
   const raaScope = JSON.stringify([turmaId, disciplinaId, anoLetivoId, turmaDisciplinaId, trimestreSelecionado])
   const [loadedPautaScope, setLoadedPautaScope] = useState<string | null>(null)
-  const pautaReady = loadedPautaScope === raaScope
+  const pautaReady = selectedPeriodReady && loadedPautaScope === raaScope
   const raaScopeRef = useRef(raaScope)
   const [raaResult, setRaaResult] = useState<RaaEligibilityResponse | null>(null)
   const [loadingRaa, setLoadingRaa] = useState(false)
@@ -265,7 +268,7 @@ export function ProfessorGradesWorkspace({ embedded = false, requestedAnoLetivoI
   }, [atribs, turmaId])
 
   useEffect(() => {
-    if (!turmaId || !disciplinaId || !anoLetivoId) {
+    if (!turmaId || !disciplinaId || !anoLetivoId || !selectedPeriodReady) {
       reopenLoadedKey.current = null
       setReopenRequest(null)
       setReopenHistory([])
@@ -294,7 +297,7 @@ export function ProfessorGradesWorkspace({ embedded = false, requestedAnoLetivoI
     if (reopenLoadedKey.current !== key) void loadReopenRequests()
     const timer = window.setInterval(() => void loadReopenRequests(true), 30_000)
     return () => { controller.abort(); window.clearInterval(timer) }
-  }, [turmaId, disciplinaId, trimestreSelecionado, anoLetivoId, frameActive, read])
+  }, [turmaId, disciplinaId, trimestreSelecionado, anoLetivoId, frameActive, read, selectedPeriodReady])
 
   const handleRequestReopen = async () => {
     if (requestingReopen) return
@@ -318,7 +321,7 @@ export function ProfessorGradesWorkspace({ embedded = false, requestedAnoLetivoI
   }
 
   useEffect(() => {
-    if (!turmaId || !disciplinaId) {
+    if (!turmaId || !disciplinaId || !anoLetivoId || !selectedPeriodReady) {
       setPauta([])
       setMatriculaIds({}); setLoadedPautaScope(null)
       return
@@ -401,7 +404,7 @@ export function ProfessorGradesWorkspace({ embedded = false, requestedAnoLetivoI
     return () => {
       active = false
     }
-  }, [turmaId, disciplinaId, turmaDisciplinaId, trimestreSelecionado, anoLetivoId, pautaReload, read])
+  }, [turmaId, disciplinaId, turmaDisciplinaId, trimestreSelecionado, anoLetivoId, pautaReload, read, selectedPeriodReady])
 
   useEffect(() => {
     setExamSessions([])
@@ -586,7 +589,8 @@ export function ProfessorGradesWorkspace({ embedded = false, requestedAnoLetivoI
   }, [turmaId, disciplinaId, anoLetivoId, raaRisksRetry, read])
 
   useEffect(() => {
-    if (!turmaId) {
+    setLoadedPeriodScope(null)
+    if (!turmaId || !anoLetivoId) {
       setPeriodosAtivos([])
       setPeriodosDetalhes([])
       setPeriodosError(null)
@@ -621,6 +625,7 @@ export function ProfessorGradesWorkspace({ embedded = false, requestedAnoLetivoI
             ? current as 1 | 2 | 3
             : (numeros[0] ?? 1)
         setTrimestreSelecionado(chosen)
+        setLoadedPeriodScope(periodScope)
       } catch (cause) {
         if (active) {
           setPeriodosAtivos([])
@@ -636,7 +641,7 @@ export function ProfessorGradesWorkspace({ embedded = false, requestedAnoLetivoI
     return () => {
       active = false
     }
-  }, [turmaId, anoLetivoId, periodosRetry, requestedTrimestre, requestedTrimestreValid, read])
+  }, [turmaId, anoLetivoId, periodosRetry, requestedTrimestre, requestedTrimestreValid, read, periodScope])
 
   const handleSaveBatch = async (rows: StudentGradeRow[]) => {
     if (gradeConflictRef.current) throw new Error("GRADE_CONFLICT: recarregue a pauta.")
@@ -761,7 +766,7 @@ export function ProfessorGradesWorkspace({ embedded = false, requestedAnoLetivoI
 
   const completionKey = `${anoLetivoId}:${turmaDisciplinaId}:${trimestreSelecionado}`
   useEffect(() => {
-    if (!anoLetivoId || !turmaId || !disciplinaId || !turmaDisciplinaId || !online) return
+    if (!anoLetivoId || !turmaId || !disciplinaId || !turmaDisciplinaId || !online || !selectedPeriodReady) return
     const controller = new AbortController()
     const params = new URLSearchParams({
       ano_letivo_id: anoLetivoId,
@@ -782,7 +787,7 @@ export function ProfessorGradesWorkspace({ embedded = false, requestedAnoLetivoI
       }
     }).catch(() => undefined)
     return () => controller.abort()
-  }, [anoLetivoId, turmaId, disciplinaId, turmaDisciplinaId, trimestreSelecionado, online, completionKey, read])
+  }, [anoLetivoId, turmaId, disciplinaId, turmaDisciplinaId, trimestreSelecionado, online, completionKey, read, selectedPeriodReady])
   const hasUnsavedGrades = useMemo(() => {
     const persisted = new Map(pauta.map((row) => [row.id, row]))
     return gradeDraft.some((row) => {
