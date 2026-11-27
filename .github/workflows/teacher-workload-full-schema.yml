@@ -25,6 +25,7 @@ jobs:
           mkdir -p "$RUNNER_TEMP/klasse-workload"
           cd "$RUNNER_TEMP/klasse-workload"
           supabase init
+          mkdir -p supabase/migrations
           sed -i -E 's/^major_version = [0-9]+/major_version = 17/' supabase/config.toml
           cp "$GITHUB_WORKSPACE"/supabase/migrations/*.sql supabase/migrations/
           test -s supabase/migrations/20271204034000_teacher_workload_docencia.sql
