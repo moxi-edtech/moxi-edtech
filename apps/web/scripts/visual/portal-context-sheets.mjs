@@ -355,6 +355,7 @@ async function validateDashboardNavigation() {
   const count = path => page.evaluate(path => window.drawerRequests.filter(url => url === path).length, path);
   const click = (scope, name) => scope.getByRole("button", {name,exact:true}).first().click();
   const child = async (name, title) => {
+    console.log("Drawer navigation:", name, "→", title);
     const parent = await dialog.getAttribute("aria-labelledby");
     const heading = await page.locator("[id]").evaluateAll((els, id) => els.find(el => el.id === id)?.textContent, parent);
     await click(dialog, name);
@@ -402,7 +403,7 @@ async function validateDashboardNavigation() {
     await child(/Secretaria Digital/,"Documentos e serviços");
     await close();
     await visit("professor-com-turmas");
-    const turma = page.getByRole("button",{name:/7.*Classe A.*Matemática.*Portuguesa/i}).first();
+    const turma = page.getByRole("button",{name:/Matemática.*Língua Portuguesa/}).first();
     await turma.click();
     for (const [label,title] of [["Chamada","Registar chamada"],["Notas","Lançamento de notas"],["Plano de aula","Planos de aula"],["Materiais","Materiais pedagógicos"],["Horário da turma","Horário da turma"],["Aluno sintético","Aluno sintético"]]) await child(label,title);
     assert.equal(await count("/api/professor/agenda"),0);
