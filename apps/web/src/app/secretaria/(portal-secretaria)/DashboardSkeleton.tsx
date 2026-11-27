@@ -35,8 +35,8 @@ export default function DashboardSkeleton() {
           aria-hidden="true"
           className="h-5 w-48 rounded-xl bg-muted motion-safe:animate-pulse"
         />
-        <div className="operations-daily-grid grid">
-          {[0, 1, 2].map((key) => (
+        <div className="operations-kpi-grid grid">
+          {[0, 1, 2, 3].map((key) => (
             <OperationalMetricSkeleton key={key} />
           ))}
         </div>
