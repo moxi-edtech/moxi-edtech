@@ -5,7 +5,7 @@ import { EstadoVitalBanner } from "../src/components/layout/escola-admin/EstadoV
 import { PortalDrawerNavigator } from "../src/components/portal/ui/PortalDrawerNavigator";
 import { AcademicoWorkspace } from "../src/components/aluno/academico/AcademicoWorkspace";
 import { RematriculaBanner } from "../src/components/aluno/home/RematriculaBanner";
-import { DesistenciaMatriculaAction } from "../src/components/matriculas/DesistenciaMatriculaAction";
+import { ProfessorFrequenciasWorkspace } from "../src/components/professor/ProfessorFrequenciasWorkspace";
 import { PortalSheet } from "../src/components/portal/ui/PortalSheet";
 import { ModalShell } from "../src/components/ui/ModalShell";
 import { FilaAtendimentoModal } from "../src/components/secretaria/FilaAtendimentoModal";
@@ -417,7 +417,7 @@ function DrawerDataFixture() {
   const flow = new URLSearchParams(location.search).get("flow");
   const content = flow === "academic" ? <AcademicoWorkspace embedded />
     : flow === "enrollment" ? <RematriculaBanner embedded />
-    : <DesistenciaMatriculaAction tipo="sinalizar" alunoId="fixture-student" alunoNome="Aluno sintético" turmaId="fixture-class" matriculaId="fixture-enrollment" />;
+    : <ProfessorFrequenciasWorkspace embedded urlTurmaId="fixture-class" urlDisciplinaId="disc" />;
   return <FeedbackProvider>
     <button onClick={() => setOpen(true)}>Abrir portal</button>
     <PortalDrawerNavigator open={open} root={{ id: "fixture", title: "Portal", description: "Teste de navegação", content }}
