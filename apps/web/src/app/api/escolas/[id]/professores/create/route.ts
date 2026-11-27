@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
+import { isTeacherBiValid, normalizeTeacherBi } from '@/lib/escola/teacher-bi'
 import type { Database } from '~types/supabase'
 import { createRouteClient } from '@/lib/supabase/route-client'
 import { resolveEscolaIdForUser } from '@/lib/tenant/resolveEscolaIdForUser'
@@ -19,7 +20,7 @@ const BodySchema = z.object({
     const d = new Date(v + 'T00:00:00Z')
     return Number.isFinite(d.getTime()) && d.toISOString().slice(0, 10) === v && v <= new Date().toISOString().slice(0, 10)
   }, 'Informe uma data de nascimento válida'),
-  numero_bi: z.string().trim().transform(v => v.toUpperCase()).refine(v => !v || (/^[A-Z0-9]{14}$/.test(v) && !/^0+$/.test(v)), 'Informe um BI válido de 14 caracteres ou deixe em branco').nullish(),
+  numero_bi: z.string().nullish().refine(isTeacherBiValid, 'Informe um BI válido de 14 caracteres ou deixe em branco').transform(normalizeTeacherBi),
   email: z.string().email(),
   telefone_principal: z.string().trim().nullable().optional(),
   habilitacoes: z.enum(['Ensino Médio', 'Bacharelato', 'Licenciatura', 'Mestrado', 'Doutoramento']),
