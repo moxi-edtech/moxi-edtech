@@ -82,7 +82,7 @@ REVOKE ALL ON FUNCTION public.teacher_workload_exceeds(uuid,uuid,integer,bigint,
 CREATE FUNCTION public.configure_teacher_workload_atomic(p_escola_id uuid,p_professor_id uuid,
   p_unidade text,p_limite integer,p_contratual_minutos integer DEFAULT NULL)
 RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path = '' AS $$
-DECLARE v_actor uuid:=(SELECT auth.uid());
+DECLARE v_actor uuid:=(SELECT auth.uid()); v_ano uuid; v_tempos integer; v_minutos bigint;
 BEGIN
  IF v_actor IS NULL OR NOT EXISTS (SELECT 1 FROM public.escola_users eu
  WHERE eu.escola_id=p_escola_id AND eu.user_id=v_actor AND COALESCE(eu.papel,eu.role) IN ('admin','admin_escola','admin_secretaria','admin_secretario','admin_financeiro','diretor','staff_admin','secretaria','secretaria_financeiro'))
@@ -93,6 +93,14 @@ BEGIN
    OR (p_contratual_minutos IS NOT NULL AND p_contratual_minutos NOT BETWEEN 1 AND 10080)
  THEN RAISE EXCEPTION 'TEACHER_LOAD_INVALID'; END IF;
  PERFORM pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended('klasse:teacher-assign:'||p_escola_id::text,0));
+ SELECT a.id INTO v_ano FROM public.anos_letivos a WHERE a.escola_id=p_escola_id AND a.ativo
+ ORDER BY a.data_inicio DESC NULLS LAST,a.ano DESC,a.id LIMIT 1;
+ IF v_ano IS NOT NULL THEN
+   SELECT w.tempos,w.minutos INTO v_tempos,v_minutos FROM public.teacher_weekly_load_internal(p_escola_id,v_ano,p_professor_id) w;
+   IF p_unidade='minutos' AND v_minutos IS NULL THEN RAISE EXCEPTION 'TEACHER_LOAD_DURATION_UNCONFIGURED'; END IF;
+   IF (p_unidade='tempos' AND v_tempos>p_limite) OR (p_unidade='minutos' AND v_minutos>p_limite)
+   THEN RAISE EXCEPTION 'TEACHER_LOAD_BELOW_ASSIGNED'; END IF;
+ END IF;
  UPDATE public.teachers t SET
    carga_horaria_maxima=CASE WHEN p_unidade='tempos' THEN p_limite ELSE t.carga_horaria_maxima END,
    carga_lectiva_limite_minutos=CASE WHEN p_unidade='minutos' THEN p_limite ELSE NULL END,
@@ -141,6 +149,11 @@ BEGIN
     RAISE EXCEPTION 'ASSIGN_PROF_FORBIDDEN';
   END IF;
 
+  -- Use the exact same lock as the batch RPC, BEFORE reading workload.
+  PERFORM pg_catalog.pg_advisory_xact_lock(
+    pg_catalog.hashtextextended('klasse:teacher-assign:' || p_escola_id::text, 0)
+  );
+
   SELECT a.id INTO v_ano_id
   FROM public.anos_letivos a
   WHERE a.escola_id = p_escola_id AND a.ativo = true
@@ -150,10 +163,6 @@ BEGIN
     RAISE EXCEPTION 'ASSIGN_PROF_ANO_INATIVO';
   END IF;
 
-  -- Use the exact same lock as the batch RPC, BEFORE reading workload.
-  PERFORM pg_catalog.pg_advisory_xact_lock(
-    pg_catalog.hashtextextended('klasse:teacher-assign:' || p_escola_id::text, 0)
-  );
 
   -- Verify the actual offering in the active academic year. No draft or
   -- archived matrices, and never use a matrix of another class/course.
@@ -444,6 +453,7 @@ CREATE FUNCTION public.assign_teacher_regime_atomic(p_escola_id uuid,p_turma_id 
   p_professor_id uuid DEFAULT NULL,p_matriz_ids uuid[] DEFAULT NULL)
 RETURNS integer LANGUAGE plpgsql SECURITY DEFINER SET search_path = '' AS $$
 DECLARE v_actor uuid:=(SELECT auth.uid()); v_ano uuid; v_item uuid; v_ids uuid[]; v_total integer:=0;
+ v_regime_actual text; v_titular_actual uuid;
 BEGIN
  IF v_actor IS NULL OR NOT EXISTS (SELECT 1 FROM public.escola_users eu WHERE eu.escola_id=p_escola_id
     AND eu.user_id=v_actor AND COALESCE(eu.papel,eu.role) IN ('admin','admin_escola','admin_secretaria','admin_secretario','admin_financeiro','diretor','staff_admin','secretaria','secretaria_financeiro'))
@@ -452,8 +462,13 @@ BEGIN
  PERFORM pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended('klasse:teacher-assign:'||p_escola_id::text,0));
  SELECT a.id INTO v_ano FROM public.anos_letivos a WHERE a.escola_id=p_escola_id AND a.ativo
  ORDER BY a.data_inicio DESC NULLS LAST,a.ano DESC,a.id LIMIT 1;
- IF NOT EXISTS(SELECT 1 FROM public.turmas tu WHERE tu.id=p_turma_id AND tu.escola_id=p_escola_id AND tu.session_id=v_ano)
- THEN RAISE EXCEPTION 'TEACHER_REGIME_TURMA_INVALID'; END IF;
+ SELECT tu.regime_docencia,tu.professor_titular_id INTO v_regime_actual,v_titular_actual
+ FROM public.turmas tu WHERE tu.id=p_turma_id AND tu.escola_id=p_escola_id AND tu.session_id=v_ano FOR UPDATE;
+ IF NOT FOUND THEN RAISE EXCEPTION 'TEACHER_REGIME_TURMA_INVALID'; END IF;
+ IF p_regime='monodocencia' AND v_titular_actual IS NOT NULL AND v_titular_actual IS DISTINCT FROM p_professor_id
+ THEN RAISE EXCEPTION 'TEACHER_REGIME_TITULAR_CONFLICT'; END IF;
+ IF p_regime='misto' AND v_regime_actual='monodocencia' AND v_titular_actual IS DISTINCT FROM p_professor_id
+ THEN RAISE EXCEPTION 'TEACHER_REGIME_TITULAR_CONFLICT'; END IF;
  IF p_regime='pluridocencia' THEN
    IF p_professor_id IS NOT NULL OR p_matriz_ids IS NOT NULL THEN RAISE EXCEPTION 'TEACHER_REGIME_INVALID'; END IF;
    UPDATE public.turmas SET regime_docencia=p_regime,professor_titular_id=NULL WHERE id=p_turma_id AND escola_id=p_escola_id;
@@ -471,12 +486,17 @@ BEGIN
  WHERE td.escola_id=p_escola_id AND td.turma_id=p_turma_id;
  IF COALESCE(cardinality(v_ids),0)=0 THEN RAISE EXCEPTION 'TEACHER_REGIME_NO_OFFERINGS'; END IF;
  IF p_regime='misto' THEN
-   IF COALESCE(cardinality(p_matriz_ids),0)=0 OR array_position(p_matriz_ids,NULL) IS NOT NULL
+   IF COALESCE(cardinality(p_matriz_ids),0)=0 OR cardinality(p_matriz_ids)>100 OR array_position(p_matriz_ids,NULL) IS NOT NULL
        OR NOT p_matriz_ids <@ v_ids THEN RAISE EXCEPTION 'TEACHER_REGIME_INVALID_SUBSET'; END IF;
    v_ids:=ARRAY(SELECT DISTINCT x FROM unnest(p_matriz_ids) x ORDER BY x);
  ELSIF p_matriz_ids IS NOT NULL THEN RAISE EXCEPTION 'TEACHER_REGIME_INVALID_SUBSET'; END IF;
  -- Configure within the same transaction so the single-RPC mono guard is effective.
- UPDATE public.turmas SET regime_docencia=p_regime,professor_titular_id=p_professor_id WHERE id=p_turma_id AND escola_id=p_escola_id;
+ -- Subset assignment must not silently downgrade monodocência or replace the titular.
+ IF NOT (p_regime='misto' AND v_regime_actual='monodocencia') THEN
+   UPDATE public.turmas SET regime_docencia=p_regime,
+     professor_titular_id=COALESCE(v_titular_actual,p_professor_id)
+   WHERE id=p_turma_id AND escola_id=p_escola_id;
+ END IF;
  FOREACH v_item IN ARRAY v_ids LOOP
    PERFORM public.assign_professor_turma_disciplina_atomic(p_escola_id,p_turma_id,v_item,p_professor_id,NULL,NULL);
    v_total:=v_total+1;
@@ -508,3 +528,50 @@ END
 $$;
 REVOKE ALL ON FUNCTION public.get_teacher_workload_config(uuid,uuid) FROM PUBLIC,anon,authenticated;
 GRANT EXECUTE ON FUNCTION public.get_teacher_workload_config(uuid,uuid) TO authenticated;
+
+-- Protect new configuration from direct PostgREST writes, without breaking existing
+-- ordinary turma and teacher writes. This trigger must remain SECURITY INVOKER.
+CREATE FUNCTION public.guard_teacher_workload_config_write()
+RETURNS trigger LANGUAGE plpgsql SET search_path='' AS $$
+BEGIN
+ IF current_user IN ('anon','authenticated') THEN
+  IF TG_TABLE_NAME='teachers' THEN
+   IF TG_OP='INSERT' THEN
+    IF NEW.carga_contratual_minutos IS NOT NULL OR NEW.carga_lectiva_limite_minutos IS NOT NULL THEN RAISE EXCEPTION 'TEACHER_CONFIG_RPC_REQUIRED'; END IF;
+   ELSIF NEW.carga_contratual_minutos IS DISTINCT FROM OLD.carga_contratual_minutos OR NEW.carga_lectiva_limite_minutos IS DISTINCT FROM OLD.carga_lectiva_limite_minutos THEN
+    RAISE EXCEPTION 'TEACHER_CONFIG_RPC_REQUIRED';
+   END IF;
+  ELSE
+   IF TG_OP='INSERT' THEN
+    IF NEW.regime_docencia<>'pluridocencia' OR NEW.professor_titular_id IS NOT NULL OR NEW.tempo_lectivo_minutos IS NOT NULL THEN RAISE EXCEPTION 'TEACHER_CONFIG_RPC_REQUIRED'; END IF;
+   ELSIF NEW.regime_docencia IS DISTINCT FROM OLD.regime_docencia OR NEW.professor_titular_id IS DISTINCT FROM OLD.professor_titular_id OR NEW.tempo_lectivo_minutos IS DISTINCT FROM OLD.tempo_lectivo_minutos THEN
+    RAISE EXCEPTION 'TEACHER_CONFIG_RPC_REQUIRED';
+   END IF;
+  END IF;
+ END IF;
+ RETURN NEW;
+END $$;
+REVOKE ALL ON FUNCTION public.guard_teacher_workload_config_write() FROM PUBLIC,anon,authenticated;
+CREATE TRIGGER trg_guard_teacher_workload_config BEFORE INSERT OR UPDATE ON public.teachers
+ FOR EACH ROW EXECUTE FUNCTION public.guard_teacher_workload_config_write();
+CREATE TRIGGER trg_guard_turma_docencia_config BEFORE INSERT OR UPDATE ON public.turmas
+ FOR EACH ROW EXECUTE FUNCTION public.guard_teacher_workload_config_write();
+
+-- Protect monodocência even through other legacy writers, including service paths.
+CREATE FUNCTION public.guard_monodocencia_assignment()
+RETURNS trigger LANGUAGE plpgsql SET search_path='' AS $$
+DECLARE v_titular uuid;
+BEGIN
+ IF NEW.professor_id IS NULL THEN RETURN NEW; END IF;
+ SELECT t.professor_titular_id INTO v_titular FROM public.turmas t
+ WHERE t.id=NEW.turma_id AND t.escola_id=NEW.escola_id AND t.regime_docencia='monodocencia';
+ IF FOUND AND NEW.professor_id IS DISTINCT FROM v_titular THEN
+  RAISE EXCEPTION 'TEACHER_MONODOCENCIA_TITULAR_MISMATCH';
+ END IF;
+ RETURN NEW;
+END $$;
+REVOKE ALL ON FUNCTION public.guard_monodocencia_assignment() FROM PUBLIC,anon,authenticated;
+CREATE TRIGGER trg_guard_mono_td BEFORE INSERT OR UPDATE OF professor_id,turma_id,escola_id ON public.turma_disciplinas
+ FOR EACH ROW EXECUTE FUNCTION public.guard_monodocencia_assignment();
+CREATE TRIGGER trg_guard_mono_tdp BEFORE INSERT OR UPDATE OF professor_id,turma_id,escola_id ON public.turma_disciplinas_professores
+ FOR EACH ROW EXECUTE FUNCTION public.guard_monodocencia_assignment();
