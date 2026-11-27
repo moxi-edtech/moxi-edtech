@@ -557,21 +557,100 @@ CREATE TRIGGER trg_guard_teacher_workload_config BEFORE INSERT OR UPDATE ON publ
 CREATE TRIGGER trg_guard_turma_docencia_config BEFORE INSERT OR UPDATE ON public.turmas
  FOR EACH ROW EXECUTE FUNCTION public.guard_teacher_workload_config_write();
 
--- Protect monodocência even through other legacy writers, including service paths.
+-- Guard current published links even when an older writer bypasses the assignment RPC.
+-- Archived/draft curriculum is deliberately excluded. SECURITY DEFINER is read-only
+-- apart from the same transaction lock; no direct EXECUTE grant.
 CREATE FUNCTION public.guard_monodocencia_assignment()
-RETURNS trigger LANGUAGE plpgsql SET search_path='' AS $$
-DECLARE v_titular uuid;
+RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $$
+DECLARE v_titular uuid; v_regime text; v_ano uuid; v_disciplina uuid;
+ v_new_periods integer; v_count integer; v_limit_periods integer; v_limit_minutes integer;
+ v_current_periods integer; v_current_minutes bigint; v_existing boolean;
 BEGIN
  IF NEW.professor_id IS NULL THEN RETURN NEW; END IF;
- SELECT t.professor_titular_id INTO v_titular FROM public.turmas t
- WHERE t.id=NEW.turma_id AND t.escola_id=NEW.escola_id AND t.regime_docencia='monodocencia';
- IF FOUND AND NEW.professor_id IS DISTINCT FROM v_titular THEN
+ IF TG_OP='UPDATE' THEN
+   IF NEW.professor_id IS NOT DISTINCT FROM OLD.professor_id AND NEW.turma_id=OLD.turma_id AND NEW.escola_id=OLD.escola_id THEN
+     IF TG_TABLE_NAME='turma_disciplinas' THEN
+       IF NEW.curso_matriz_id=OLD.curso_matriz_id AND NEW.carga_horaria_semanal IS NOT DISTINCT FROM OLD.carga_horaria_semanal THEN RETURN NEW; END IF;
+     ELSIF NEW.disciplina_id=OLD.disciplina_id THEN RETURN NEW; END IF;
+   END IF;
+ END IF;
+ PERFORM pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended('klasse:teacher-assign:'||NEW.escola_id::text,0));
+ SELECT a.id INTO v_ano FROM public.anos_letivos a WHERE a.escola_id=NEW.escola_id AND a.ativo
+ ORDER BY a.data_inicio DESC NULLS LAST,a.ano DESC,a.id LIMIT 1;
+ SELECT t.professor_titular_id,t.regime_docencia INTO v_titular,v_regime FROM public.turmas t
+ WHERE t.id=NEW.turma_id AND t.escola_id=NEW.escola_id AND t.session_id=v_ano;
+ IF NOT FOUND THEN RETURN NEW; END IF;
+ IF TG_TABLE_NAME='turma_disciplinas' THEN
+  SELECT cm.disciplina_id,COALESCE(NEW.carga_horaria_semanal,cm.carga_horaria_semanal,0)
+  INTO v_disciplina,v_new_periods FROM public.curso_matriz cm
+  JOIN public.curso_curriculos cc ON cc.id=cm.curso_curriculo_id AND cc.escola_id=cm.escola_id
+    AND cc.ano_letivo_id=v_ano AND cc.status='published'
+  JOIN public.turmas tu ON tu.id=NEW.turma_id AND tu.escola_id=cm.escola_id
+    AND tu.curso_id=cm.curso_id AND tu.classe_id=cm.classe_id
+  WHERE cm.id=NEW.curso_matriz_id AND cm.escola_id=NEW.escola_id AND cm.ativo;
+  IF NOT FOUND THEN RETURN NEW; END IF;
+ ELSE
+  v_disciplina:=NEW.disciplina_id;
+  SELECT count(*)::integer,MAX(COALESCE(td.carga_horaria_semanal,cm.carga_horaria_semanal,0)) INTO v_count,v_new_periods
+  FROM public.turma_disciplinas td
+  JOIN public.curso_matriz cm ON cm.id=td.curso_matriz_id AND cm.escola_id=td.escola_id AND cm.ativo
+  JOIN public.turmas tu ON tu.id=td.turma_id AND tu.escola_id=td.escola_id AND tu.curso_id=cm.curso_id AND tu.classe_id=cm.classe_id
+  JOIN public.curso_curriculos cc ON cc.id=cm.curso_curriculo_id AND cc.escola_id=td.escola_id
+    AND cc.ano_letivo_id=v_ano AND cc.status='published'
+  WHERE td.escola_id=NEW.escola_id AND td.turma_id=NEW.turma_id AND cm.disciplina_id=v_disciplina;
+  IF v_count=0 THEN RETURN NEW; END IF;
+ END IF;
+ IF v_regime='monodocencia' AND NEW.professor_id IS DISTINCT FROM v_titular THEN
   RAISE EXCEPTION 'TEACHER_MONODOCENCIA_TITULAR_MISMATCH';
+ END IF;
+ -- Repeated writes to the second representation are not additional assignments.
+ SELECT EXISTS(SELECT 1 FROM public.turma_disciplinas td
+  JOIN public.curso_matriz cm ON cm.id=td.curso_matriz_id AND cm.escola_id=td.escola_id AND cm.ativo
+  JOIN public.curso_curriculos cc ON cc.id=cm.curso_curriculo_id AND cc.escola_id=td.escola_id AND cc.ano_letivo_id=v_ano AND cc.status='published'
+  WHERE td.escola_id=NEW.escola_id AND td.turma_id=NEW.turma_id AND cm.disciplina_id=v_disciplina AND td.professor_id=NEW.professor_id)
+ OR EXISTS(SELECT 1 FROM public.turma_disciplinas_professores tdp WHERE tdp.escola_id=NEW.escola_id
+ AND tdp.turma_id=NEW.turma_id AND tdp.disciplina_id=v_disciplina AND tdp.professor_id=NEW.professor_id)
+ INTO v_existing;
+ IF v_existing THEN
+   IF TG_TABLE_NAME='turma_disciplinas' AND TG_OP='UPDATE' THEN
+     IF NEW.carga_horaria_semanal IS NOT DISTINCT FROM OLD.carga_horaria_semanal AND NEW.curso_matriz_id=OLD.curso_matriz_id THEN RETURN NEW; END IF;
+   ELSE RETURN NEW; END IF;
+ END IF;
+ SELECT t.carga_horaria_maxima,t.carga_lectiva_limite_minutos INTO v_limit_periods,v_limit_minutes
+ FROM public.professores pr JOIN public.teachers t ON t.escola_id=pr.escola_id AND t.profile_id=pr.profile_id
+ WHERE pr.id=NEW.professor_id AND pr.escola_id=NEW.escola_id;
+ IF NOT FOUND THEN RAISE EXCEPTION 'ASSIGN_PROF_PROFESSOR_NOT_FOUND'; END IF;
+ SELECT w.tempos,w.minutos INTO v_current_periods,v_current_minutes
+ FROM public.teacher_weekly_load_internal(NEW.escola_id,v_ano,NEW.professor_id,NEW.turma_id,v_disciplina) w;
+ IF public.teacher_workload_exceeds(NEW.escola_id,NEW.turma_id,v_current_periods,v_current_minutes,
+    v_new_periods,v_limit_periods,v_limit_minutes) THEN
+  RAISE EXCEPTION 'ASSIGN_PROF_CARGA_EXCEEDED';
  END IF;
  RETURN NEW;
 END $$;
 REVOKE ALL ON FUNCTION public.guard_monodocencia_assignment() FROM PUBLIC,anon,authenticated;
-CREATE TRIGGER trg_guard_mono_td BEFORE INSERT OR UPDATE OF professor_id,turma_id,escola_id ON public.turma_disciplinas
+CREATE TRIGGER trg_guard_mono_td BEFORE INSERT OR UPDATE OF professor_id,turma_id,escola_id,curso_matriz_id,carga_horaria_semanal ON public.turma_disciplinas
  FOR EACH ROW EXECUTE FUNCTION public.guard_monodocencia_assignment();
-CREATE TRIGGER trg_guard_mono_tdp BEFORE INSERT OR UPDATE OF professor_id,turma_id,escola_id ON public.turma_disciplinas_professores
+CREATE TRIGGER trg_guard_mono_tdp BEFORE INSERT OR UPDATE OF professor_id,turma_id,escola_id,disciplina_id ON public.turma_disciplinas_professores
  FOR EACH ROW EXECUTE FUNCTION public.guard_monodocencia_assignment();
+
+-- Existing teacher edit/import endpoints also share the assignment lock when
+-- the effective legacy limit changes; unchanged historic overloads are preserved.
+CREATE FUNCTION public.guard_legacy_teacher_limit_change()
+RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $$
+DECLARE v_ano uuid; v_prof uuid; v_load integer;
+BEGIN
+ IF NEW.carga_horaria_maxima IS NOT DISTINCT FROM OLD.carga_horaria_maxima OR NEW.carga_lectiva_limite_minutos IS NOT NULL THEN RETURN NEW; END IF;
+ PERFORM pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended('klasse:teacher-assign:'||NEW.escola_id::text,0));
+ SELECT a.id INTO v_ano FROM public.anos_letivos a WHERE a.escola_id=NEW.escola_id AND a.ativo
+ ORDER BY a.data_inicio DESC NULLS LAST,a.ano DESC,a.id LIMIT 1;
+ SELECT pr.id INTO v_prof FROM public.professores pr WHERE pr.escola_id=NEW.escola_id AND pr.profile_id=NEW.profile_id;
+ IF v_ano IS NOT NULL AND v_prof IS NOT NULL THEN
+  SELECT w.tempos INTO v_load FROM public.teacher_weekly_load_internal(NEW.escola_id,v_ano,v_prof) w;
+  IF v_load>NEW.carga_horaria_maxima THEN RAISE EXCEPTION 'TEACHER_LOAD_BELOW_ASSIGNED'; END IF;
+ END IF;
+ RETURN NEW;
+END $$;
+REVOKE ALL ON FUNCTION public.guard_legacy_teacher_limit_change() FROM PUBLIC,anon,authenticated;
+CREATE TRIGGER trg_guard_legacy_teacher_limit BEFORE UPDATE OF carga_horaria_maxima ON public.teachers
+ FOR EACH ROW EXECUTE FUNCTION public.guard_legacy_teacher_limit_change();
