@@ -200,11 +200,12 @@ export default function DashboardLoader() {
       } : {
         id: `${drawerScope}:daily`, title: "Horário diário", description: "Consulta as aulas publicadas por dia da semana.",
         content: lessonOpen ? <>
-          <TabHorario dailyOnly />
+          <TabHorario dailyOnly>{snapshot => (
           <PortalDrawerPushButton className="klasse-portal-cta min-h-11 w-full rounded-xl px-4 py-2 text-sm font-semibold"
-            frame={{ id: `${drawerScope}:weekly`, title: "Horário completo", description: "Consulta todas as aulas da semana.", content: <TabHorario /> }}>
+            frame={{ id: `${drawerScope}:weekly`, title: "Horário completo", description: "Consulta todas as aulas da semana.", content: <TabHorario snapshot={snapshot} /> }}>
             Consultar horário completo
           </PortalDrawerPushButton>
+          )}</TabHorario>
         </> : null,
       }} />
   </div>;
