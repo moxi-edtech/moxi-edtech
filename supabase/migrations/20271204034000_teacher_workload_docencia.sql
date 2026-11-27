@@ -1,4 +1,4 @@
--- Generated via Supabase CLI in isolated CI; reversioned after repository maximum. Apply only after full-schema validation.
+-- Generated via Supabase CLI in isolated CI; reversioned after repository maximum. Validate the incremental migration on the existing academic schema before application.
 -- Preserve every legacy value: NULL minute limit means the existing weekly periods contract.
 ALTER TABLE public.teachers ADD COLUMN carga_contratual_minutos integer CHECK (carga_contratual_minutos > 0),
   ADD COLUMN carga_lectiva_limite_minutos integer CHECK (carga_lectiva_limite_minutos > 0),
@@ -1063,3 +1063,9 @@ BEGIN
 END $$;
 REVOKE ALL ON FUNCTION public.get_teacher_workloads_by_profiles(uuid,uuid[]) FROM PUBLIC,anon,authenticated;
 GRANT EXECUTE ON FUNCTION public.get_teacher_workloads_by_profiles(uuid,uuid[]) TO authenticated;
+
+-- Explicitly retain existing RPC privileges even on a newly initialized test schema.
+REVOKE ALL ON FUNCTION public.create_or_update_professor_academico(uuid,uuid,jsonb,jsonb,uuid[]) FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION public.create_or_update_professor_academico(uuid,uuid,jsonb,jsonb,uuid[]) TO authenticated,service_role;
+REVOKE ALL ON FUNCTION public.update_teacher_details_atomic(uuid,uuid,jsonb,uuid[]) FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION public.update_teacher_details_atomic(uuid,uuid,jsonb,uuid[]) TO authenticated,service_role;
