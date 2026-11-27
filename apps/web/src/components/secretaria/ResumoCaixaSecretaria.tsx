@@ -24,10 +24,13 @@ function amount(value: number | string | null | undefined): number | null {
 export function ResumoCaixaSecretaria({
   escolaId,
   refreshKey = 0,
+  showPartialPayments = true,
 }: {
   escolaId: string;
   /** Refresh after a successful payment; the key also scopes pending reads. */
   refreshKey?: number;
+  /** Keep the detailed Balcão summary; the dashboard only needs two cash metrics. */
+  showPartialPayments?: boolean;
 }) {
   const [retryKey, setRetryKey] = useState(0);
   const scope = JSON.stringify([escolaId, refreshKey, retryKey]);
@@ -62,15 +65,19 @@ export function ResumoCaixaSecretaria({
     };
   }, [escolaId, scope]);
 
+  const gridClass = showPartialPayments
+    ? "operations-daily-grid grid"
+    : "grid min-w-0 gap-4 @min-[520px]:grid-cols-2";
+
   if (isLoading)
     return (
       <div style={{ containerType: "inline-size" }}>
         <div
           role="status"
           aria-label="A carregar resumo de caixa"
-          className="operations-daily-grid grid"
+          className={gridClass}
         >
-          {[0, 1, 2].map((key) => (
+          {(showPartialPayments ? [0, 1, 2] : [0, 1]).map((key) => (
             <OperationalMetricSkeleton key={key} />
           ))}
         </div>
@@ -80,7 +87,7 @@ export function ResumoCaixaSecretaria({
   const received = error ? null : amount(data?.cobrado_hoje);
   return (
     <div className="min-w-0 space-y-3" style={{ containerType: "inline-size" }}>
-      <div className="operations-daily-grid grid">
+      <div className={gridClass}>
         <OperationalMetricCard
           label="Cobrado por mim"
           value={received == null ? null : formatKwanza(received)}
@@ -93,12 +100,14 @@ export function ResumoCaixaSecretaria({
           icon={Receipt}
           description="Hoje"
         />
-        <OperationalMetricCard
-          label="Pagamentos parciais"
-          value={error ? null : amount(data?.pagamentos_parciais)}
-          icon={BadgePercent}
-          description="Hoje"
-        />
+        {showPartialPayments && (
+          <OperationalMetricCard
+            label="Pagamentos parciais"
+            value={error ? null : amount(data?.pagamentos_parciais)}
+            icon={BadgePercent}
+            description="Hoje"
+          />
+        )}
       </div>
       {error && (
         <div
