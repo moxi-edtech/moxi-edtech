@@ -62,6 +62,7 @@ export default function TurmaAtribuirProfessoresModal({
 }: TurmaAtribuirProfessoresModalProps) {
   const { success, error: toastError } = useToast();
   const toastErrorRef = useRef(toastError);
+  const focusedRowRef = useRef<HTMLElement | null>(null);
   useEffect(() => { toastErrorRef.current = toastError; }, [toastError]);
 
   const [loading, setLoading] = useState(true);
@@ -125,6 +126,9 @@ export default function TurmaAtribuirProfessoresModal({
   }, [isOpen, turma.id, escolaId, refreshDisciplinas, initialDisciplinaId]);
 
   useEffect(() => { void loadData(); }, [loadData]);
+  useEffect(() => {
+    if (isOpen && !loading && initialDisciplinaId) focusedRowRef.current?.scrollIntoView({ block: "nearest" });
+  }, [isOpen, loading, initialDisciplinaId]);
   useEffect(() => {
     if (!isOpen) {
       setSingleRetry(null);
@@ -314,7 +318,7 @@ export default function TurmaAtribuirProfessoresModal({
       });
       const json = await res.json().catch(() => null);
       if (!res.ok || !json?.ok) throw new Error(json?.error || "Falha ao atribuir professor.");
-      await refreshDisciplinas();
+      await refreshDisciplinas().catch(() => { toastError("Actualizar disciplinas", "A atribuição foi guardada. Reabra a turma para ver os dados actualizados."); });
       setSingleRetry(null);
       success("Atribuição guardada", "O professor foi associado à turma.");
       onUpdated?.();
@@ -523,7 +527,7 @@ export default function TurmaAtribuirProfessoresModal({
               ? bulkCandidates.filter((item) => bulkSelected.includes(item.turma_id))
               : [];
             return (
-              <section key={disc.curso_matriz_id} className="rounded-xl border border-border bg-card p-4">
+              <section key={disc.curso_matriz_id} ref={disc.curso_matriz_id === initialDisciplinaId ? focusedRowRef : undefined} className="rounded-xl border border-border bg-card p-4">
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div className="min-w-0">
                     <div className="flex items-center gap-2">
