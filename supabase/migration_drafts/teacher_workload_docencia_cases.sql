@@ -149,6 +149,36 @@ DO $workload_test$ BEGIN
  EXCEPTION WHEN OTHERS THEN IF SQLERRM<>'TEACHER_LOAD_INVALID' THEN RAISE; END IF; END;
  IF NOT EXISTS(SELECT 1 FROM public.teachers WHERE profile_id='30000000-0000-0000-0000-000000000003' AND nome_completo='Professor Editado') THEN RAISE EXCEPTION 'PARTIAL_PROFILE_EDIT'; END IF;
 END $workload_test$;
+-- Creation must persist contract and lective limit together with the academic profile.
+DO $registration_test$
+DECLARE s uuid:='10000000-0000-0000-0000-000000000001';
+ u uuid:='30000000-0000-0000-0000-000000000090';
+ bad uuid:='30000000-0000-0000-0000-000000000091';
+ result jsonb;
+BEGIN
+ SELECT public.create_or_update_professor_academico(s,u,
+  '{"nome":"Docente Novo","email":"fixture90@example.invalid","role":"professor"}'::jsonb,
+  '{"nome_completo":"Docente Novo","genero":"F","carga_horaria_maxima":20,"carga_lectiva_unidade":"minutos","carga_lectiva_limite":1200,"carga_contratual_minutos":1800,"turnos_disponiveis":["Manhã"]}'::jsonb,
+  ARRAY[]::uuid[]) INTO result;
+ IF result->>'ok' IS DISTINCT FROM 'true' OR NOT EXISTS (
+  SELECT 1 FROM public.teachers WHERE escola_id=s AND profile_id=u
+  AND carga_horaria_maxima=20 AND carga_lectiva_limite_minutos=1200 AND carga_contratual_minutos=1800
+ ) THEN RAISE EXCEPTION 'ATOMIC_REGISTRATION_WORKLOAD_FAILED'; END IF;
+ IF NOT EXISTS (SELECT 1 FROM public.professores WHERE escola_id=s AND profile_id=u) THEN
+  RAISE EXCEPTION 'ATOMIC_REGISTRATION_LINK_MISSING'; END IF;
+ BEGIN
+  PERFORM public.create_or_update_professor_academico(s,bad,
+   '{"nome":"Docente Inválido","email":"fixture91@example.invalid","role":"professor"}'::jsonb,
+   '{"nome_completo":"Docente Inválido","carga_horaria_maxima":20,"carga_lectiva_unidade":"minutos","carga_lectiva_limite":1801,"carga_contratual_minutos":1800}'::jsonb,
+   ARRAY[]::uuid[]);
+  RAISE EXCEPTION 'EXPECTED_INVALID_REGISTRATION';
+ EXCEPTION WHEN OTHERS THEN IF SQLERRM<>'TEACHER_LOAD_INVALID' THEN RAISE; END IF; END;
+ IF EXISTS(SELECT 1 FROM public.teachers WHERE escola_id=s AND profile_id=bad)
+ OR EXISTS(SELECT 1 FROM public.professores WHERE escola_id=s AND profile_id=bad)
+ OR EXISTS(SELECT 1 FROM public.escola_users WHERE escola_id=s AND user_id=bad)
+ OR EXISTS(SELECT 1 FROM public.profiles WHERE user_id=bad)
+ THEN RAISE EXCEPTION 'PARTIAL_REGISTRATION'; END IF;
+END $registration_test$;
 SELECT pg_catalog.set_config('app.test_uid','20000000-0000-0000-0000-000000000002',true);
 DO $tests$ BEGIN
  BEGIN
