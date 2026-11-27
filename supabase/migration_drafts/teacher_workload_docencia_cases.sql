@@ -132,6 +132,23 @@ BEGIN
  EXCEPTION WHEN OTHERS THEN IF SQLERRM NOT LIKE 'TEACHER_LOAD_DURATION_UNCONFIGURED%' THEN RAISE; END IF; END;
  IF public.teacher_workload_exceeds(s,t,0,0,1,20,NULL) THEN RAISE EXCEPTION 'LEGACY_DURATION_REQUIRED'; END IF;
 END $tests$;
+-- Profile-only canonical teachers must be editable without a legacy professor row.
+INSERT INTO public.profiles(user_id,nome) VALUES('30000000-0000-0000-0000-000000000003','Professor C');
+INSERT INTO public.escola_users(escola_id,user_id,papel,role) VALUES('10000000-0000-0000-0000-000000000001','30000000-0000-0000-0000-000000000003','professor','staff');
+INSERT INTO public.teachers(escola_id,profile_id,nome_completo,carga_horaria_maxima) VALUES('10000000-0000-0000-0000-000000000001','30000000-0000-0000-0000-000000000003','Professor C',20);
+SELECT public.update_teacher_details_atomic('10000000-0000-0000-0000-000000000001','30000000-0000-0000-0000-000000000003',
+ '{"nome_completo":"Professor Editado","genero":"M","carga_horaria_maxima":20,"carga_lectiva_unidade":"minutos","carga_lectiva_limite":1200,"carga_contratual_minutos":1800,"turnos_disponiveis":["Manhã"]}'::jsonb,ARRAY[]::uuid[]);
+DO $ BEGIN
+ IF NOT EXISTS(SELECT 1 FROM public.teachers WHERE profile_id='30000000-0000-0000-0000-000000000003'
+ AND nome_completo='Professor Editado' AND carga_lectiva_limite_minutos=1200 AND carga_contratual_minutos=1800 AND carga_horaria_maxima=20)
+ THEN RAISE EXCEPTION 'ATOMIC_PROFILE_WORKLOAD_FAILED'; END IF;
+ BEGIN
+  PERFORM public.update_teacher_details_atomic('10000000-0000-0000-0000-000000000001','30000000-0000-0000-0000-000000000003',
+   '{"nome_completo":"Não guardar","carga_horaria_maxima":20,"carga_lectiva_unidade":"minutos","carga_lectiva_limite":1801,"carga_contratual_minutos":1800}'::jsonb,ARRAY[]::uuid[]);
+  RAISE EXCEPTION 'EXPECTED_INVALID_CONTRACT';
+ EXCEPTION WHEN OTHERS THEN IF SQLERRM<>'TEACHER_LOAD_INVALID' THEN RAISE; END IF; END;
+ IF NOT EXISTS(SELECT 1 FROM public.teachers WHERE profile_id='30000000-0000-0000-0000-000000000003' AND nome_completo='Professor Editado') THEN RAISE EXCEPTION 'PARTIAL_PROFILE_EDIT'; END IF;
+END $;
 SELECT pg_catalog.set_config('app.test_uid','20000000-0000-0000-0000-000000000002',true);
 DO $tests$ BEGIN
  BEGIN
