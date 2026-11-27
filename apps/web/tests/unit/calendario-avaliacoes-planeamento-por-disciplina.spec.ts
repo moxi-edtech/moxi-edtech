@@ -67,3 +67,13 @@ test("campos obrigatórios em falta são indicados na própria linha", () => {
   assert.match(client, /Defina a data\./);
   assert.match(client, /Defina a hora de início\./);
 });
+
+test("cabeçalho sem contadores redundantes e mensagens sem linguagem de auditoria", () => {
+  assert.doesNotMatch(client, /draft\.length\}<\/strong> rascunhos|<\/strong> publicados/);
+  assert.doesNotMatch(client, /guardada e auditada|cancelada e auditada|O histórico será preservado/);
+  assert.match(client, /Alteração guardada\./);
+  assert.match(client, /window\.confirm\("Cancelar esta avaliação\?"\)/);
+  assert.match(client, /Avaliação cancelada\./);
+  assert.match(client, /Histórico de alterações/);
+  assert.match(client, /id="ava-period"/);
+});
