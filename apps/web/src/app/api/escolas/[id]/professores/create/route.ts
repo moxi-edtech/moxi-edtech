@@ -7,7 +7,8 @@ import { hasPermission, mapPapelToGlobalRole, normalizePapel } from '@/lib/permi
 import { sanitizeEmail } from '@/lib/sanitize'
 import { callAuthAdminJob } from '@/lib/auth-admin-job'
 import { randomInt, randomUUID } from 'node:crypto'
-import { buildCredentialsEmail, buildInviteEmail, sendMail } from '@/lib/mailer'
+import { recordAuditServer } from '@/lib/audit'
+import { buildCredentialsEmail, sendMail } from '@/lib/mailer'
 
 const TurnosSchema = z.enum(['Manhã', 'Tarde', 'Noite'])
 
@@ -117,7 +118,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
       allowed = Boolean(adminLink && adminLink.length > 0)
     }
 
-    if (!allowed || userEscolaId !== escolaId) {
+    if (!allowed) {
       emitObs('error', 403, { error_code: 'FORBIDDEN' })
       return NextResponse.json({ ok: false, error: 'Sem permissão' }, { status: 403 })
     }
@@ -187,7 +188,6 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
         error: 'Não foi possível confirmar a criação da conta.' }, { status: 503 })
     }
     pendingUserId = userId
-    const userCreated = true
 
     // Only compensate a confirmed SQL transaction failure. Do not delete academic rows:
     // a transport failure can mean the transaction committed despite a lost response.
@@ -269,55 +269,31 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
       error?: string | null
     } = { attempted: false, ok: false }
 
-    if (userCreated && tempPassword) {
+    try {
       const mail = buildCredentialsEmail({
-        nome,
-        email,
-        senha_temp: tempPassword,
-        escolaNome,
-        loginUrl,
+        nome, email, senha_temp: tempPassword, escolaNome, loginUrl,
       })
       const sent = await sendMail({
-        to: email,
-        subject: mail.subject,
-        html: String(mail.html),
-        text: String(mail.text),
+        to: email, subject: mail.subject, html: String(mail.html), text: String(mail.text),
       })
-      emailStatus = {
-        attempted: true,
-        ok: sent.ok,
-        kind: 'credentials',
-        error: sent.ok ? null : sent.error,
-      }
-    } else {
-      const invite = buildInviteEmail({
-        escolaNome,
-        onboardingUrl: loginUrl,
-        convidadoEmail: email,
-        convidadoNome: nome,
-        papel: 'professor',
-      })
-      const sent = await sendMail({
-        to: email,
-        subject: invite.subject,
-        html: String(invite.html),
-        text: String(invite.text),
-      })
-      emailStatus = {
-        attempted: true,
-        ok: sent.ok,
-        kind: 'invite',
-        error: sent.ok ? null : sent.error,
-      }
+      emailStatus = { attempted: true, ok: sent.ok, kind: 'credentials', error: sent.ok ? null : 'Falha no envio de credenciais' }
+    } catch {
+      emailStatus = { attempted: true, ok: false, kind: 'credentials', error: 'Falha no envio de credenciais' }
+      emitObs('error', 200, { error_code: 'CREDENTIALS_DELIVERY_FAILED', teacher_id: teacherId })
     }
 
-    emitObs('success', 200, { teacher_id: teacherId, user_created: userCreated })
+    await recordAuditServer({
+      escolaId: userEscolaId, portal: 'admin_escola', acao: 'PROFESSOR_CRIADO',
+      entity: 'teachers', entityId: teacherId, details: { actor_id: requesterId, request_id: requestId },
+    })
+
+    emitObs('success', 200, { teacher_id: teacherId, user_created: true })
 
     return NextResponse.json({
       ok: true,
       userId,
       teacherId,
-      senha_temp: userCreated ? tempPassword : null,
+      senha_temp: tempPassword,
       emailStatus,
     })
   } catch {
