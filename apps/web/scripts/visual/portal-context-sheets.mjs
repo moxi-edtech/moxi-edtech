@@ -38,7 +38,7 @@ try {
           assert.ok(geometry.focus,"initial dialog focus: "+mode);
           await page.keyboard.press("Escape");
           await dialog.waitFor({state:"hidden"});
-          if(mode!=="queue"&&mode!=="modal") await opener.evaluate(el=>{if(document.activeElement!==el)throw Error("Focus not restored");});
+          if(mode!=="queue"&&mode!=="modal") await page.waitForFunction(label=>document.activeElement?.textContent?.trim()===label,"Abrir "+mode);
         }
         if(viewport.width>=768){
           await page.goto(base+"/?story=operations-academic-card");
