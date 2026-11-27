@@ -63,7 +63,7 @@ type TimetableSnapshot = { key: string; data: TimetableData };
 export function TabHorario({ dailyOnly = false, snapshot, children }: {
   dailyOnly?: boolean;
   snapshot?: TimetableSnapshot;
-  children?: (snapshot: TimetableSnapshot) => ReactNode;
+  children?: (snapshot?: TimetableSnapshot) => ReactNode;
 } = {}) {
   const searchParams = useSearchParams();
   const studentId = searchParams?.get("aluno") ?? null;
@@ -324,7 +324,7 @@ export function TabHorario({ dailyOnly = false, snapshot, children }: {
         </section>
       )}
 
-      {visibleData && children?.({ key: requestKey, data: visibleData })}
+      {!timetableLoading && children?.(visibleData ? { key: requestKey, data: visibleData } : undefined)}
     </div>
   );
 }
