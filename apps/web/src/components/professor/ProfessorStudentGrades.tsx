@@ -50,7 +50,7 @@ export function ProfessorStudentGrades({ turmaId, academicYearId, studentId, mat
     if (academicYearId) params.set("ano_letivo_id", academicYearId);
     void (async () => {
       try {
-        const response = await fetch(`/api/professor/pauta?${params}`, { cache: "no-store", signal: ctrl.signal });
+        const response = await (read ? read(`/api/professor/pauta?${params}`, { signal: ctrl.signal, fresh: retry > 0 }) : fetch(`/api/professor/pauta?${params}`, { cache: "no-store", signal: ctrl.signal }));
         const body = await response.json();
         if (!response.ok || !Array.isArray(body)) throw new Error("Não foi possível consultar as notas nesta disciplina.");
         if (ctrl.signal.aborted) return;
@@ -61,7 +61,7 @@ export function ProfessorStudentGrades({ turmaId, academicYearId, studentId, mat
       } catch (cause) { if (!ctrl.signal.aborted) setError(cause instanceof Error ? cause.message : "Consulta indisponível."); }
     })();
     return () => ctrl.abort();
-  }, [scope, turmaId, academicYearId, studentId, matriculaId, subject, period, periodReady, selectedSubject, retry]);
+  }, [scope, turmaId, academicYearId, studentId, matriculaId, subject, period, periodReady, selectedSubject, retry, read]);
   const data = result?.scope === scope ? result : null;
   const columns = useMemo(() => data?.row ? [
     { label: "MAC", value: data.row.mac, active: data.components.length === 0 || data.components.includes("MAC") },
