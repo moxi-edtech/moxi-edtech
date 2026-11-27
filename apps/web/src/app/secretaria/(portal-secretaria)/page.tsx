@@ -122,5 +122,5 @@ export default function SecretariaDashboardPage({ initialCounts = null, initialR
     );
   }
 
-  return <Dashboard counts={counts} recentes={recentes} />;
+  return <Dashboard key={escolaId ?? "default"} counts={counts} recentes={recentes} escolaId={escolaId} />;
 }

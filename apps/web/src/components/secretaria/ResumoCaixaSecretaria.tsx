@@ -3,80 +3,118 @@
 import { useEffect, useState } from "react";
 import { Wallet, Receipt, BadgePercent } from "lucide-react";
 import { formatKwanza } from "@/lib/formatters";
+import {
+  OperationalMetricCard,
+  OperationalMetricSkeleton,
+} from "@/components/shared/OperationalMetricCard";
+
+type CaixaSummary = {
+  cobrado_hoje?: number | string | null;
+  recibos_emitidos?: number | string | null;
+  pagamentos_parciais?: number | string | null;
+};
+
+function amount(value: number | string | null | undefined): number | null {
+  if (value == null || (typeof value === "string" && !value.trim()))
+    return null;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
 
 export function ResumoCaixaSecretaria({
   escolaId,
   refreshKey = 0,
 }: {
   escolaId: string;
-  /** Muda de valor para forçar nova leitura. A página incrementa-o a cada
-   *  pagamento concluído; sem isto o painel ficava com o valor da montagem e
-   *  mostrava um caixa que já não era verdade. */
+  /** Refresh after a successful payment; the key also scopes pending reads. */
   refreshKey?: number;
 }) {
-  const [data, setData] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
+  const [retryKey, setRetryKey] = useState(0);
+  const scope = JSON.stringify([escolaId, refreshKey, retryKey]);
+  const [result, setResult] = useState<{
+    scope: string;
+    data: CaixaSummary | null;
+    error: boolean;
+  } | null>(null);
+  const isLoading = result?.scope !== scope;
+  const data = result?.scope === scope ? result.data : null;
+  const error = result?.scope === scope && result.error;
 
   useEffect(() => {
-    fetch(`/api/secretaria/balcao/resumo-caixa?escolaId=${escolaId}`, { cache: "no-store" })
-      .then((r) => r.json())
-      .then((j) => {
-        if (j?.ok) setData(j);
+    const controller = new AbortController();
+    let active = true;
+    void fetch(
+      `/api/secretaria/balcao/resumo-caixa?escolaId=${encodeURIComponent(escolaId)}`,
+      { cache: "no-store", signal: controller.signal },
+    )
+      .then(async (response) => {
+        const body = await response.json();
+        if (!response.ok || !body?.ok)
+          throw new Error("Resumo de caixa indisponível");
+        if (active) setResult({ scope, data: body, error: false });
       })
-      .catch(() => {})
-      .finally(() => setLoading(false));
-  }, [escolaId, refreshKey]);
+      .catch(() => {
+        if (active) setResult({ scope, data: null, error: true });
+      });
+    return () => {
+      active = false;
+      controller.abort();
+    };
+  }, [escolaId, scope]);
 
-  if (loading) return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-      {[1, 2, 3].map(i => (
-        <div key={i} className="bg-card border border-border rounded-xl p-4 shadow-sm h-20 animate-pulse flex items-center gap-4">
-          <div className="w-10 h-10 rounded-lg bg-muted shrink-0" />
-          <div className="space-y-2 flex-1">
-             <div className="h-2 bg-muted rounded w-20" />
-             <div className="h-4 bg-muted rounded w-24" />
-          </div>
+  if (isLoading)
+    return (
+      <div style={{ containerType: "inline-size" }}>
+        <div
+          role="status"
+          aria-label="A carregar resumo de caixa"
+          className="operations-daily-grid grid"
+        >
+          {[0, 1, 2].map((key) => (
+            <OperationalMetricSkeleton key={key} />
+          ))}
         </div>
-      ))}
-    </div>
-  );
-
-  if (!data) return null;
-
-  return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-      <Card 
-        title="Cobrado Hoje (Por Mim)" 
-        value={formatKwanza(data.cobrado_hoje == null ? null : Number(data.cobrado_hoje))}
-        icon={<Wallet size={16} className="text-emerald-600" />} 
-        bgColor="bg-emerald-50"
-      />
-      <Card 
-        title="Recibos Emitidos" 
-        value={data.recibos_emitidos} 
-        icon={<Receipt size={16} className="text-blue-600" />} 
-        bgColor="bg-blue-50"
-      />
-      <Card 
-        title="Pagamentos Parciais" 
-        value={data.pagamentos_parciais} 
-        icon={<BadgePercent size={16} className="text-amber-600" />} 
-        bgColor="bg-amber-50"
-      />
-    </div>
-  );
-}
-
-function Card({ title, value, icon, bgColor }: { title: string; value: string | number; icon: React.ReactNode; bgColor: string }) {
-  return (
-    <div className="bg-card border border-border rounded-xl p-4 shadow-sm flex items-center gap-4">
-      <div className={`w-10 h-10 rounded-lg ${bgColor} flex items-center justify-center shrink-0`}>
-        {icon}
       </div>
-      <div>
-        <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{title}</p>
-        <p className="text-lg font-black text-foreground">{value}</p>
+    );
+
+  const received = error ? null : amount(data?.cobrado_hoje);
+  return (
+    <div className="min-w-0 space-y-3" style={{ containerType: "inline-size" }}>
+      <div className="operations-daily-grid grid">
+        <OperationalMetricCard
+          label="Cobrado por mim"
+          value={received == null ? null : formatKwanza(received)}
+          icon={Wallet}
+          description="Recebimentos de hoje do funcionário autenticado"
+        />
+        <OperationalMetricCard
+          label="Recibos emitidos"
+          value={error ? null : amount(data?.recibos_emitidos)}
+          icon={Receipt}
+          description="Hoje"
+        />
+        <OperationalMetricCard
+          label="Pagamentos parciais"
+          value={error ? null : amount(data?.pagamentos_parciais)}
+          icon={BadgePercent}
+          description="Hoje"
+        />
       </div>
+      {error && (
+        <div
+          role="status"
+          className="flex flex-wrap items-center justify-between gap-2 text-sm text-muted-foreground"
+        >
+          <p>Não foi possível actualizar o caixa.</p>
+          <button
+            type="button"
+            onClick={() => setRetryKey((value) => value + 1)}
+            className="min-h-10 rounded-xl border border-border px-3 font-medium text-foreground hover:bg-muted"
+          >
+            Tentar novamente
+          </button>
+        </div>
+      )}
     </div>
   );
 }
