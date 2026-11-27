@@ -78,8 +78,10 @@ export function PortalDrawerNavigator({ root, open, onClose, onReopen, onChanged
   // Initialize both mutable traversal refs before any callback captures them.
   const approved = useRef(false);
   const historyKey = "klassePortalDrawer";
+  // Capture the opening callback for this root, not the callback after close
+  // (which may refer to a null selection in the parent dashboard).
   const reopenCallback = useRef(onReopen);
-  useLayoutEffect(() => { reopenCallback.current = onReopen; }, [onReopen]);
+  useLayoutEffect(() => { if (open) reopenCallback.current = onReopen; }, [open, onReopen]);
   const invalidate = useCallback(() => {
     if (historyOwner === session.current?.token) historyOwner = null;
     session.current = null;
@@ -102,7 +104,7 @@ export function PortalDrawerNavigator({ root, open, onClose, onReopen, onChanged
     if (current?.rootId === root.id && historyOwner === current.token && history.state?.[historyKey]?.token === current.token) return;
     const token = crypto.randomUUID();
     historyOwner = token;
-    session.current = { token, rootId: root.id, trail: [], reopen: () => reopenCallback.current(), url: location.href };
+    session.current = { token, rootId: root.id, trail: [], reopen: reopenCallback.current, url: location.href };
     history.pushState({ ...history.state, [historyKey]: { token, depth: 0 } }, "");
   }, [open, root.id]);
   const push = useCallback((frame: PortalDrawerFrame) => {
