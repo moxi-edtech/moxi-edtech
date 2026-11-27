@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
+import { createHash } from 'node:crypto'
+import { resolveProfessorAcademicContext } from '@/lib/professor/resolveProfessorAcademicContext'
 import { supabaseServerTyped } from '@/lib/supabaseServer'
 import { resolveEscolaIdForUser } from '@/lib/tenant/resolveEscolaIdForUser'
 import { markOutboxEventFailed } from '@/lib/outbox'
@@ -17,7 +19,9 @@ const Body = z.object({
   disciplina_nome: z.string().optional(),
   notas: z.array(z.object({
     aluno_id: z.string().uuid(),
+    matricula_id: z.string().uuid().optional(),
     valor: z.number().min(0).max(100).nullable(),
+    expected: z.object({ id: z.string().uuid(), updated_at: z.string().datetime({ offset: true }).nullable(), valor: z.number().nullable(), is_isento: z.boolean().nullable() }).nullable().optional(),
   })).min(1).max(50),
 })
 
@@ -27,6 +31,7 @@ export async function POST(req: Request) {
   let escolaId: string | null = null
   let idempotencyKey: string | null = null
   let mutationCommitted = false
+  let ownsIdempotencyLock = false
 
   try {
     supabase = await supabaseServerTyped<Database>()
@@ -34,8 +39,8 @@ export async function POST(req: Request) {
     const user = userRes?.user
     if (!user) return NextResponse.json({ ok: false, error: 'Não autenticado' }, { status: 401 })
 
-    idempotencyKey = req.headers.get('idempotency-key')
-    if (!idempotencyKey) {
+    const requestedKey = req.headers.get('idempotency-key')
+    if (!requestedKey || requestedKey.length > 256) {
       return NextResponse.json({ ok: false, error: 'Idempotency-Key header is required' }, { status: 400 })
     }
 
@@ -44,6 +49,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: parsed.error.issues?.[0]?.message || 'Dados inválidos' }, { status: 400 })
     }
     const body = parsed.data
+    idempotencyKey = createHash('sha256').update(JSON.stringify([user.id, requestedKey, body])).digest('hex')
     if (!body.disciplina_id || !body.turma_disciplina_id) {
       return NextResponse.json({ ok: false, error: 'Disciplina inválida para lançamento.' }, { status: 400 })
     }
@@ -62,6 +68,12 @@ export async function POST(req: Request) {
       table: 'turmas', entityId: body.turma_id,
       escolaId: academicContext.escolaId, anoLetivoId: academicContext.anoLetivoId,
     })
+
+    const assignment = await resolveProfessorAcademicContext({ supabase, escolaId, userId: user.id, turmaId: body.turma_id, disciplinaId: body.disciplina_id, turmaDisciplinaId: body.turma_disciplina_id })
+    if (!assignment) return NextResponse.json({ ok: false, error: 'Professor não atribuído à disciplina.' }, { status: 403 })
+    if (body.notas.some(nota => !nota.matricula_id || nota.expected === undefined)) {
+      return NextResponse.json({ ok: false, error: 'GRADE_REVISION_REQUIRED: recarregue a pauta e reveja as notas pendentes.' }, { status: 409 })
+    }
 
     const { data: existingIdempotency } = await supabase
       .from('idempotency_keys')
@@ -102,6 +114,8 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: 'Uma requisição idêntica está em andamento.' }, { status: 409 })
     }
 
+    ownsIdempotencyLock = true
+
     // A lógica de negócio foi movida para a RPC `lancar_notas_batch`.
     // A RPC irá validar as permissões, resolver/criar a avaliação,
     // e fazer o upsert das notas de forma atômica e auditada.
@@ -126,7 +140,9 @@ export async function POST(req: Request) {
         .eq('key', idempotencyKey)
       const message = error.message || 'Não foi possível guardar as notas.'
       const status =
-        /^AUTH:|permission|não autorizado|unauthorized|forbidden/i.test(message)
+        /^GRADE_CONFLICT:|^GRADE_REVISION_REQUIRED:/i.test(message) || error.code === '40001'
+          ? 409
+          : /^AUTH:|permission|não autorizado|unauthorized|forbidden/i.test(message)
           ? 403
           : /^DATA:/i.test(message)
             ? 400
@@ -176,7 +192,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: e.code, message: e.message }, { status: e.status })
     }
     const message = e instanceof Error ? e.message : String(e)
-    if (supabase && escolaId && idempotencyKey && !mutationCommitted) {
+    if (supabase && escolaId && idempotencyKey && ownsIdempotencyLock && !mutationCommitted) {
       try {
         await supabase
           .from('idempotency_keys')

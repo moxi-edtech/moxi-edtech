@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { usePortalDrawerGuard, usePortalDrawerNavigation } from "@/components/portal/ui/PortalDrawerNavigator";
 import { PortalSheet } from "@/components/portal/ui/PortalSheet";
 import { useSearchParams } from "next/navigation";
 import AcaoRapidaCard from "@/components/shared/AcaoRapidaCard";
@@ -48,6 +49,12 @@ export function TabFaltas() {
   useLayoutEffect(() => { currentScope.current = query; }, [query]);
   const [reason, setReason] = useState("");
   const [sending, setSending] = useState(false);
+  const navigation = usePortalDrawerNavigation();
+  usePortalDrawerGuard(detailOpen && Boolean(reason.trim()), sending);
+  const closeDetail = () => {
+    if (sending || (reason.trim() && !window.confirm("Descartar a justificação não enviada?"))) return;
+    setDetailOpen(false); setReason("");
+  };
   const [feedback, setFeedback] = useState<string | null>(null);
 
   const load = useCallback(async (signal: AbortSignal) => {
@@ -93,6 +100,7 @@ export function TabFaltas() {
       const json = await response.json().catch(() => null);
       if (!response.ok || !json?.ok) throw new Error(json?.error || "Não foi possível enviar o pedido.");
       if (currentScope.current !== query) return;
+      navigation?.notifyChanged();
       setFeedback(json.message || "Solicitação realizada. Aguardando análise da secretaria.");
       setLoading(true); setDetailOpen(false); setReason("");
       setRetry((current) => current + 1);
@@ -112,7 +120,7 @@ export function TabFaltas() {
         <p className="text-sm text-foreground">{error}</p>
         <button type="button" className="min-h-11 rounded-lg border border-border px-4 text-sm" onClick={() => setRetry((n) => n + 1)}>Tentar novamente</button>
       </div>}
-      <PortalSheet open={detailOpen && Boolean(selected)} busy={sending} onClose={() => setDetailOpen(false)} title={selected?.disciplina_nome || "Detalhes da falta"} description={selected ? displayDate(selected.data) : "Assiduidade"} size="expanded">
+      <PortalSheet open={detailOpen && Boolean(selected)} busy={sending} inline={Boolean(navigation)} onClose={closeDetail} title={selected?.disciplina_nome || "Detalhes da falta"} description={selected ? displayDate(selected.data) : "Assiduidade"} size="expanded">
         {selected && <div className="space-y-3">
           <p className="font-semibold">{statusLabel(selected.justificacao?.status)}</p>
           {selected.justificacao && <><p className="text-xs text-muted-foreground">Motivo apresentado</p><p className="whitespace-pre-wrap break-words text-sm">{selected.justificacao.motivo}</p>{selected.justificacao.decision_reason && <p className="break-words text-sm">Decisão: {selected.justificacao.decision_reason}</p>}</>}
@@ -169,7 +177,7 @@ export function TabFaltas() {
                   <p>A justificação não foi aceite.{item.justificacao?.decision_reason ? ` Motivo: ${item.justificacao.decision_reason}` : " Podes apresentar um novo pedido."}</p>
                 </div>}
                 <button type="button" aria-haspopup="dialog" aria-expanded={active} disabled={sending} className="min-h-11 rounded-xl border border-border px-4 text-sm font-semibold text-foreground hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring"
-                  onClick={() => { setEditingId(item.id); setDetailScope(query); setReason(""); setFeedback(null); setDetailOpen(true); }}>
+                  onClick={() => { if (detailOpen && reason.trim() && !window.confirm("Descartar a justificação não enviada?")) return; setEditingId(item.id); setDetailScope(query); setReason(""); setFeedback(null); setDetailOpen(true); }}>
                   {safeData.can_submit && status !== "pending" && status !== "approved" ? (status === "rejected" ? "Enviar nova justificação" : "Solicitar justificação") : "Ver detalhes"}
                 </button>
               </article>;

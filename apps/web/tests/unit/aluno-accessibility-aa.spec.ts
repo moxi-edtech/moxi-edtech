@@ -28,12 +28,14 @@ test("academic tabs implement roving focus, arrow keys, Home/End and stable acce
 test("academic grade modals trap and restore focus with Radix; actions and fields are labelled", async () => {
   const s = await source("components/aluno/tabs/TabNotas.tsx");
   assert.match(s, /Dialog, DialogContent, DialogDescription, DialogTitle/);
-  assert.equal((s.match(/<Dialog open onOpenChange=/g) ?? []).length, 2);
-  assert.equal((s.match(/onCloseAutoFocus=\{restoreDialogFocus\}/g) ?? []).length, 2);
+  assert.equal((s.match(/<Dialog open onOpenChange=/g) ?? []).length, 1);
+  assert.equal((s.match(/<AcademicRequestPanel inline=/g) ?? []).length, 2);
+  assert.match(s, /onCloseAutoFocus=\{onRestoreFocus\}/);
+  assert.equal((s.match(/onRestoreFocus=\{restoreDialogFocus\}/g) ?? []).length, 2);
   assert.match(s, /dialogOpener\.current\?\.focus\(\)/);
   assert.match(s, /dialogOpener\.current = document\.activeElement/);
-  assert.match(s, /<DialogTitle>Solicitar reapreciação/);
-  assert.match(s, /<DialogTitle>Solicitar melhoria/);
+  assert.match(s, /title=\{`Solicitar reapreciação/);
+  assert.match(s, /title=\{`Solicitar melhoria/);
   assert.match(s, /htmlFor="aluno-raa-motivo"/);
   assert.match(s, /id="aluno-raa-motivo"/);
   assert.match(s, /htmlFor="aluno-melhoria-sessao"/);
@@ -52,7 +54,7 @@ test("mobile interactive targets have at least 44px, theme-aware foregrounds and
     source("components/shared/AcaoRapidaCard.tsx"),
   ]);
   assert.match(notes, /inline-flex min-h-11 items-center gap-1\.5 px-1 text-sm/);
-  assert.match(dash, /<AcaoRapidaCard key=\{item.kind \+ item.href\} dashboardCompact mobileCompact[\s\S]*?href=\{go\(item.href\)\}/);
+  assert.match(dash, /<AcaoRapidaCard key=\{item.kind \+ item.href\} dashboardCompact mobileCompact[\s\S]*?href: go\(item.href\)/);
   assert.match(card, /min-h-16[^"]*bg-card p-3/);
   assert.match(card, /if \(href\) return <Link href=\{href\}/);
   assert.match(card, /aria-hidden="true"/);

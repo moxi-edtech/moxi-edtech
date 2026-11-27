@@ -17,10 +17,10 @@ test("mobile academic visual layer is scoped to student and teacher layouts", ()
 
 test("internal academic areas retain routes and semantic state while dropping decorative colors", () => {
   const schedule = read("components/aluno/tabs/TabHorario.tsx");
-  const calendar = read("app/professor/calendario/page.tsx");
+  const calendar = read("components/professor/ProfessorCalendarWorkspace.tsx");
   assert.match(schedule, /aria-pressed=\{activeDay === dia.id\}/);
   assert.doesNotMatch(schedule, /bg-klasse-gold text-klasse-gold-900/);
   assert.doesNotMatch(calendar, /blur-3xl/);
   assert.match(calendar, /upcomingItems\.length/);
-  assert.match(read("app/professor/notas/page.tsx"), /max-md:px-0 max-md:py-0/);
+  assert.match(read("components/professor/ProfessorGradesWorkspace.tsx"), /max-md:px-0 max-md:py-0/);
 });

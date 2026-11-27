@@ -96,7 +96,7 @@ test("as quatro interfaces reutilizam a mesma ação e as permissões próprias"
   const action = source("components/matriculas/DesistenciaMatriculaAction.tsx");
   const turma = source("components/secretaria/TurmaDetailClient.tsx");
   const operacoes = source("components/secretaria/command-center/TurmaContextView.tsx");
-  const professor = source("app/professor/frequencias/page.tsx");
+  const professor = source("components/professor/ProfessorFrequenciasWorkspace.tsx");
   const perfil = source("components/aluno/CurrentYearEnrollmentPanel.tsx");
   const fetchProfessor = source("app/api/professor/turmas/[id]/alunos/route.ts");
   assert.match(action, /tipo: "confirmar" \| "sinalizar"/);

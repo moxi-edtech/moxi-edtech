@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useId, useRef, useState } from "react";
+import { usePortalDrawerGuard, usePortalDrawerNavigation } from "@/components/portal/ui/PortalDrawerNavigator";
 import { PortalSheet } from "@/components/portal/ui/PortalSheet";
 import { StudentAppyPayButton } from "@/components/financeiro/AppyPayReferenceButton";
 import { Upload, Loader2 } from "lucide-react";
@@ -63,6 +64,12 @@ export function ServicePaymentDrawer({
   const fileInputId = useId();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const inFlight = useRef(false);
+  const navigation = usePortalDrawerNavigation();
+  usePortalDrawerGuard(open && Boolean(selectedFile || mensagem.trim()), open && sending);
+  const requestClose = () => {
+    if (sending || (navigation && (selectedFile || mensagem.trim()) && !window.confirm("Descartar o comprovativo não enviado?"))) return;
+    onClose();
+  };
 
   useEffect(() => {
     if (open) {
@@ -125,7 +132,7 @@ export function ServicePaymentDrawer({
   };
 
   return (
-    <PortalSheet open={open && Boolean(documento)} busy={sending} onClose={onClose} size="expanded" title="Pagamento do serviço"
+    <PortalSheet open={open && Boolean(documento)} inline={Boolean(navigation)} busy={sending} onClose={requestClose} size="expanded" title="Pagamento do serviço"
       description="Confere o valor e escolhe o método de pagamento. A confirmação por AppyPay é automática; transferências exigem comprovativo e validação da secretaria.">
         {documento && (
           <div className="space-y-4">
@@ -165,7 +172,7 @@ export function ServicePaymentDrawer({
             {error && <p role="alert" className="rounded-xl border border-destructive/40 p-3 text-sm text-destructive">{error}</p>}
             <p className="text-sm text-muted-foreground">O envio não confirma o pagamento. Aguarda a validação da secretaria; não precisas de realizar outra transferência.</p>
             <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
-              <button type="button" onClick={onClose} disabled={sending} className="klasse-portal-press min-h-11 rounded-xl border border-border px-4 text-sm font-semibold disabled:opacity-50">Cancelar</button>
+              <button type="button" onClick={requestClose} disabled={sending} className="klasse-portal-press min-h-11 rounded-xl border border-border px-4 text-sm font-semibold disabled:opacity-50">Cancelar</button>
               <button type="button" onClick={() => void handleUpload()} disabled={!selectedFile || !documento.intentId || sending}
                 className="klasse-portal-press inline-flex min-h-11 items-center gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50">
                 <Upload className="h-4 w-4" /> {sending ? "A enviar…" : "Confirmar e enviar comprovativo"}

@@ -18,7 +18,7 @@ test("Saving professor grades never directly dispatches student notifications", 
 });
 
 test("Completion is explicit and independent of partial writes", () => {
-  const page = web("app/professor/notas/page.tsx");
+  const page = web("components/professor/ProfessorGradesWorkspace.tsx");
   const api = web("app/api/professor/notas/concluir/route.ts");
   assert.match(page, /Concluir lançamento/);
   assert.match(page, /hasUnsavedGrades/);
@@ -55,9 +55,9 @@ test("Notifications are emitted once by the DB and scoped to authorized school s
 
 
 test("Save now sends draft grades and completion status is read through RLS", () => {
-  const page = web("app/professor/notas/page.tsx");
+  const page = web("components/professor/ProfessorGradesWorkspace.tsx");
   const api = web("app/api/professor/notas/concluir/route.ts");
-  assert.match(page, /handleSaveBatch\(gradeDraft\.length > 0 \? gradeDraft : pauta\)/);
+  assert.match(page, /await saveControl\.current\(\)/);
   assert.match(page, /Boolean\(row\.is_isento\) !== Boolean\(saved\.is_isento\)/);
   assert.match(page, /api\/professor\/notas\/concluir\?\$\{params\.toString\(\)\}/);
   assert.match(api, /export async function GET/);

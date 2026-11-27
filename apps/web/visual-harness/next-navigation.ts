@@ -12,7 +12,8 @@ export function usePathname() {
 }
 export function useSearchParams() {
   const parameters = new URLSearchParams(window.location.search);
-  if (!parameters.has("ano_letivo_id")) parameters.set("ano_letivo_id", "00000000-0000-4000-8000-000000000404");
+  // A dashboard rematrícula fixture represents the logged-in student and active default year.
+  if (parameters.get("story") !== "dashboard-rematricula" && !parameters.has("ano_letivo_id")) parameters.set("ano_letivo_id", "00000000-0000-4000-8000-000000000404");
   return parameters;
 }
 export function useRouter() { return { push() {}, replace() {}, refresh() {}, back() {}, forward() {}, prefetch: async () => {} }; }

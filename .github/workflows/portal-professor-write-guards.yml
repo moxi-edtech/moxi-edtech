@@ -1,0 +1,62 @@
+name: Professor portal write guards
+on:
+  pull_request:
+    paths:
+      - 'supabase/migrations/20271204033000_portal_professor_write_guards.sql'
+      - 'supabase/ops/tests/portal_professor_write_guards*'
+      - 'apps/web/src/app/api/professor/notas/route.ts'
+      - 'apps/web/src/app/api/professor/aulas/**'
+      - '.github/workflows/portal-professor-write-guards.yml'
+permissions:
+  contents: read
+jobs:
+  postgres-concurrency:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: portal_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PGPASSWORD: test
+      PGHOST: localhost
+      PGUSER: postgres
+      PGDATABASE: portal_test
+    steps:
+      - uses: actions/checkout@v4
+      - name: Apply exact migration to isolated academic schema
+        run: |
+          psql -v ON_ERROR_STOP=1 \
+            -f supabase/ops/tests/bootstrap_notas_writer_minimal.sql \
+            -f supabase/ops/tests/bootstrap_grade_period_guard.sql \
+            -f supabase/ops/tests/portal_professor_write_guards_bootstrap.sql \
+            -f supabase/migrations/20271204033000_portal_professor_write_guards.sql \
+            -f supabase/ops/tests/portal_professor_write_guards_regression.sql
+      - name: Reject overlapping writes in independent database sessions
+        run: |
+          set -euo pipefail
+          PGAPPNAME=portal-grade-session-a psql -v ON_ERROR_STOP=1 -c "BEGIN; SELECT public.fixture_grade(jsonb_build_array(public.fixture_note(12,expected))) FROM public.fixture_grade_revision; SELECT pg_sleep(3); COMMIT;" >/tmp/session-a.log 2>&1 &
+          first=$!
+          trap 'kill "$first" 2>/dev/null || true; cat /tmp/session-a.log' EXIT
+          ready=0
+          for attempt in $(seq 1 50); do
+            if [ "$(psql -Atc "SELECT count(*) FROM pg_stat_activity WHERE application_name='portal-grade-session-a' AND wait_event='PgSleep'")" = "1" ]; then ready=1; break; fi
+            sleep .1
+          done
+          test "$ready" = "1"
+          if psql -v ON_ERROR_STOP=1 -c "SELECT public.fixture_grade(jsonb_build_array(public.fixture_note(13,expected))) FROM public.fixture_grade_revision;" >/tmp/session-b.log 2>&1; then
+            echo "Stale concurrent grade unexpectedly committed"; exit 1
+          fi
+          grep -q GRADE_CONFLICT /tmp/session-b.log
+          wait "$first"
+          test "$(psql -Atc "SELECT valor FROM public.notas")" = "12"
+          echo "Two independent PostgreSQL sessions: stale update rejected; committed value preserved."

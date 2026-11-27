@@ -1,5 +1,6 @@
 'use client';
 
+import { usePortalDrawerGuard, usePortalDrawerNavigation } from "@/components/portal/ui/PortalDrawerNavigator";
 import { useState, useEffect, useCallback } from "react";
 import { FileText, Download, Loader2, Clock, AlertCircle, Upload, ChevronRight } from "lucide-react";
 import { PortalSurface } from "@/components/portal/ui/PortalSurface";
@@ -56,7 +57,7 @@ const DIGITAL_DOCUMENT_CODES = new Set([
   'DOC_CERTIFICADO_HABILITACOES',
 ]);
 
-export function TabDocumentos({ embedded = false, focusServiceCode = null, onOpenNotas }: { embedded?: boolean; focusServiceCode?: string | null; onOpenNotas?: () => void } = {}) {
+export function TabDocumentos({ embedded = false, focusServiceCode = null, onOpenNotas, onOpenNotices }: { embedded?: boolean; focusServiceCode?: string | null; onOpenNotas?: () => void; onOpenNotices?: () => void } = {}) {
   const searchParams = useSearchParams();
   const pathname = usePathname();
   const router = useRouter();
@@ -82,6 +83,8 @@ export function TabDocumentos({ embedded = false, focusServiceCode = null, onOpe
   // Modal state
   const [selectedDoc, setSelectedDoc] = useState<DocumentoCatalogo | null>(null);
   const [showDrawer, setShowDrawer] = useState(false);
+  const navigation = usePortalDrawerNavigation();
+  usePortalDrawerGuard(false, loading !== null);
   const visibleDocs = docs.filter((doc) =>
     (!serviceCode || doc.codigo === serviceCode)
   );
@@ -154,6 +157,7 @@ export function TabDocumentos({ embedded = false, focusServiceCode = null, onOpe
   }, [hasPending, fetchCatalogo]);
 
   const handleAction = async (doc: DocumentoCatalogo) => {
+    if (navigation && (showDrawer || loading !== null)) return;
     if (doc.pagamento_configurado === false) {
       error("Documento indisponível", doc.indisponivel_motivo ?? "A secretaria precisa definir o valor antes de o aluno fazer o pagamento.");
       return;
@@ -161,6 +165,7 @@ export function TabDocumentos({ embedded = false, focusServiceCode = null, onOpe
     if (doc.status === 'granted') {
       if (DIGITAL_DOCUMENT_CODES.has(doc.codigo)) handleDownload(doc);
       else {
+         if (onOpenNotices) { onOpenNotices(); return; }
          const nav = new URLSearchParams();
          if (studentId) nav.set("aluno", studentId);
          if (academicYearId) nav.set("ano_letivo_id", academicYearId);
@@ -199,6 +204,7 @@ export function TabDocumentos({ embedded = false, focusServiceCode = null, onOpe
       
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || 'Falha ao solicitar documento');
+      navigation?.notifyChanged();
       
       if (json.pagamento_id) {
         setSelectedDoc({ ...doc, pagamento_intent_id: json.pagamento_id });
@@ -352,10 +358,11 @@ export function TabDocumentos({ embedded = false, focusServiceCode = null, onOpe
       ))}
 
       <ServicePaymentDrawer
-        onPaid={() => { success("Pagamento confirmado", "O pagamento foi registado. Vamos atualizar o estado do pedido."); void fetchCatalogo(true); }}
+        onPaid={() => { navigation?.notifyChanged(); success("Pagamento confirmado", "O pagamento foi registado. Vamos atualizar o estado do pedido."); void fetchCatalogo(true); }}
         open={showDrawer}
         onClose={() => setShowDrawer(false)}
         onSuccess={() => {
+          navigation?.notifyChanged();
           success("Comprovativo recebido", "Aguardando validação pela secretaria. Não precisas de pagar novamente.");
           void fetchCatalogo(true);
         }}

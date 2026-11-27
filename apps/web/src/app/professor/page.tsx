@@ -4,7 +4,9 @@ import AssignmentsBanner from "@/components/professor/AssignmentsBanner";
 import { ProfessorAgendaSkeleton, ProfessorSkeletonBone, ProfessorTurmasSkeleton } from "@/components/professor/ProfessorLoadingSkeletons";
 import ProfessorReopeningRequests from "@/components/professor/ProfessorReopeningRequests";
 import { useEscolaId } from "@/hooks/useEscolaId";
-import { PortalSheet } from "@/components/portal/ui/PortalSheet";
+import dynamic from "next/dynamic";
+import { PortalDrawerNavigator, PortalDrawerPushButton, type PortalDrawerFrame } from "@/components/portal/ui/PortalDrawerNavigator";
+import { ProfessorTurmaHorario } from "@/components/professor/ProfessorTurmaHorario";
 import { ProfessorTurmaRoster } from "@/components/professor/ProfessorTurmaRoster";
 import { PortalWelcomeCard } from "@/components/portal/ui/PortalWelcomeCard";
 import { PortalSection } from "@/components/portal/ui/PortalSection";
@@ -12,8 +14,7 @@ import AcaoRapidaCard from "@/components/shared/AcaoRapidaCard";
 import { buildPortalHref, getEscolaParamFromPath } from "@/lib/navigation";
 import { formatTurmaDisplayName } from "@/utils/formatters";
 import { BookOpen, CalendarDays, ChevronDown, ClipboardCheck, Pencil, RefreshCw, UsersRound } from "lucide-react";
-import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useToast } from "@/components/feedback/FeedbackSystem";
 
@@ -91,7 +92,22 @@ const dayLabel = (day: number) => {
   }
 };
 
+const AttendanceWorkspace = dynamic(() => import("@/components/professor/ProfessorFrequenciasWorkspace").then(module => module.ProfessorFrequenciasWorkspace), { loading: () => <p role="status" className="text-sm text-muted-foreground">A carregar chamada…</p> });
+const PlansWorkspace = dynamic(() => import("@/components/professor/ProfessorPlanosWorkspace").then(module => module.ProfessorPlanosWorkspace), { loading: () => <p role="status" className="text-sm text-muted-foreground">A carregar planos…</p> });
+
+const MaterialsWorkspace = dynamic(() => import("@/components/professor/ProfessorMateriaisWorkspace").then(module => module.ProfessorMateriaisWorkspace), { loading: () => <p role="status" className="text-sm text-muted-foreground">A carregar materiais…</p> });
+
+const CalendarWorkspace = dynamic(() => import("@/components/professor/ProfessorCalendarWorkspace").then(module => module.ProfessorCalendarWorkspace), { loading: () => <p role="status" className="text-sm text-muted-foreground">A carregar calendário…</p> });
+const GradesWorkspace = dynamic(() => import("@/components/professor/ProfessorGradesWorkspace").then(module => module.ProfessorGradesWorkspace), { loading: () => <p role="status" className="text-sm text-muted-foreground">A carregar notas…</p> });
+
+const ExamList = dynamic(() => import("@/components/professor/ProfessorExamList").then(module => module.ProfessorExamList));
+type OperationKind = "exams" | "attendance" | "plans" | "materials" | "grades" | "calendar" | "assessments" | "periods";
+
 export default function Page() {
+  const [historical, setHistorical] = useState(false);
+  const [loadedLessonScope, setLoadedLessonScope] = useState<string | null>(null);
+  const [lessonYearId, setLessonYearId] = useState<string | null>(null);
+  const lessonWriteLock = useRef(false);
   const [atribs, setAtribs] = useState<AtribItem[]>([]);
   const [academicYearLabel, setAcademicYearLabel] = useState<string | null>(null);
   const [agenda, setAgenda] = useState<AgendaItem[]>([]);
@@ -104,6 +120,7 @@ export default function Page() {
   const [finalizeSummary, setFinalizeSummary] = useState("");
   const [finalizing, setFinalizing] = useState(false);
   const [nowTick, setNowTick] = useState(() => Date.now());
+  const [operation, setOperation] = useState<{ scope: string; frame: PortalDrawerFrame } | null>(null);
   const [expandedTurmaId, setExpandedTurmaId] = useState<string | null>(null);
   const [selectedLessonKey, setSelectedLessonKey] = useState<string | null>(null);
   const [retryVersion, setRetryVersion] = useState(0);
@@ -111,6 +128,8 @@ export default function Page() {
   const pollingFailures = useRef(0);
   const { success, error: toastError } = useToast();
   const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const requestedAcademicYearId = searchParams?.get("ano_letivo_id") ?? "";
   const { escolaId, escolaSlug } = useEscolaId();
   const escolaParam = getEscolaParamFromPath(pathname) ?? escolaSlug ?? escolaId;
   const professorHref = (path: string) => buildPortalHref(escolaParam, path);
@@ -127,12 +146,15 @@ export default function Page() {
     const load = async () => {
       try {
         setLoading(true);
+        setLoadedLessonScope(null);
+        setLessonYearId(null);
         setLoadError(null);
         setPendenciasResumo(null);
         const todayIso = getSchoolNow().date;
+        const year = requestedAcademicYearId ? "?" + new URLSearchParams({ ano_letivo_id: requestedAcademicYearId }) : "";
         const [atribsRes, agendaRes, aulasRes, pendRes, overviewRes] = await Promise.all([
-          fetch("/api/professor/atribuicoes", { cache: "no-store" }),
-          fetch("/api/professor/agenda", { cache: "no-store" }),
+          fetch("/api/professor/atribuicoes" + year, { cache: "no-store" }),
+          fetch("/api/professor/agenda" + year, { cache: "no-store" }),
           fetch(`/api/professor/aulas?from=${todayIso}`, { cache: "no-store" }),
           fetch("/api/professor/dashboard/pendencias", { cache: "no-store" }),
           fetch("/api/professor/dashboard/overview", { cache: "no-store" }),
@@ -145,9 +167,14 @@ export default function Page() {
         const overviewJson = await overviewRes.json().catch(() => null);
         if (!atribsJson?.ok || !agendaJson?.ok || !aulasJson?.ok) throw new Error("Dados académicos indisponíveis. Tente novamente.");
         if (!cancelled) {
+          const context = atribsJson.context;
+          const current = context?.mode === "CURRENT" && typeof context.anoLetivoId === "string" && (!requestedAcademicYearId || context.anoLetivoId === requestedAcademicYearId);
+          setHistorical(context?.mode === "HISTORICAL_READ");
+          setLoadedLessonScope(current ? JSON.stringify([escolaParam ?? "", requestedAcademicYearId]) : null);
+          setLessonYearId(current ? context.anoLetivoId : null);
           setAtribs((atribsJson?.items || []) as AtribItem[]);
           setAcademicYearLabel(typeof atribsJson?.context?.anoLetivoLabel === "string" ? atribsJson.context.anoLetivoLabel : null);
-          const actualLessons = (aulasJson?.items || []) as AgendaItem[];
+          const actualLessons = (current ? (aulasJson?.items || []) : []) as AgendaItem[];
           const actualByKey = new Map(actualLessons.map((lesson) => [`${lesson.turma_id}:${lesson.disciplina_id}:${lesson.slot_id ?? lesson.inicio}`, lesson]));
           setAgenda(((agendaJson?.items || []) as AgendaItem[]).map((item) => {
             const actual = actualByKey.get(`${item.turma_id}:${item.disciplina_id}:${item.slot_id ?? item.inicio}`);
@@ -180,9 +207,10 @@ export default function Page() {
     return () => {
       cancelled = true;
     };
-  }, [retryVersion]);
+  }, [retryVersion, requestedAcademicYearId, escolaParam]);
 
   useEffect(() => {
+    if (historical || !lessonYearId || loadedLessonScope !== JSON.stringify([escolaParam ?? "", requestedAcademicYearId])) return;
     let disposed = false;
     const poll = async () => {
       if (disposed || document.hidden || pollingInFlight.current || loadError) return;
@@ -221,17 +249,19 @@ export default function Page() {
       if (timeout !== undefined) clearTimeout(timeout);
       document.removeEventListener("visibilitychange", onVisible);
     };
-  }, [loadError]);
+  }, [loadError, historical, escolaParam, requestedAcademicYearId, loadedLessonScope, lessonYearId]);
 
   const loadAgain = () => setRetryVersion((current) => current + 1);
 
+  const lessonWritable = !historical && !loading && !loadError && Boolean(lessonYearId) && loadedLessonScope === JSON.stringify([escolaParam ?? "", requestedAcademicYearId]);
   const startLesson = async (item: AgendaItem) => {
-    if (!item.turma_id || !item.disciplina_id) return;
+    if (!lessonWritable || lessonWriteLock.current || !item.turma_id || !item.disciplina_id) return;
+    lessonWriteLock.current = true;
     const key = `${item.turma_id}:${item.disciplina_id}:${item.slot_id ?? item.inicio}`;
     setStartingKey(key);
     try {
       const data = getSchoolNow().date;
-      const response = await fetch("/api/professor/aulas/iniciar", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ turma_id: item.turma_id, disciplina_id: item.disciplina_id, data, slot_id: item.slot_id ?? undefined, inicio_previsto: item.inicio, fim_previsto: item.fim }) });
+      const response = await fetch("/api/professor/aulas/iniciar", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ano_letivo_id: lessonYearId, turma_id: item.turma_id, disciplina_id: item.disciplina_id, data, slot_id: item.slot_id ?? undefined, inicio_previsto: item.inicio, fim_previsto: item.fim }) });
       const payload = await response.json().catch(() => null);
       if (!response.ok || !payload?.ok) throw new Error(payload?.error ?? "Não foi possível confirmar a aula.");
       const aulaId = payload.aula?.id ?? payload.aula_id ?? null;
@@ -240,15 +270,17 @@ export default function Page() {
     } catch (cause) {
       toastError("Não foi possível confirmar", cause instanceof Error ? cause.message : "Tente novamente.");
     } finally {
+      lessonWriteLock.current = false;
       setStartingKey(null);
     }
   };
 
   const finalizeLesson = async (item: AgendaItem) => {
-    if (!item.aula_id) return;
+    if (!lessonWritable || lessonWriteLock.current || !item.aula_id) return;
+    lessonWriteLock.current = true;
     setFinalizing(true);
     try {
-      const response = await fetch("/api/professor/aulas/finalizar", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ aula_id: item.aula_id, resumo: finalizeSummary.trim() || null }) });
+      const response = await fetch("/api/professor/aulas/finalizar", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ano_letivo_id: lessonYearId, aula_id: item.aula_id, resumo: finalizeSummary.trim() || null }) });
       const payload = await response.json().catch(() => null);
       if (!response.ok || !payload?.ok) throw new Error(payload?.error ?? "Não foi possível finalizar a aula.");
       setAgenda((current) => current.map((candidate) => candidate.aula_id === item.aula_id ? { ...candidate, status: "finalizada" } : candidate));
@@ -264,6 +296,7 @@ export default function Page() {
     } catch (cause) {
       toastError("Não foi possível finalizar", cause instanceof Error ? cause.message : "Tente novamente.");
     } finally {
+      lessonWriteLock.current = false;
       setFinalizing(false);
     }
   };
@@ -304,6 +337,7 @@ export default function Page() {
   }, [agenda, todayKey]);
 
   const aulaAtiva = useMemo(() => {
+    if (!lessonWritable) return null;
     const aulasHojeList = agendaByDay.get(todayKey) || [];
     if (aulasHojeList.length === 0) return null;
     
@@ -321,11 +355,31 @@ export default function Page() {
       }
     }
     return null;
-  }, [agendaByDay, nowTick, todayKey]);
+  }, [agendaByDay, nowTick, todayKey, lessonWritable]);
 
   const selectedTurma = !loading && !loadError ? turmaMap.find(turma => turma.id === expandedTurmaId) : undefined;
   const selectedLesson = !loading && !loadError ? (agendaByDay.get(todayKey) ?? []).find(item => `${getSchoolNow(new Date(nowTick)).date}:${item.turma_id}:${item.disciplina_id}:${item.slot_id ?? item.inicio}` === selectedLessonKey) : undefined;
   const lessonQuery = selectedLesson?.turma_id && selectedLesson.disciplina_id ? `?turma_id=${encodeURIComponent(selectedLesson.turma_id)}&disciplina_id=${encodeURIComponent(selectedLesson.disciplina_id)}` : null;
+  const operationScope = JSON.stringify([escolaParam ?? "", requestedAcademicYearId]);
+  useEffect(() => {
+    setExpandedTurmaId(null);
+    setSelectedLessonKey(null);
+    setOperation(null);
+    setFinalizingKey(null);
+    setFinalizeSummary("");
+  }, [operationScope]);
+  const operationFrame = (kind: OperationKind, turmaId?: string | null, disciplinaId?: string | null): PortalDrawerFrame => ({
+    id: JSON.stringify([operationScope, kind, turmaId ?? "", disciplinaId ?? ""]),
+    title: ({ exams: "Provas", attendance: "Registar chamada", plans: "Planos de aula", materials: "Materiais pedagógicos", grades: "Lançamento de notas", calendar: "Calendário académico", assessments: "Calendário de avaliações", periods: "Períodos lectivos" })[kind],
+    description: ({ exams: "Consulta as provas das tuas disciplinas.", attendance: "Regista e guarda as presenças da turma.", plans: "Prepara, guarda e acompanha os planos de aula.", materials: "Cria, consulta e publica os materiais.", grades: "Selecciona o contexto, guarda as notas e exporta a mini-pauta.", calendar: "Consulta eventos oficiais da escola.", assessments: "Consulta avaliações próximas e anteriores.", periods: "Consulta períodos e datas de fecho." })[kind],
+    content: (historical || (requestedAcademicYearId && (loading || loadError))) && (kind === "plans" || kind === "materials") ? <p>Esta operação está disponível no ano lectivo activo.</p> : kind === "exams" ? <ExamList school={escolaId || escolaParam || ""} yearId={requestedAcademicYearId} editor={professorHref("/professor/provas")} /> : kind === "attendance" ? <AttendanceWorkspace embedded requestedAcademicYearId={requestedAcademicYearId} urlTurmaId={turmaId} urlDisciplinaId={disciplinaId} /> : kind === "plans" ? <PlansWorkspace embedded requestedTurmaId={turmaId ?? ""} requestedDisciplinaId={disciplinaId ?? ""} /> : kind === "materials" ? <MaterialsWorkspace embedded requestedTurmaId={turmaId ?? ""} requestedDisciplinaId={disciplinaId ?? ""} /> : kind === "grades" ? <GradesWorkspace embedded requestedAnoLetivoId={requestedAcademicYearId} requestedTurmaId={turmaId ?? ""} requestedDisciplinaId={disciplinaId ?? ""} /> : <CalendarWorkspace embedded initialView={kind} academicYearId={requestedAcademicYearId} />,
+  });
+  const openOperation = (kind: OperationKind, turmaId?: string | null, disciplinaId?: string | null) => {
+    setExpandedTurmaId(null);
+    setSelectedLessonKey(null);
+    setOperation({ scope: operationScope, frame: operationFrame(kind, turmaId, disciplinaId) });
+  };
+  const activeOperation = operation?.scope === operationScope ? operation.frame : null;
   const turmasAtivas = turmaMap.length;
   const avaliacoesPendentes = pendenciasResumo?.avaliacoes_pendentes ?? null;
   const faltasALancar = pendenciasResumo?.faltas_a_lancar ?? null;
@@ -379,20 +433,20 @@ export default function Page() {
               </div>
               {aulaAtiva.turma_id && aulaAtiva.disciplina_id && (
                 <div className="grid grid-cols-2 gap-2 sm:flex sm:shrink-0">
-                  <Link
-                    href={professorHref(`/professor/frequencias?turma_id=${encodeURIComponent(aulaAtiva.turma_id)}&disciplina_id=${encodeURIComponent(aulaAtiva.disciplina_id)}`)}
+                  <button type="button" aria-haspopup="dialog"
+                    onClick={() => openOperation("attendance", aulaAtiva.turma_id, aulaAtiva.disciplina_id)}
                     className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-xl bg-primary px-2.5 py-2 text-xs font-semibold text-primary-foreground transition-colors hover:brightness-95 sm:px-4"
                   >
                     <ClipboardCheck className="h-4 w-4" aria-hidden="true" />
                     Fazer chamada
-                  </Link>
-                  <Link
-                    href={professorHref(`/professor/notas?turma_id=${encodeURIComponent(aulaAtiva.turma_id)}&disciplina_id=${encodeURIComponent(aulaAtiva.disciplina_id)}`)}
+                  </button>
+                  <button type="button" aria-haspopup="dialog"
+                    onClick={() => openOperation("grades", aulaAtiva.turma_id, aulaAtiva.disciplina_id)}
                     className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-xl border border-border bg-card px-2.5 py-2 text-xs font-medium text-foreground transition-colors hover:bg-muted sm:px-4"
                   >
                     <Pencil className="h-4 w-4" aria-hidden="true" />
                     Lançar notas
-                  </Link>
+                  </button>
                 </div>
               )}
             </div>
@@ -417,12 +471,12 @@ export default function Page() {
 
         <PortalSection id="professor-shortcuts" title="Acesso rápido">
           <div className="grid grid-cols-2 gap-3 min-[380px]:grid-cols-3">
-            <AcaoRapidaCard dashboardCompact mobileCompact portalTile portalClean label="Presenças" icon={<ClipboardCheck className="h-5 w-5" />} href={professorHref("/professor/frequencias")} />
-            <AcaoRapidaCard dashboardCompact mobileCompact portalTile portalClean label="Lançar notas" icon={<Pencil className="h-5 w-5" />} href={professorHref("/professor/notas")} />
-            {escolaParam && <AcaoRapidaCard dashboardCompact mobileCompact portalTile portalClean prefetch={false} label="Provas" icon={<ClipboardCheck className="h-5 w-5" />} href={professorHref("/professor/provas")} />}
-            <AcaoRapidaCard dashboardCompact mobileCompact portalTile portalClean label="Materiais" icon={<BookOpen className="h-5 w-5" />} href={professorHref("/professor/materiais")} />
-            <AcaoRapidaCard dashboardCompact mobileCompact portalTile portalClean label="Planos de aula" icon={<ClipboardCheck className="h-5 w-5" />} href={professorHref("/professor/planos-aula")} />
-            <AcaoRapidaCard dashboardCompact mobileCompact portalTile portalClean prefetch={false} label="Calendário de Avaliações" icon={<CalendarDays className="h-5 w-5" />} href={professorHref("/professor/calendario#avaliacoes")} />
+            <AcaoRapidaCard dashboardCompact mobileCompact portalTile portalClean label="Presenças" icon={<ClipboardCheck className="h-5 w-5" />} onClick={() => openOperation("attendance")} dialogOpen={activeOperation?.title === "Registar chamada"} />
+            <AcaoRapidaCard dashboardCompact mobileCompact portalTile portalClean label="Lançar notas" icon={<Pencil className="h-5 w-5" />} onClick={() => openOperation("grades")} dialogOpen={activeOperation?.title === "Lançamento de notas"} />
+            {escolaParam && <AcaoRapidaCard dashboardCompact mobileCompact portalTile portalClean prefetch={false} label="Provas" icon={<ClipboardCheck className="h-5 w-5" />} onClick={() => openOperation("exams")} />}
+            <AcaoRapidaCard dashboardCompact mobileCompact portalTile portalClean label="Materiais" icon={<BookOpen className="h-5 w-5" />} onClick={() => openOperation("materials")} dialogOpen={activeOperation?.title === "Materiais pedagógicos"} />
+            <AcaoRapidaCard dashboardCompact mobileCompact portalTile portalClean label="Planos de aula" icon={<ClipboardCheck className="h-5 w-5" />} onClick={() => openOperation("plans")} dialogOpen={activeOperation?.title === "Planos de aula"} />
+            <AcaoRapidaCard dashboardCompact mobileCompact portalTile portalClean prefetch={false} label="Calendário de Avaliações" icon={<CalendarDays className="h-5 w-5" />} onClick={() => openOperation("assessments")} dialogOpen={activeOperation?.title === "Calendário de avaliações"} />
           </div>
         </PortalSection>
 
@@ -433,16 +487,16 @@ export default function Page() {
               unavailable={!loading && (loadError !== null || avaliacoesPendentes === null)}
               needsAttention={!loading && !loadError && avaliacoesPendentes !== null && avaliacoesPendentes > 0}
               sublabel={loading ? "A carregar…" : loadError || avaliacoesPendentes === null ? "Dados indisponíveis" : String(avaliacoesPendentes)}
-              href={professorHref("/professor/notas")} />
+              onClick={() => openOperation("grades")} dialogOpen={activeOperation?.title === "Lançamento de notas"} />
             <AcaoRapidaCard dashboardCompact mobileCompact portalClean label="Faltas a lançar"
               icon={<ClipboardCheck className="h-4 w-4" />}
               unavailable={!loading && (loadError !== null || faltasALancar === null)}
               needsAttention={!loading && !loadError && faltasALancar !== null && faltasALancar > 0}
               sublabel={loading ? "A carregar…" : loadError || faltasALancar === null ? "Dados indisponíveis" : String(faltasALancar)}
-              href={professorHref("/professor/frequencias")} />
+              onClick={() => openOperation("attendance")} dialogOpen={activeOperation?.title === "Registar chamada"} />
             <AcaoRapidaCard dashboardCompact mobileCompact portalClean label="Calendário académico"
               icon={<CalendarDays className="h-4 w-4" />} sublabel="Consultar eventos e avaliações"
-              href={professorHref("/professor/calendario")} />
+              onClick={() => openOperation("calendar")} dialogOpen={activeOperation?.title === "Calendário académico"} />
           </div>
         </PortalSection>
 
@@ -453,7 +507,7 @@ export default function Page() {
           <section className="space-y-3 sm:space-y-4">
             <div className="flex items-center justify-between gap-2 px-1 sm:px-2">
               <h2 className="text-sm font-semibold text-foreground">Minhas turmas</h2>
-              <Link href={professorHref("/professor/frequencias")} className="text-xs font-semibold text-klasse-green hover:underline">Registar presença</Link>
+              <button type="button" aria-haspopup="dialog" onClick={() => openOperation("attendance")} className="min-h-11 text-xs font-semibold text-klasse-green hover:underline">Registar presença</button>
             </div>
 
             {loadError ? (
@@ -508,7 +562,7 @@ export default function Page() {
           <section className="space-y-3 sm:space-y-4">
             <div className="flex items-center justify-between gap-2 px-1 sm:px-2">
               <h2 className="text-sm font-semibold text-foreground">Agenda de {dayLabel(todayKey)}</h2>
-              <Link href={professorHref("/professor/calendario")} className="text-xs font-semibold text-klasse-green hover:underline">Ver calendário</Link>
+              <button type="button" aria-haspopup="dialog" onClick={() => openOperation("calendar")} className="min-h-11 text-xs font-semibold text-klasse-green hover:underline">Ver calendário</button>
             </div>
             <div className="rounded-xl border border-border bg-card p-3 shadow-sm sm:rounded-xl sm:p-6">
               {loadError ? (
@@ -522,9 +576,6 @@ export default function Page() {
                   {(agendaByDay.get(todayKey) || []).map((item, idx) => {
                     const key = `${item.turma_id}:${item.disciplina_id}:${item.slot_id ?? item.inicio}`;
                     const canNavigate = Boolean(item.turma_id && item.disciplina_id);
-                    const query = canNavigate
-                      ? `?turma_id=${encodeURIComponent(item.turma_id!)}&disciplina_id=${encodeURIComponent(item.disciplina_id!)}`
-                      : "";
                     const isCurrentLesson = aulaAtiva?.turma_id === item.turma_id
                       && aulaAtiva?.disciplina_id === item.disciplina_id
                       && (aulaAtiva?.slot_id ?? aulaAtiva?.inicio) === (item.slot_id ?? item.inicio);
@@ -559,20 +610,20 @@ export default function Page() {
                               ) : item.status === "finalizada" ? (
                                 <span className="font-semibold text-muted-foreground">Finalizada</span>
                               ) : (
-                                <button type="button" onClick={() => void startLesson(item)} disabled={startingKey === key} className="inline-flex min-h-10 items-center rounded-xl border border-border px-2.5 font-semibold text-klasse-green disabled:opacity-50">
+                                <button type="button" onClick={() => void startLesson(item)} disabled={!lessonWritable || startingKey !== null || finalizing} className="inline-flex min-h-10 items-center rounded-xl border border-border px-2.5 font-semibold text-klasse-green disabled:opacity-50">
                                   {startingKey === key ? "A confirmar..." : "Entrar na sala"}
                                 </button>
                               )}
-                              <Link href={professorHref(`/professor/frequencias${query}`)} className="inline-flex min-h-10 items-center rounded-xl px-2 font-semibold text-klasse-green hover:bg-muted">Chamada</Link>
-                              <Link href={professorHref(`/professor/notas${query}`)} className="inline-flex min-h-10 items-center rounded-xl px-2 font-semibold text-klasse-green hover:bg-muted">Notas</Link>
-                              <Link href={professorHref(`/professor/planos-aula${query}`)} className="inline-flex min-h-10 items-center rounded-xl px-2 font-semibold text-klasse-green hover:bg-muted">Plano</Link>
+                              <button type="button" aria-haspopup="dialog" onClick={() => openOperation("attendance", item.turma_id, item.disciplina_id)} className="inline-flex min-h-10 items-center rounded-xl px-2 font-semibold text-klasse-green hover:bg-muted">Chamada</button>
+                              <button type="button" aria-haspopup="dialog" onClick={() => openOperation("grades", item.turma_id, item.disciplina_id)} className="inline-flex min-h-10 items-center rounded-xl px-2 font-semibold text-klasse-green hover:bg-muted">Notas</button>
+                              <button type="button" aria-haspopup="dialog" onClick={() => openOperation("plans", item.turma_id, item.disciplina_id)} className="inline-flex min-h-10 items-center rounded-xl px-2 font-semibold text-klasse-green hover:bg-muted">Plano</button>
                             </div>
                             {finalizingKey === key && (
                               <div className="mt-2 space-y-2 rounded-xl border border-border bg-muted p-3">
                                 <label className="block text-xs font-semibold text-foreground" htmlFor={`resumo-${idx}`}>Resumo da aula (opcional)</label>
                                 <textarea id={`resumo-${idx}`} value={finalizeSummary} onChange={(event) => setFinalizeSummary(event.target.value)} rows={2} className="w-full rounded-xl border border-border bg-card p-2 text-sm text-foreground focus:border-klasse-gold focus:outline-none focus:ring-4 focus:ring-klasse-gold/20" />
                                 <div className="grid grid-cols-2 gap-2">
-                                  <button type="button" onClick={() => void finalizeLesson(item)} disabled={finalizing} className="min-h-11 rounded-xl bg-klasse-gold px-2 text-xs font-semibold text-klasse-gold-900 disabled:opacity-50">
+                                  <button type="button" onClick={() => void finalizeLesson(item)} disabled={!lessonWritable || finalizing || startingKey !== null} className="min-h-11 rounded-xl bg-klasse-gold px-2 text-xs font-semibold text-klasse-gold-900 disabled:opacity-50">
                                     {finalizing ? "A finalizar..." : "Confirmar saída"}
                                   </button>
                                   <button type="button" onClick={() => setFinalizingKey(null)} disabled={finalizing} className="min-h-11 rounded-xl border border-border bg-card px-2 text-xs font-semibold text-foreground disabled:opacity-50">Cancelar</button>
@@ -591,21 +642,23 @@ export default function Page() {
             </div>
           </section>
         </div>
-        <PortalSheet open={Boolean(selectedTurma)} onClose={() => setExpandedTurmaId(null)} title={selectedTurma ? formatTurmaDisplayName({ nome: selectedTurma.nome }) : "Perfil da turma"} description="Disciplinas atribuídas e operações pedagógicas." size="expanded">
-          {selectedTurma && <>
+        <PortalDrawerNavigator key={`${operationScope}:turma`} open={Boolean(selectedTurma)} onReopen={() => setExpandedTurmaId(expandedTurmaId)} onClose={() => setExpandedTurmaId(null)} onChanged={loadAgain} root={{
+          id: `${escolaParam ?? "default"}:turma:${selectedTurma?.id ?? "closed"}`,
+          title: selectedTurma ? formatTurmaDisplayName({ nome: selectedTurma.nome }) : "Perfil da turma",
+          description: "Disciplinas atribuídas e operações pedagógicas.",
+          content: selectedTurma && <>
             <p className="text-sm text-muted-foreground">{selectedTurma.disciplinas.join(" · ")}</p>
             <div className="grid grid-cols-2 gap-2">
-                        <Link href={professorHref(`/professor/frequencias?turma_id=${encodeURIComponent(selectedTurma.id)}`)} className="inline-flex min-h-11 items-center justify-center rounded-xl bg-klasse-gold px-2 text-xs font-semibold text-klasse-gold-900 hover:brightness-95">Chamada</Link>
-                        <Link href={professorHref(`/professor/notas?turma_id=${encodeURIComponent(selectedTurma.id)}`)} className="inline-flex min-h-11 items-center justify-center rounded-xl bg-muted px-2 text-xs font-semibold text-foreground hover:brightness-95">Notas</Link>
-                        <Link href={professorHref(`/professor/planos-aula?turma_id=${encodeURIComponent(selectedTurma.id)}`)} className="inline-flex min-h-11 items-center justify-center rounded-xl bg-muted px-2 text-xs font-semibold text-foreground hover:brightness-95">Plano de aula</Link>
-                        <Link href={professorHref(`/professor/materiais?turma_id=${encodeURIComponent(selectedTurma.id)}`)} className="inline-flex min-h-11 items-center justify-center rounded-xl bg-muted px-2 text-xs font-semibold text-foreground hover:brightness-95">Materiais</Link>
-                        <Link href={professorHref(`/professor/turmas/${selectedTurma.id}/horario`)} className="col-span-2 inline-flex min-h-11 items-center justify-center rounded-xl border border-border px-2 text-xs font-semibold text-foreground hover:bg-muted">Horário da turma</Link>
+                        <PortalDrawerPushButton frame={operationFrame("attendance", selectedTurma.id)} className="inline-flex min-h-11 items-center justify-center rounded-xl bg-klasse-gold px-2 text-xs font-semibold text-klasse-gold-900 hover:brightness-95">Chamada</PortalDrawerPushButton>
+                        <PortalDrawerPushButton frame={operationFrame("grades", selectedTurma.id)} className="inline-flex min-h-11 items-center justify-center rounded-xl bg-muted px-2 text-xs font-semibold text-foreground hover:brightness-95">Notas</PortalDrawerPushButton>
+                        <PortalDrawerPushButton frame={operationFrame("plans", selectedTurma.id)} className="inline-flex min-h-11 items-center justify-center rounded-xl bg-muted px-2 text-xs font-semibold text-foreground hover:brightness-95">Plano de aula</PortalDrawerPushButton>
+                        <PortalDrawerPushButton frame={operationFrame("materials", selectedTurma.id)} className="inline-flex min-h-11 items-center justify-center rounded-xl bg-muted px-2 text-xs font-semibold text-foreground hover:brightness-95">Materiais</PortalDrawerPushButton>
+                        <PortalDrawerPushButton frame={{ id: `${escolaParam ?? "default"}:horario:${selectedTurma.id}`, title: "Horário da turma", description: formatTurmaDisplayName({ nome: selectedTurma.nome }), content: <ProfessorTurmaHorario turmaId={selectedTurma.id} embedded /> }} className="col-span-2 inline-flex min-h-11 items-center justify-center rounded-xl border border-border px-2 text-xs font-semibold text-foreground hover:bg-muted">Horário da turma</PortalDrawerPushButton>
             </div>
-            <ProfessorTurmaRoster key={`${escolaParam}:${selectedTurma.id}`} turmaId={selectedTurma.id} />
-          </>}
-        </PortalSheet>
-        <PortalSheet open={Boolean(selectedLesson)} onClose={() => setSelectedLessonKey(null)} title={selectedLesson?.disciplina_nome ?? "Detalhes da aula"} description="Consulta da agenda de hoje." size="medium">
-          {selectedLesson && <>
+            <ProfessorTurmaRoster key={`${operationScope}:${selectedTurma.id}`} turmaId={selectedTurma.id} academicYearId={requestedAcademicYearId} subjects={Array.from(new Map(atribs.filter(item => item.turma.id === selectedTurma.id && item.disciplina.id).map(item => [item.disciplina.id!, { id: item.disciplina.id!, nome: item.disciplina.nome }])).values())} />
+          </>,
+        }} />
+        <PortalDrawerNavigator key={`${operationScope}:lesson`} open={Boolean(selectedLesson)} onReopen={() => setSelectedLessonKey(selectedLessonKey)} onClose={() => setSelectedLessonKey(null)} onChanged={loadAgain} root={{ id: `${operationScope}:lesson:${selectedLessonKey ?? "closed"}`, title: selectedLesson?.disciplina_nome ?? "Detalhes da aula", description: "Consulta da agenda de hoje.", size: "medium", content: selectedLesson && <>
             <dl className="grid grid-cols-2 gap-3 text-sm">
               <div><dt className="text-muted-foreground">Turma</dt><dd className="font-medium">{formatTurmaDisplayName({ turma_nome: selectedLesson.turma_nome })}</dd></div>
               <div><dt className="text-muted-foreground">Horário</dt><dd className="font-medium">{selectedLesson.inicio} – {selectedLesson.fim}</dd></div>
@@ -613,12 +666,12 @@ export default function Page() {
               <div><dt className="text-muted-foreground">Estado</dt><dd className="font-medium">{selectedLesson.status === "em_andamento" ? "Em andamento" : selectedLesson.status === "finalizada" ? "Finalizada" : selectedLesson.status === "cancelada" ? "Cancelada" : "Sem confirmação de realização"}</dd></div>
             </dl>
             {lessonQuery && <div className="grid grid-cols-2 gap-2">
-              <Link className="inline-flex min-h-11 items-center justify-center rounded-xl bg-primary px-3 text-sm font-semibold text-primary-foreground" href={professorHref(`/professor/frequencias${lessonQuery}`)}>Chamada</Link>
-              <Link className="inline-flex min-h-11 items-center justify-center rounded-xl border border-border px-3 text-sm font-medium" href={professorHref(`/professor/notas${lessonQuery}`)}>Notas</Link>
-              <Link className="col-span-2 inline-flex min-h-11 items-center justify-center rounded-xl border border-border px-3 text-sm font-medium" href={professorHref(`/professor/planos-aula${lessonQuery}`)}>Plano de aula</Link>
+              <PortalDrawerPushButton frame={operationFrame("attendance", selectedLesson.turma_id, selectedLesson.disciplina_id)} className="inline-flex min-h-11 items-center justify-center rounded-xl bg-primary px-3 text-sm font-semibold text-primary-foreground">Chamada</PortalDrawerPushButton>
+              <PortalDrawerPushButton frame={operationFrame("grades", selectedLesson.turma_id, selectedLesson.disciplina_id)} className="inline-flex min-h-11 items-center justify-center rounded-xl border border-border px-3 text-sm font-medium">Notas</PortalDrawerPushButton>
+              <PortalDrawerPushButton frame={operationFrame("plans", selectedLesson.turma_id, selectedLesson.disciplina_id)} className="col-span-2 inline-flex min-h-11 items-center justify-center rounded-xl border border-border px-3 text-sm font-medium">Plano de aula</PortalDrawerPushButton>
             </div>}
-          </>}
-        </PortalSheet>
+          </>, }} />
+        <PortalDrawerNavigator key={`${operationScope}:operation`} open={Boolean(activeOperation)} onReopen={() => setOperation(operation)} onClose={() => setOperation(null)} onChanged={loadAgain} root={activeOperation ?? { id: "closed", title: "Operação", description: "", content: null }} />
       </div>
     </div>
   );

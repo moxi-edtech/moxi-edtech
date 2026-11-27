@@ -60,7 +60,7 @@ test("operations shares the cultural signature without changing academic authori
   assert.match(css, /\.klasse-portal-theme \.klasse-welcome-card,\s*\.klasse-welcome-card\.klasse-operations-academic-card/);
   assert.match(css, /background-position: center top/);
   assert.match(css, /background-size: 80px 20px/);
-  const calendar = read("app/professor/calendario/page.tsx");
+  const calendar = read("components/professor/ProfessorCalendarWorkspace.tsx");
   assert.match(calendar, /selectedEvent = items\.find/);
   assert.match(calendar, /<PortalSheet open=\{eventOpen/);
   assert.match(calendar, /selectedEvent\.descricao/);
@@ -79,7 +79,7 @@ test("contextual financial actions use confirmed scope and an immutable upload s
   assert.match(absences, /scope === query \? data : null/);
   assert.match(absences, /inFlight.current/);
   assert.match(absences, /<PortalSheet open=\{detailOpen/);
-  const notes = read("app/professor/notas/page.tsx");
+  const notes = read("components/professor/ProfessorGradesWorkspace.tsx");
   assert.match(notes, /loadedPautaScope === raaScope/);
   assert.match(notes, /mostrarTrimestresInativos: showInactiveTerms/);
   assert.match(notes, /<PortalSheet open=\{raaOpen/);
@@ -89,22 +89,131 @@ test("contextual financial actions use confirmed scope and an immutable upload s
 test("second round of sheets reuses authorized data without eager roster or timetable queries", () => {
   const professor = read("app/professor/page.tsx");
   const roster = read("components/professor/ProfessorTurmaRoster.tsx");
-  const calendar = read("app/professor/calendario/page.tsx");
+  const calendar = read("components/professor/ProfessorCalendarWorkspace.tsx");
   const dashboard = read("components/aluno/dashboard/DashboardLoader.tsx");
   const schedule = read("components/aluno/tabs/TabHorario.tsx");
   const grades = read("components/aluno/academico/BoletimGradeGrid.tsx");
   const notes = read("components/aluno/tabs/TabNotas.tsx");
-  assert.ok(professor.includes("<PortalSheet open={Boolean(selectedTurma)}"));
-  assert.ok(professor.includes("<PortalSheet open={Boolean(selectedLesson)}"));
-  assert.ok(professor.includes("{selectedTurma && <>"));
+  assert.match(professor, /<PortalDrawerNavigator[^>]*open=\{Boolean\(selectedTurma\)\}/);
+  assert.ok(professor.includes("<ProfessorTurmaHorario turmaId={selectedTurma.id} embedded />"));
+  assert.match(professor, /<PortalDrawerNavigator[^>]*open=\{Boolean\(selectedLesson\)\}/);
+  assert.ok(professor.includes("content: selectedTurma && <>"));
   assert.ok(roster.includes("payload.turmaId !== turmaId"));
   assert.ok(roster.includes("return () => ctrl.abort()"));
   assert.ok(calendar.includes('item.tipo === "AVALIACAO_ESCOLAR" && item.data_fim < todayIso'));
   assert.ok(calendar.includes("<PortalSheet open={historyOpen}"));
-  assert.ok(dashboard.includes("{lessonOpen && <TabHorario"));
+  assert.ok(dashboard.includes("content: lessonOpen ? <>"));
+  assert.ok(dashboard.includes("<TabHorario dailyOnly />"));
+  assert.ok(dashboard.includes("content: <TabHorario />"));
   assert.ok(schedule.includes("resolvedRequestKey === requestKey"));
   assert.ok(grades.includes("const sheetOpen = Boolean(expandedId && sheetSubject && sheetTerm)"));
   assert.ok(grades.includes("avaliacoes: locked ? [] : subject.avaliacoes"));
   assert.ok(notes.includes("safeIsLiberado && !historicalRead && matriculaEncontrada"));
   assert.ok(notes.includes("academicStatusScope === bulletinQuery"));
+});
+
+test("drawer navigator mantém um único diálogo, isolamento por contexto e retorno à origem", () => {
+  const navigator = read("components/portal/ui/PortalDrawerNavigator.tsx");
+  const sheet = read("components/portal/ui/PortalSheet.tsx");
+  const notices = read("components/aluno/tabs/TabNotificacoes.tsx");
+  const timetable = read("components/professor/ProfessorTurmaHorario.tsx");
+  const direct = read("app/professor/turmas/[turmaId]/horario/page.tsx");
+  assert.equal(navigator.match(/<PortalSheet\b/g)?.length, 1);
+  assert.match(navigator, /stack.rootId === root.id/);
+  assert.match(navigator, /hidden=\{entries.length > 0\}/);
+  assert.match(navigator, /current.trail.slice\(0, depth\)/);
+  assert.match(navigator, /body.current.scrollTop = target\?\.top/);
+  assert.match(navigator, /target.opener.focus/);
+  assert.match(sheet, /onBack && <button/);
+  assert.match(notices, /navigation.push\(/);
+  assert.match(notices, /!navigation && <PortalSheet/);
+  assert.match(timetable, /\/api\/professor\/turmas\//);
+  assert.match(timetable, /return \(\) => ctrl.abort\(\)/);
+  assert.match(direct, /<ProfessorTurmaHorario/);
+});
+
+test("dashboard operational drawers reuse authorized workspaces and guard mutations", () => {
+  const dashboard = read("app/professor/page.tsx");
+  const navigator = read("components/portal/ui/PortalDrawerNavigator.tsx");
+  const attendance = read("components/professor/ProfessorFrequenciasWorkspace.tsx");
+  const plans = read("components/professor/ProfessorPlanosWorkspace.tsx");
+  const materials = read("components/professor/ProfessorMateriaisWorkspace.tsx");
+  const student = read("components/aluno/dashboard/DashboardLoader.tsx");
+  for (const operation of ["attendance", "plans", "materials"]) {
+    assert.ok(dashboard.includes('openOperation("' + operation + '")'));
+    assert.ok(dashboard.includes('operationFrame("' + operation + '", selectedTurma.id)'));
+  }
+  assert.match(navigator, /registerGuard/);
+  assert.match(navigator, /canLeave\(activeIds\)/);
+  assert.match(navigator, /canLeave\(\[last.frame.id\]\)/);
+  assert.match(navigator, /busy=\{busy\}/);
+  assert.match(attendance, /usePortalDrawerGuard\(attendanceDirty, saving\)/);
+  assert.match(attendance, /mobile && !embedded/);
+  assert.match(plans, /usePortalDrawerGuard\(dirty, saving\)/);
+  assert.match(materials, /usePortalDrawerGuard\(dirty, saving \|\| updatingId !== null\)/);
+  assert.match(student, /kind: "notice", noticeId: a.id/);
+  assert.match(read("app/professor/frequencias/page.tsx"), /<ProfessorFrequenciasWorkspace/);
+  assert.match(read("app/professor/planos-aula/page.tsx"), /<ProfessorPlanosWorkspace/);
+  assert.match(read("app/professor/materiais/page.tsx"), /<ProfessorMateriaisWorkspace/);
+});
+
+test("student dashboard reuses guarded academic and financial workspaces", () => {
+  const dashboard = read("components/aluno/dashboard/DashboardLoader.tsx");
+  const workspace = read("components/aluno/dashboard/StudentDrawerWorkspace.tsx");
+  const academic = read("components/aluno/academico/AcademicoWorkspace.tsx");
+  const navigator = read("components/portal/ui/PortalDrawerNavigator.tsx");
+  const sheet = read("components/portal/ui/PortalSheet.tsx");
+  const finance = read("components/aluno/tabs/TabFinanceiro.tsx");
+  const notes = read("components/aluno/tabs/TabNotas.tsx");
+  const absences = read("components/aluno/tabs/TabFaltas.tsx");
+  const documents = read("components/aluno/tabs/TabDocumentos.tsx");
+  const consolidated = read("components/aluno/financeiro-portal/PaymentDrawer.tsx");
+  const service = read("components/aluno/layout/ServicePaymentDrawer.tsx");
+  assert.match(dashboard, /openDrawer\("academic"\)/);
+  assert.match(dashboard, /openDrawer\("finance"\)/);
+  assert.match(dashboard, /onChanged=\{refresh\}/);
+  assert.match(workspace, /<Academic embedded/);
+  assert.match(workspace, /<Finance onOpenDocuments=/);
+  assert.match(workspace, /<Documents embedded/);
+  assert.match(academic, /if \(embedded\) return;\s*const url = new URL/);
+  assert.match(academic, /if \(guarded\) return/);
+  assert.match(navigator, /register\(id, sourceId, \{ dirty, busy \}\)/);
+  assert.match(navigator, /notifyChanged/);
+  assert.match(sheet, /props.inline \? <InlinePortalPanel/);
+  assert.match(finance, /inert=\{Boolean\(navigation && paymentOpen\)\}/);
+  assert.match(notes, /<AcademicRequestPanel inline=\{Boolean\(navigation\)\}/);
+  assert.match(absences, /usePortalDrawerGuard\(detailOpen && Boolean\(reason.trim\(\)\), sending\)/);
+  assert.match(documents, /if \(onOpenNotices\) \{ onOpenNotices\(\); return; \}/);
+  for (const payment of [consolidated, service]) {
+    assert.match(payment, /inline=\{Boolean\(navigation\)\}/);
+    assert.match(payment, /usePortalDrawerGuard\(open && Boolean\(selectedFile \|\| mensagem.trim\(\)\), open && sending\)/);
+  }
+});
+
+test("professor drawer-first calendar, grade entry and student lookup preserve scope and direct routes", () => {
+  const dashboard = read("app/professor/page.tsx");
+  const calendar = read("components/professor/ProfessorCalendarWorkspace.tsx");
+  const grades = read("components/professor/ProfessorGradesWorkspace.tsx");
+  const grid = read("components/professor/GradeEntryGrid.tsx");
+  const roster = read("components/professor/ProfessorTurmaRoster.tsx");
+  const student = read("components/professor/ProfessorStudentGrades.tsx");
+  assert.match(dashboard, /openOperation\("calendar"\)/);
+  assert.match(dashboard, /openOperation\("assessments"\)/);
+  assert.match(dashboard, /openOperation\("grades"\)/);
+  assert.match(dashboard, /operationFrame\("grades", selectedTurma.id\)/);
+  assert.match(dashboard, /academicYearId=\{requestedAcademicYearId\}/);
+  assert.match(dashboard, /openOperation\("exams"\)/);
+  assert.match(calendar, /view === "periods"/);
+  assert.match(calendar, /view === "assessments"/);
+  assert.match(calendar, /controller.abort\(\)/);
+  assert.match(grades, /usePortalDrawerGuard\(hasUnsavedGrades \|\| otherDraft, mutationBusy\)/);
+  assert.match(grades, /!pautaReady \|\| !turmaId \|\| !disciplinaId/);
+  assert.match(grades, /<PortalSheet open=\{exportOpen\} busy=\{exporting\} inline=\{embedded\}/);
+  assert.match(grid, /!drawerEmbedded && pendingRef.current.size > 0/);
+  assert.match(grid, /usePortalDrawerGuard\(hasPendingGrades/);
+  assert.match(roster, /studentId=\{item.id\} matriculaId=\{item.matricula_id\}/);
+  assert.match(student, /item.aluno_id === studentId && item.matricula_id === matriculaId/);
+  assert.doesNotMatch(student, /method: "POST"|method: "PATCH"|method: "DELETE"/);
+  assert.match(read("app/professor/calendario/page.tsx"), /<ProfessorCalendarWorkspace/);
+  assert.match(read("app/professor/notas/page.tsx"), /<ProfessorGradesWorkspace/);
 });

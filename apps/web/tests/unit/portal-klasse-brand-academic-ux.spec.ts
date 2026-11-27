@@ -53,7 +53,7 @@ test("navegação e área académica explicitam contexto sem inventar estado", a
 test("notas e decisões técnicas conservam ações sem poluir a interface", async () => {
   const [alunoNotas, professorNotas, grade] = await Promise.all([
     read("components/aluno/tabs/TabNotas.tsx"),
-    read("app/professor/notas/page.tsx"),
+    read("components/professor/ProfessorGradesWorkspace.tsx"),
     read("components/aluno/academico/BoletimGradeGrid.tsx"),
   ]);
   assert.match(alunoNotas, /klasse-portal-cta/);
@@ -103,7 +103,7 @@ test("portal do aluno compacta cabeçalho, dashboard e notas sem perder ações"
   assert.match(layout, /pb-\[calc\(88px\+env\(safe-area-inset-bottom\)\)\]/);
 });
 
-test("aluno reutiliza os cards de Operações com densidade mobile, sem retirar os links", async () => {
+test("aluno reutiliza os cards de Operações com densidade mobile e navegação contextual", async () => {
   const [dashboard, quick, card] = await Promise.all([
     read("components/aluno/dashboard/DashboardLoader.tsx"),
     read("components/layout/escola-admin/QuickActionsSection.tsx"),
@@ -117,8 +117,10 @@ test("aluno reutiliza os cards de Operações com densidade mobile, sem retirar 
   assert.match(card, /min-h-16[^"]*bg-card p-3/);
   assert.match(card, /min-h-\[88px\][^"]*bg-card p-4/);
   assert.match(card, /if \(href\) return <Link href=\{href\}/);
-  assert.match(dashboard, /href=\{go\("\/aluno\/horario"\)\}/);
-  assert.match(dashboard, /href=\{go\(item.href\)\}/);
+  assert.match(dashboard, /<PortalDrawerPushButton[\s\S]*?content: <TabHorario \/>/);
+  assert.doesNotMatch(dashboard, /href=\{go\("\/aluno\/horario"\)\}/);
+  assert.match(dashboard, /contextual \? \{ onClick: \(\) => openDrawer\(contextual\)/);
+  assert.match(dashboard, /href: go\(item.href\)/);
   assert.doesNotMatch(dashboard, /<PortalStatCard/);
 });
 

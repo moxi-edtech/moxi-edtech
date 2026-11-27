@@ -46,7 +46,7 @@ test("shared page header wraps actions instead of forcing viewport overflow", ()
 });
 
 test("plan editor uses canonical layout, form tokens, safe buttons and real initial skeleton", () => {
-  const html = source("../../src/app/professor/planos-aula/page.tsx");
+  const html = source("../../src/components/professor/ProfessorPlanosWorkspace.tsx");
   assert.match(html, /PORTAL_PAGE_INSET/);
   assert.match(html, /<ProfessorPlanosAulaSkeleton\s*\/>/);
   assert.match(html, /<ProfessorPlanosListSkeleton\s*\/>/);

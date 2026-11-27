@@ -8,6 +8,7 @@ import { Check, Filter, Wallet, ArrowUpCircle, ArrowDownCircle, Printer, Loader2
 import { Button } from "@/components/ui/Button";
 import { StudentAppyPayButton } from "@/components/financeiro/AppyPayReferenceButton";
 import { PaymentDrawer } from "@/components/aluno/financeiro-portal/PaymentDrawer";
+import { usePortalDrawerNavigation } from "@/components/portal/ui/PortalDrawerNavigator";
 import { PortalSheet } from "@/components/portal/ui/PortalSheet";
 import type { AlunoServicoFinanceiro } from "@/lib/financeiro/servicosPagamento";
 
@@ -73,13 +74,14 @@ function serviceStatusClass(status: AlunoServicoFinanceiro["status"]): string {
   return "text-amber-700";
 }
 
-export function TabFinanceiro() {
+export function TabFinanceiro({ onOpenDocuments }: { onOpenDocuments?: (serviceCode: string | null) => void } = {}) {
   const searchParams = useSearchParams();
   const studentId = useMemo(() => searchParams?.get("aluno") ?? null, [searchParams]);
-  return <FinanceiroScope key={studentId ?? "default"} studentId={studentId} />;
+  return <FinanceiroScope key={studentId ?? "default"} studentId={studentId} onOpenDocuments={onOpenDocuments} />;
 }
 
-function FinanceiroScope({ studentId }: { studentId: string | null }) {
+function FinanceiroScope({ studentId, onOpenDocuments }: { studentId: string | null; onOpenDocuments?: (serviceCode: string | null) => void }) {
+  const navigation = usePortalDrawerNavigation();
   const currentYear = Number(new Intl.DateTimeFormat("en", { year: "numeric", timeZone: "Africa/Luanda" }).format(new Date()));
 
   const [loading, setLoading] = useState(true);
@@ -208,7 +210,7 @@ function FinanceiroScope({ studentId }: { studentId: string | null }) {
     setPaymentRows(items.map(item => ({...item}))); setPaymentOpen(true);
   };
   const closePayment = () => { paymentLock.current = false; setPaymentOpen(false); void refresh(); };
-  const refreshAfterPayment = () => { activeRequest.current?.abort(); activeRequest.current = null; void refresh(); };
+  const refreshAfterPayment = () => { navigation?.notifyChanged(); activeRequest.current?.abort(); activeRequest.current = null; void refresh(); };
 
   const handleReprintRecibo = (reciboId: string | null | undefined) => {
     if (!reciboId) return;
@@ -217,8 +219,9 @@ function FinanceiroScope({ studentId }: { studentId: string | null }) {
 
   return (
     <div className="space-y-6">
+      <div inert={Boolean(navigation && paymentOpen)} className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h1 className="text-2xl font-semibold tracking-tight text-primary">Financeiro</h1>
+        {!navigation && <h1 className="text-2xl font-semibold tracking-tight text-primary">Financeiro</h1>}
         <button
           onClick={refresh}
           className="min-h-11 rounded-xl border border-border bg-card px-4 text-sm font-semibold text-foreground shadow-sm hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring"
@@ -228,7 +231,7 @@ function FinanceiroScope({ studentId }: { studentId: string | null }) {
       </div>
 
       <button type="button" aria-haspopup="dialog" aria-expanded={filterOpen} disabled={paymentOpen} onClick={() => { setDraftFrom(fromAno); setDraftTo(toAno); setFilterOpen(true); }} className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-border bg-card px-4 text-sm font-semibold"><Filter className="h-4 w-4" aria-hidden="true" /> Filtrar período · {fromAno}–{toAno}</button>
-      <PortalSheet open={filterOpen} onClose={() => setFilterOpen(false)} title="Filtrar período" description="Selecciona o intervalo e aplica uma única vez." size="medium">
+      <PortalSheet open={filterOpen} inline={Boolean(navigation)} onClose={() => setFilterOpen(false)} title="Filtrar período" description="Selecciona o intervalo e aplica uma única vez." size="medium">
         <div className="grid grid-cols-2 gap-3">
           <label className="text-sm font-medium">De<select aria-label="De" value={draftFrom} onChange={e => setDraftFrom(Number(e.target.value))} className="mt-1 min-h-11 w-full rounded-xl border border-border bg-card px-3 text-base">{years.map(year => <option key={year} value={year}>{year}</option>)}</select></label>
           <label className="text-sm font-medium">Até<select aria-label="Até" value={draftTo} onChange={e => setDraftTo(Number(e.target.value))} className="mt-1 min-h-11 w-full rounded-xl border border-border bg-card px-3 text-base">{years.map(year => <option key={year} value={year}>{year}</option>)}</select></label>
@@ -441,7 +444,7 @@ function FinanceiroScope({ studentId }: { studentId: string | null }) {
       </section>
 
       </>}
-      <PortalSheet open={detailOpen && Boolean(selectedMonthly || selectedService)} onClose={() => setDetailOpen(false)} title={selectedMonthly ? `Propina · ${selectedMonthly.competencia}` : selectedService?.nome ?? "Detalhes financeiros"} description={`Período ${fromAno}–${toAno}`} size="medium">
+      <PortalSheet open={detailOpen && Boolean(selectedMonthly || selectedService)} inline={Boolean(navigation)} onClose={() => setDetailOpen(false)} title={selectedMonthly ? `Propina · ${selectedMonthly.competencia}` : selectedService?.nome ?? "Detalhes financeiros"} description={`Período ${fromAno}–${toAno}`} size="medium">
         {selectedMonthly && <>
           <dl className="space-y-3 text-sm"><div><dt className="text-muted-foreground">Estado</dt><dd className="font-semibold">{detailStatus[selectedMonthly.status]}</dd></div><div><dt className="text-muted-foreground">Saldo por liquidar</dt><dd className="text-xl font-semibold tabular-nums text-primary">{money.format(selectedMonthly.valor)}</dd></div><div><dt className="text-muted-foreground">Vencimento</dt><dd>{selectedMonthly.vencimento ? selectedMonthly.vencimento.slice(0,10).split("-").reverse().join("/") : "Indisponível"}</dd></div></dl>
           {selectedMonthly.bolsa_isencao_integral && <p className="text-sm text-muted-foreground">Saldo abrangido por bolsa integral.</p>}
@@ -451,15 +454,16 @@ function FinanceiroScope({ studentId }: { studentId: string | null }) {
         </>}
         {selectedService && <><dl className="space-y-3 text-sm"><div><dt className="text-muted-foreground">Estado</dt><dd className="font-semibold">{selectedService.estado_label}</dd></div><div><dt className="text-muted-foreground">Valor</dt><dd className="text-xl font-semibold tabular-nums text-primary">{money.format(selectedService.valor)}</dd></div><div><dt className="text-muted-foreground">Protocolo</dt><dd className="break-words">{selectedService.protocolo}</dd></div><div><dt className="text-muted-foreground">Data</dt><dd>{new Date(selectedService.data).toLocaleDateString("pt-AO")}</dd></div></dl><p className="text-sm">{selectedService.mensagem_estado}</p><p className="text-sm font-medium">Próximo passo: {selectedService.proximo_passo}</p>
           {!fetchError && selectedService.status === "pendente" && selectedService.appypay_intent_id && <StudentAppyPayButton targetId={selectedService.appypay_intent_id} kind="service" studentId={studentId} descricao={selectedService.nome} onPaid={refreshAfterPayment} />}
-          {selectedService.acao && <Link href={studentId ? `${selectedService.acao.href}&studentId=${encodeURIComponent(studentId)}` : selectedService.acao.href} className="inline-flex min-h-11 items-center rounded-xl border border-border px-4 text-sm font-semibold text-primary">{selectedService.acao.label} · Secretaria Digital</Link>}
+          {selectedService.acao && (onOpenDocuments ? <button type="button" onClick={() => onOpenDocuments(new URLSearchParams(selectedService.acao!.href.split("?")[1] ?? "").get("servico"))} className="inline-flex min-h-11 items-center rounded-xl border border-border px-4 text-sm font-semibold text-primary">{selectedService.acao.label} · Secretaria Digital</button> : <Link href={studentId ? `${selectedService.acao.href}&studentId=${encodeURIComponent(studentId)}` : selectedService.acao.href} className="inline-flex min-h-11 items-center rounded-xl border border-border px-4 text-sm font-semibold text-primary">{selectedService.acao.label} · Secretaria Digital</Link>)}
         </>}
       </PortalSheet>
+      </div>
       <PaymentDrawer
         open={ready && paymentOpen && paymentRows.length > 0}
         mensalidades={paymentRows}
         dadosPagamento={dadosPagamento}
         onClose={closePayment}
-        onUploaded={(ids) => { setRows((prev) => prev.map((r) => (ids.includes(r.id) ? { ...r, status: "em_verificacao" } : r))); setSelectedIds(prev => prev.filter(id => !ids.includes(id))); }}
+        onUploaded={(ids) => { navigation?.notifyChanged(); setRows((prev) => prev.map((r) => (ids.includes(r.id) ? { ...r, status: "em_verificacao" } : r))); setSelectedIds(prev => prev.filter(id => !ids.includes(id))); }}
         studentId={studentId}
       />
     </div>

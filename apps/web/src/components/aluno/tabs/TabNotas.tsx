@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 import { buildPortalHref, getEscolaParamFromPath } from "@/lib/navigation";
 import { Lock as LockIcon, ArrowRight } from "lucide-react";
 import Link from "next/link";
+import { usePortalDrawerGuard, usePortalDrawerNavigation } from "@/components/portal/ui/PortalDrawerNavigator";
 import { PortalSheet } from "@/components/portal/ui/PortalSheet";
 import { AcademicCarryoversCard } from "@/components/aluno/academico/AcademicCarryoversCard";
 import { BoletimGradeGrid } from "@/components/aluno/academico/BoletimGradeGrid";
@@ -35,6 +36,17 @@ type BoletimServico = { codigo: string; nome?: string; valor: number; status: st
 
 type MelhoriaSessao = { id: string; data_inicio: string; data_fim: string; estado: string; observacoes?: string | null };
 
+
+function AcademicRequestPanel({ inline, title, description, busy, onClose, onRestoreFocus, children }: {
+  inline: boolean; title: string; description: string; busy: boolean; onClose: () => void; onRestoreFocus: (event: Event) => void; children: ReactNode;
+}) {
+  if (inline) return <PortalSheet inline open title={title} description={description} busy={busy} onClose={onClose}>{children}</PortalSheet>;
+  return <Dialog open onOpenChange={open => { if (!open && !busy) onClose(); }}>
+    <DialogContent closeButton={false} onCloseAutoFocus={onRestoreFocus} className="max-h-[85dvh] w-[calc(100vw-2rem)] max-w-lg overflow-y-auto rounded-xl bg-background p-5 text-foreground">
+      <DialogTitle>{title}</DialogTitle><DialogDescription>{description}</DialogDescription>{children}
+    </DialogContent>
+  </Dialog>;
+}
 
 export function TabNotas({ embedded = false, onOpenDocuments }: { embedded?: boolean; onOpenDocuments?: (serviceCode?: string | null) => void } = {}) {
   const searchParams = useSearchParams();
@@ -85,6 +97,10 @@ export function TabNotas({ embedded = false, onOpenDocuments }: { embedded?: boo
   const [melhoriaLoading, setMelhoriaLoading] = useState(false);
   const [melhoriaSaving, setMelhoriaSaving] = useState(false);
   const [melhoriaMessage, setMelhoriaMessage] = useState<string | null>(null);
+  const navigation = usePortalDrawerNavigation();
+  usePortalDrawerGuard(Boolean((reapreciacaoDisc && reapreciacaoMotivo.trim()) || (melhoriaDisc && melhoriaMotivo.trim())), paymentBusy || reapreciacaoSaving || melhoriaSaving);
+  const closeReapreciacao = () => { if (reapreciacaoSaving || (reapreciacaoMotivo.trim() && !window.confirm("Descartar o pedido não enviado?"))) return; setReapreciacaoDisc(null); setReapreciacaoMotivo(""); };
+  const closeMelhoria = () => { if (melhoriaSaving || (melhoriaMotivo.trim() && !window.confirm("Descartar o pedido não enviado?"))) return; setMelhoriaDisc(null); setMelhoriaMotivo(""); };
 
 
   const solicitarReapreciacao = async () => {
@@ -98,6 +114,7 @@ export function TabNotas({ embedded = false, onOpenDocuments }: { embedded?: boo
       const response = await fetch("/api/aluno/raa/reapreciacao", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ disciplina_id: reapreciacaoDisc.id, motivo: reapreciacaoMotivo.trim(), idempotency_key: `aluno-raa-${reapreciacaoDisc.id}` }) });
       const json = await response.json().catch(() => null);
       if (!response.ok || !json?.ok) throw new Error(json?.error || "Não foi possível enviar o pedido.");
+      navigation?.notifyChanged();
       setReapreciacaoMessage(`Pedido ${json.item?.protocolo_publico ?? "registado"}. Prazo: ${json.item?.prazo_em ? new Date(json.item.prazo_em).toLocaleString("pt-PT") : "48 horas"}.`);
       setReapreciacaoMotivo("");
     } catch (error) {
@@ -138,6 +155,7 @@ export function TabNotas({ embedded = false, onOpenDocuments }: { embedded?: boo
       const response = await fetch("/api/aluno/raa/melhoria", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ exame_sessao_id: melhoriaSessaoId, disciplina_id: melhoriaDisc.id, motivo: melhoriaMotivo.trim() }) });
       const json = await response.json().catch(() => null);
       if (!response.ok || !json?.ok) throw new Error(json?.error || "Não foi possível enviar o pedido.");
+      navigation?.notifyChanged();
       setMelhoriaMessage("Pedido de melhoria registado. A secretaria fará a análise.");
       setMelhoriaMotivo("");
     } catch (error) {
@@ -367,7 +385,7 @@ export function TabNotas({ embedded = false, onOpenDocuments }: { embedded?: boo
   if (academicYearId) navParams.set("ano_letivo_id", academicYearId);
   const navQuery = navParams.size ? `?${navParams.toString()}` : "";
   const startBoletimPayment = async () => {
-    if (!boletimServico || boletimPago || !paymentConfigured || paymentBusy || historicalRead) return;
+    if (!boletimServico || boletimPago || !paymentConfigured || paymentBusy || historicalRead || (navigation && (paymentOpen || reapreciacaoDisc || melhoriaDisc))) return;
     setPaymentError(null);
     if (moneyStatus === "pending_payment" || moneyStatus === "rejected") {
       if (!paymentIntentId) {
@@ -387,6 +405,7 @@ export function TabNotas({ embedded = false, onOpenDocuments }: { embedded?: boo
       });
       const json = await response.json().catch(() => null);
       if (!response.ok || !json?.pagamento_id) throw new Error(json?.error || "Não foi possível iniciar o pagamento.");
+      navigation?.notifyChanged();
       setPaymentIntentId(json.pagamento_id);
       setPaymentOpen(true);
       setRefreshVersion(v => v + 1);
@@ -434,11 +453,13 @@ export function TabNotas({ embedded = false, onOpenDocuments }: { embedded?: boo
           downloadError={downloadError}
           onDownload={() => void descarregarBoletim()}
           onReapreciacao={!historicalRead ? (disc) => {
+            if (reapreciacaoDisc || melhoriaDisc || paymentOpen) return;
             dialogOpener.current = document.activeElement as HTMLElement | null;
             setReapreciacaoDisc(disc);
             setReapreciacaoMessage(null);
           } : undefined}
           onMelhoria={!historicalRead ? (disc) => {
+            if (reapreciacaoDisc || melhoriaDisc || paymentOpen) return;
             dialogOpener.current = document.activeElement as HTMLElement | null;
             void abrirMelhoria(disc);
           } : undefined}
@@ -477,7 +498,7 @@ export function TabNotas({ embedded = false, onOpenDocuments }: { embedded?: boo
       <ServicePaymentDrawer
         open={paymentOpen && !boletimPago && !historicalRead}
         onClose={() => setPaymentOpen(false)}
-        onSuccess={() => { setPaymentOpen(false); setRefreshVersion(v => v + 1); }}
+        onSuccess={() => { navigation?.notifyChanged(); setPaymentOpen(false); setRefreshVersion(v => v + 1); }}
         studentId={studentId}
         academicYearId={academicYearId}
         dadosPagamento={paymentDetails}
@@ -491,7 +512,7 @@ export function TabNotas({ embedded = false, onOpenDocuments }: { embedded?: boo
       {safeIsLiberado && refreshing && <p role="status" className="text-xs text-muted-foreground">A verificar novas avaliações…</p>}
       {safeIsLiberado && !historicalRead && matriculaEncontrada && <section aria-label="Situação académica" className="border-t border-border pt-4">
         <button type="button" aria-haspopup="dialog" aria-expanded={academicStatusScope === bulletinQuery} onClick={() => setAcademicStatusScope(bulletinQuery)} className="flex min-h-11 w-full items-center justify-between rounded-xl border border-border bg-card px-4 text-left text-sm font-semibold text-primary">Situação académica <ArrowRight className="h-4 w-4" aria-hidden="true" /></button>
-        <PortalSheet open={academicStatusScope === bulletinQuery} onClose={() => setAcademicStatusScope(null)} title="Situação académica" description="Contexto da matrícula e dependências de anos anteriores." size="expanded">
+        <PortalSheet open={academicStatusScope === bulletinQuery} inline={Boolean(navigation)} onClose={() => setAcademicStatusScope(null)} title="Situação académica" description="Contexto da matrícula e dependências de anos anteriores." size="expanded">
           {academicStatusScope === bulletinQuery && <>
             <p className="text-sm text-muted-foreground">Matrícula encontrada{gridYearLabel ? ` · ${gridYearLabel}` : ""}. Consulta as dependências abaixo; este resumo não certifica a aprovação.</p>
             <AcademicCarryoversCard key={bulletinQuery} studentId={studentId} />
@@ -499,55 +520,45 @@ export function TabNotas({ embedded = false, onOpenDocuments }: { embedded?: boo
         </PortalSheet>
       </section>}
       {safeIsLiberado && !historicalRead && reapreciacaoDisc && (
-        <Dialog open onOpenChange={(open) => { if (!open) setReapreciacaoDisc(null); }}>
-          <DialogContent closeButton={false} onCloseAutoFocus={restoreDialogFocus}
-            className="max-h-[85dvh] w-[calc(100vw-2rem)] max-w-lg overflow-y-auto rounded-xl bg-background p-5 text-foreground">
-            <DialogTitle>Solicitar reapreciação — {reapreciacaoDisc.nome}</DialogTitle>
-            <DialogDescription>Explica por que pretendes rever esta avaliação.</DialogDescription>
+        <AcademicRequestPanel inline={Boolean(navigation)} busy={reapreciacaoSaving} onClose={closeReapreciacao} onRestoreFocus={restoreDialogFocus} title={`Solicitar reapreciação — ${reapreciacaoDisc.nome}`} description="Explica por que pretendes rever esta avaliação.">
             {reapreciacaoMessage && <p role="status" aria-live="polite" className="rounded-lg bg-muted p-3 text-sm text-foreground">{reapreciacaoMessage}</p>}
             <label htmlFor="aluno-raa-motivo" className="text-sm font-medium">Motivo da reapreciação</label>
-            <textarea id="aluno-raa-motivo" required minLength={10} value={reapreciacaoMotivo}
+            <textarea id="aluno-raa-motivo" required minLength={10} value={reapreciacaoMotivo} disabled={reapreciacaoSaving}
               onChange={(event) => setReapreciacaoMotivo(event.target.value)}
               rows={4} className="w-full rounded-lg border border-input bg-background px-3 py-3 text-base text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               placeholder="Descreve o motivo (mínimo de 10 caracteres)" />
             <div className="flex flex-wrap justify-end gap-2">
-              <button type="button" onClick={() => setReapreciacaoDisc(null)} className="min-h-11 rounded-lg border border-border px-4 text-sm font-semibold focus-visible:ring-2 focus-visible:ring-ring">Cancelar</button>
+              <button type="button" onClick={closeReapreciacao} disabled={reapreciacaoSaving} className="min-h-11 rounded-lg border border-border px-4 text-sm font-semibold focus-visible:ring-2 focus-visible:ring-ring">Cancelar</button>
               <button type="button" disabled={reapreciacaoSaving} onClick={() => void solicitarReapreciacao()}
                 className="min-h-11 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50">{reapreciacaoSaving ? "A enviar..." : "Enviar pedido"}</button>
             </div>
-          </DialogContent>
-        </Dialog>
+        </AcademicRequestPanel>
       )}
       {safeIsLiberado && !historicalRead && melhoriaDisc && (
-        <Dialog open onOpenChange={(open) => { if (!open) setMelhoriaDisc(null); }}>
-          <DialogContent closeButton={false} onCloseAutoFocus={restoreDialogFocus}
-            className="max-h-[85dvh] w-[calc(100vw-2rem)] max-w-lg overflow-y-auto rounded-xl bg-background p-5 text-foreground">
-            <DialogTitle>Solicitar melhoria — {melhoriaDisc.nome}</DialogTitle>
-            <DialogDescription>Seleciona uma sessão de recurso e explica o pedido.</DialogDescription>
+        <AcademicRequestPanel inline={Boolean(navigation)} busy={melhoriaSaving} onClose={closeMelhoria} onRestoreFocus={restoreDialogFocus} title={`Solicitar melhoria — ${melhoriaDisc.nome}`} description="Seleciona uma sessão de recurso e explica o pedido.">
             {melhoriaMessage && <p role="status" aria-live="polite" className="rounded-lg bg-muted p-3 text-sm text-foreground">{melhoriaMessage}</p>}
             {melhoriaLoading ? <p role="status" className="text-sm text-muted-foreground">A carregar sessões...</p> : melhoriaSessoes.length > 0 && <>
               <label htmlFor="aluno-melhoria-sessao" className="text-sm font-medium">Sessão de recurso</label>
-              <select id="aluno-melhoria-sessao" value={melhoriaSessaoId} onChange={(event) => setMelhoriaSessaoId(event.target.value)}
+              <select id="aluno-melhoria-sessao" value={melhoriaSessaoId} disabled={melhoriaSaving} onChange={(event) => setMelhoriaSessaoId(event.target.value)}
                 className="min-h-11 w-full rounded-lg border border-input bg-background px-3 text-base text-foreground focus-visible:ring-2 focus-visible:ring-ring">
                 {melhoriaSessoes.map((sessao) => <option key={sessao.id} value={sessao.id}>
                   {new Date(sessao.data_inicio).toLocaleDateString("pt-PT")} — {new Date(sessao.data_fim).toLocaleDateString("pt-PT")} ({sessao.estado})
                 </option>)}
               </select>
               <label htmlFor="aluno-melhoria-motivo" className="text-sm font-medium">Motivo da melhoria</label>
-              <textarea id="aluno-melhoria-motivo" required minLength={10} value={melhoriaMotivo}
+              <textarea id="aluno-melhoria-motivo" required minLength={10} value={melhoriaMotivo} disabled={melhoriaSaving}
                 onChange={(event) => setMelhoriaMotivo(event.target.value)} rows={4}
                 className="w-full rounded-lg border border-input bg-background px-3 py-3 text-base text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 placeholder="Descreve o motivo (mínimo de 10 caracteres)" />
             </>}
             <div className="flex flex-wrap justify-end gap-2">
-              <button type="button" onClick={() => setMelhoriaDisc(null)} className="min-h-11 rounded-lg border border-border px-4 text-sm font-semibold focus-visible:ring-2 focus-visible:ring-ring">Cancelar</button>
+              <button type="button" onClick={closeMelhoria} disabled={melhoriaSaving} className="min-h-11 rounded-lg border border-border px-4 text-sm font-semibold focus-visible:ring-2 focus-visible:ring-ring">Cancelar</button>
               <button type="button" disabled={melhoriaSaving || melhoriaLoading || melhoriaSessoes.length === 0}
                 onClick={() => void solicitarMelhoria()} className="min-h-11 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50">
                 {melhoriaSaving ? "A enviar..." : "Enviar pedido"}
               </button>
             </div>
-          </DialogContent>
-        </Dialog>
+        </AcademicRequestPanel>
       )}
     </div>
   );

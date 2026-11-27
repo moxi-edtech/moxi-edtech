@@ -10,6 +10,7 @@ import {
 } from "@tanstack/react-table"
 import { CheckCircle2, Loader2, Clipboard, AlertCircle, TrendingUp, Users, CheckCircle } from "lucide-react"
 import { SyncIndicator } from "@/components/feedback/FeedbackSystem"
+import { usePortalDrawerGuard, usePortalDrawerNavigation } from "@/components/portal/ui/PortalDrawerNavigator"
 import { MotionFeedback } from "@/components/portal/motion/MotionFeedback"
 
 export type StudentGradeRow = {
@@ -31,6 +32,7 @@ type GradeEntryGridProps = {
   subtitle?: string
   debounceMs?: number
   onSave?: (rows: StudentGradeRow[]) => Promise<void> | void
+  saveControl?: React.RefObject<(() => Promise<void>) | null>
   onSaveError?: (error: unknown) => void
   highlightId?: string | null
   onDataChange?: (rows: StudentGradeRow[]) => void
@@ -38,6 +40,7 @@ type GradeEntryGridProps = {
   componentesAtivos?: string[]
   showIsento?: boolean
   studentMode?: boolean
+  compact?: boolean
   readOnly?: boolean
   notaMaxima?: number
   notaCorte?: number
@@ -103,6 +106,7 @@ export function GradeEntryGrid({
   subtitle,
   debounceMs = 800,
   onSave,
+  saveControl,
   onSaveError,
   highlightId,
   onDataChange,
@@ -110,6 +114,7 @@ export function GradeEntryGrid({
   componentesAtivos,
   showIsento = false,
   studentMode = false,
+  compact = false,
   readOnly = false,
   notaMaxima = 20,
   notaCorte = 10,
@@ -121,6 +126,10 @@ export function GradeEntryGrid({
   const [showPasteModal, setShowPasteModal] = useState(false)
   const [pasteColumn, setPasteColumn] = useState<typeof INPUT_COLUMNS[number]>("mac1")
   const [pasteText, setPasteText] = useState("")
+  const navigation = usePortalDrawerNavigation()
+  const drawerEmbedded = Boolean(navigation)
+  const hasPendingGrades = data.some(row => row._status !== "synced")
+  usePortalDrawerGuard(hasPendingGrades || (showPasteModal && Boolean(pasteText.trim())), isSaving)
 
   const gradeInputs = useMemo(() => {
     const configured = new Set((componentesAtivos ?? []).map((tipo) => tipo.toUpperCase()))
@@ -148,7 +157,7 @@ export function GradeEntryGrid({
 
   const inputRefs = useRef<Record<string, HTMLInputElement | null>>({})
   const pendingIdsRef = useRef<Set<string>>(new Set())
-  const savingRef = useRef(false)
+  const inFlight = useRef<Promise<void> | null>(null)
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const flushSaveRef = useRef<() => Promise<void>>(async () => undefined)
 
@@ -205,51 +214,55 @@ export function GradeEntryGrid({
     }
   }, [data, notaCorte])
 
-  const flushSave = useCallback(async () => {
-    if (!onSave || savingRef.current || pendingIdsRef.current.size === 0) return
+  const flushSave = useCallback((): Promise<void> => {
+    if (inFlight.current) return inFlight.current
+    if (!onSave || pendingIdsRef.current.size === 0) return Promise.resolve()
+    const drain = async () => {
+      setIsSaving(true)
+      try {
+        // Serializar gravações evita que uma resposta antiga chegue depois de
+        // uma edição mais recente e sobrescreva a nota nova no writer canónico.
+        while (pendingIdsRef.current.size > 0) {
+          const ids = new Set(pendingIdsRef.current)
+          pendingIdsRef.current.clear()
+          const payload = dataRef.current.filter((row) => ids.has(row.id))
+          if (payload.length === 0) continue
 
-    savingRef.current = true
-    setIsSaving(true)
-    try {
-      // Serializar gravações evita que uma resposta antiga chegue depois de
-      // uma edição mais recente e sobrescreva a nota nova no writer canónico.
-      while (pendingIdsRef.current.size > 0) {
-        const ids = Array.from(pendingIdsRef.current)
-        pendingIdsRef.current.clear()
-        const payload = dataRef.current.filter((row) => ids.includes(row.id))
-        if (payload.length === 0) continue
-
-        try {
-          await onSave(payload)
-          setSavedRows(previous => previous.map(row => payload.find(next => next.id === row.id) ?? row))
-          setData((prev) =>
-            prev.map((row) =>
-              ids.includes(row.id) && !pendingIdsRef.current.has(row.id)
-                ? {
-                    ...row,
-                    _status: "synced",
-                  }
-                : row
+          try {
+            await onSave(payload)
+            setSavedRows(previous => previous.map(row => payload.find(next => next.id === row.id) ?? row))
+            setData((prev) =>
+              prev.map((row) =>
+                payload.includes(row)
+                  ? {
+                      ...row,
+                      _status: "synced",
+                    }
+                  : row
+              )
             )
-          )
-        } catch (error) {
-          setData((prev) =>
-            prev.map((row) =>
-              ids.includes(row.id) && !pendingIdsRef.current.has(row.id)
-                ? {
-                    ...row,
-                    _status: "error",
-                  }
-                : row
+          } catch (error) {
+            setData((prev) =>
+              prev.map((row) =>
+                payload.includes(row)
+                  ? {
+                      ...row,
+                      _status: "error",
+                    }
+                  : row
+              )
             )
-          )
-          onSaveError?.(error)
+            onSaveError?.(error)
+            throw error
+          }
         }
+      } finally {
+        inFlight.current = null
+        setIsSaving(false)
       }
-    } finally {
-      savingRef.current = false
-      setIsSaving(false)
     }
+    inFlight.current = Promise.resolve().then(drain)
+    return inFlight.current
   }, [onSave, onSaveError])
 
   useEffect(() => {
@@ -261,8 +274,19 @@ export function GradeEntryGrid({
       clearTimeout(saveTimeoutRef.current)
       saveTimeoutRef.current = null
     }
-    void flushSaveRef.current()
+    void flushSaveRef.current().catch(() => undefined)
   }, [])
+
+  useEffect(() => {
+    if (!saveControl) return
+    saveControl.current = async () => {
+      for (const row of dataRef.current) {
+        if (row._status === "error") pendingIdsRef.current.add(row.id)
+      }
+      await flushSaveRef.current()
+    }
+    return () => { saveControl.current = null }
+  }, [saveControl])
 
   const scheduleSave = useCallback(() => {
     if (!onSave) return
@@ -278,18 +302,18 @@ export function GradeEntryGrid({
     const flushRef = flushSaveRef
     return () => {
       if (timeoutRef.current) clearTimeout(timeoutRef.current)
-      if (pendingRef.current.size > 0) {
-        void flushRef.current()
+      if (!drawerEmbedded && pendingRef.current.size > 0) {
+        void flushRef.current().catch(() => undefined)
       }
     }
-  }, [])
+  }, [drawerEmbedded])
 
   const updateGrade = useCallback(
     (rowIndex: number, columnId: typeof INPUT_COLUMNS[number], value: string) => {
       const numericValue = clampNota(value, notaMaxima)
       const current = dataRef.current
       const target = current[rowIndex]
-      if (!target) return
+      if (!target || target[columnId] === numericValue) return
 
       const next = current.map((row, index) => {
         if (index !== rowIndex) return row
@@ -322,7 +346,7 @@ export function GradeEntryGrid({
 
       const current = dataRef.current
       const next = current.map((row, index) => {
-        if (index < startRowIndex || index >= startRowIndex + lines.length) return row
+        if (row.is_isento || index < startRowIndex || index >= startRowIndex + lines.length) return row
         const valString = lines[index - startRowIndex]
         const numericValue = valString ? clampNota(valString, notaMaxima) : null
         const updatedRow = {
@@ -342,6 +366,11 @@ export function GradeEntryGrid({
     [pesoPorTipo, componentesAtivos, scheduleSave, notaMaxima]
   )
 
+  const closePaste = () => {
+    if (drawerEmbedded && pasteText.trim() && !window.confirm("Descartar valores ainda não aplicados?")) return
+    setPasteText("")
+    setShowPasteModal(false)
+  }
   const handleApplyPasteModal = () => {
     if (!pasteText.trim()) return
     handleBatchPaste(0, pasteColumn, pasteText)
@@ -642,15 +671,15 @@ export function GradeEntryGrid({
 
         {/* MODAL DE COLAR DO EXCEL */}
         {showPasteModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-klasse-dark/60 backdrop-blur-xs p-4">
-            <div className="w-full max-w-lg rounded-2xl bg-card p-6 shadow-2xl space-y-4 border border-border animate-in fade-in zoom-in-95 duration-200">
+          <div className={drawerEmbedded ? "border-b border-border bg-muted/40 p-3" : "fixed inset-0 z-50 flex items-center justify-center bg-klasse-dark/60 backdrop-blur-xs p-4"}>
+            <div role={drawerEmbedded ? "region" : undefined} aria-label={drawerEmbedded ? "Colar coluna do Excel" : undefined} className={drawerEmbedded ? "w-full min-w-0 space-y-4 rounded-xl border border-border bg-card p-3" : "w-full max-w-lg rounded-2xl bg-card p-6 shadow-2xl space-y-4 border border-border animate-in fade-in zoom-in-95 duration-200"}>
               <div className="flex items-center justify-between border-b border-border pb-3">
                 <div className="flex items-center gap-2">
                   <Clipboard className="text-emerald-600" size={20} />
                   <h3 className="text-base font-black text-foreground">Colar Coluna do Excel / Sheets</h3>
                 </div>
                 <button
-                  onClick={() => setShowPasteModal(false)}
+                  onClick={closePaste}
                   className="text-muted-foreground hover:text-muted-foreground text-sm font-bold"
                 >
                   ✕
@@ -681,7 +710,7 @@ export function GradeEntryGrid({
                     className="w-full rounded-xl border border-border p-3 text-xs font-mono text-foreground outline-none focus:border-klasse-gold focus:ring-4 focus:ring-klasse-gold/20"
                   />
                   <p className="text-[10px] text-muted-foreground mt-1">
-                    Valores como "145" serão corrigidos automaticamente para 14.5 (Escala 0 a 20).
+                    {notaMaxima === 20 ? 'Valores como "145" serão corrigidos automaticamente para 14,5 (escala de 0 a 20).' : `A escala desta turma é de 0 a ${notaMaxima}.`}
                   </p>
                 </div>
               </div>
@@ -689,7 +718,7 @@ export function GradeEntryGrid({
               <div className="flex justify-end gap-2 pt-2">
                 <button
                   type="button"
-                  onClick={() => setShowPasteModal(false)}
+                  onClick={closePaste}
                   className="px-4 py-2 rounded-xl text-xs font-bold text-muted-foreground bg-muted hover:bg-muted-foreground/20"
                 >
                   Cancelar
@@ -708,7 +737,7 @@ export function GradeEntryGrid({
         )}
 
         {/* VISÃO MOBILE DE CARDS */}
-        <div className="block md:hidden">
+        <div className={compact ? "block" : "block md:hidden"}>
           <div className="divide-y divide-border">
             {table.getRowModel().rows.map((row) => {
               const isHighlighted = highlightId && row.original.id === highlightId
@@ -775,7 +804,7 @@ export function GradeEntryGrid({
         </div>
 
         {/* TABELA DESKTOP COM NAVEGAÇÃO E CORES VIVAS */}
-        <div className="hidden md:block overflow-x-auto">
+        <div className={compact ? "hidden" : "hidden md:block overflow-x-auto"}>
           <table className="w-full text-sm text-left border-collapse">
             <thead className="bg-muted/80 text-muted-foreground font-black uppercase text-[11px] tracking-wider border-b border-border">
               {table.getHeaderGroups().map((headerGroup) => (

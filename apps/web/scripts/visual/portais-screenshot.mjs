@@ -57,16 +57,31 @@ try {
           await dashboard.waitFor({timeout:10000});
           await dashboard.getByRole("heading", {name:"Em resumo", exact:true}).waitFor({timeout:10000});
           const summary = dashboard.getByTestId("aluno-summary-cards");
-          for (const [label, destination] of [
-            ["Avisos", "/aluno/avisos"],
-            ["Notas", "/aluno/academico"],
-            ["Propinas vencidas", "/aluno/financeiro"],
+          for (const [label, title] of [
+            ["Avisos", "Avisos"],
+            ["Notas", "Académico"],
+            ["Propinas vencidas", "Situação financeira"],
           ]) {
-            const link = summary.getByRole("link", {name: new RegExp("^" + label)});
-            await link.waitFor({timeout:10000});
-            const href = await link.getAttribute("href");
-            if (!href || !new URL(href, baseUrl).pathname.endsWith(destination)) {
-              errors.push(`${name} ${width}x${height} zoom ${zoom}: invalid card destination ${label}`);
+            const button = summary.getByRole("button", {name: new RegExp("^" + label), includeHidden: true});
+            await button.waitFor({timeout:10000});
+            if (await button.getAttribute("aria-haspopup") !== "dialog" || await button.getAttribute("aria-expanded") !== "false") {
+              errors.push(`${name} ${width}x${height} zoom ${zoom}: invalid drawer trigger ${label}`);
+            }
+            if (name === "dashboard-clean" && width === 390 && zoom === 1) {
+              const before = page.url();
+              await button.click();
+              const dialog = page.getByRole("dialog", {name: title, exact: true});
+              await dialog.waitFor({timeout:10000});
+              if (page.url() !== before || await button.getAttribute("aria-expanded") !== "true") errors.push(`${name}: ${label} changed route or did not expand`);
+              if (await page.getByRole("dialog").count() !== 1) errors.push(`${name}: ${label} opened multiple dialogs`);
+              await page.evaluate(() => history.back());
+              await dialog.waitFor({state:"hidden"});
+              await page.evaluate(() => history.forward());
+              await dialog.waitFor({timeout:10000});
+              await page.keyboard.press("Escape");
+              await dialog.waitFor({state:"hidden"});
+              await page.waitForFunction(label => document.activeElement?.tagName === "BUTTON" && document.activeElement.textContent?.trim().startsWith(label), label);
+              if (page.url() !== before) errors.push(`${name}: ${label} changed route on close`);
             }
           }
         }
@@ -128,25 +143,25 @@ try {
           }
         }
         if (name.startsWith("dashboard-")) {
-          const links = page.getByTestId("aluno-summary-cards").getByRole("link");
-          if (await links.count() !== 3) errors.push(`${name}: expected exactly three summary cards`);
-          const targets = await links.evaluateAll(nodes => nodes.map(el => ({
+          const buttons = page.getByTestId("aluno-summary-cards").getByRole("button");
+          if (await buttons.count() !== 3) errors.push(`${name}: expected exactly three summary cards`);
+          const targets = await buttons.evaluateAll(nodes => nodes.map(el => ({
             width: el.offsetWidth, height: el.offsetHeight,
           })));
           if (targets.some(target => target.width < 44 || target.height < 44)) {
             errors.push(`${name} ${width}x${height} zoom ${zoom}: summary card below 44px touch target`);
           }
           if (name === "dashboard-clean") {
-            await links.first().focus();
+            await buttons.first().focus();
             await page.keyboard.press("Tab");
-            await page.waitForFunction(() => document.activeElement === document.querySelectorAll('[data-testid="aluno-summary-cards"] a')[1], undefined, { timeout: 3000 }).catch(() => {});
-            const focusVisible = await links.nth(1).evaluate(el => {
+            await page.waitForFunction(() => document.activeElement === document.querySelectorAll('[data-testid="aluno-summary-cards"] button')[1], undefined, { timeout: 3000 }).catch(() => {});
+            const focusVisible = await buttons.nth(1).evaluate(el => {
               const style = getComputedStyle(el);
               return document.activeElement === el && el.matches(":focus-visible") &&
                 (style.outlineStyle !== "none" || style.boxShadow !== "none");
             });
             if (!focusVisible) errors.push(`${name} ${width}x${height} zoom ${zoom}: card keyboard focus not visible`);
-            await links.nth(1).evaluate(el => el.blur());
+            await buttons.nth(1).evaluate(el => el.blur());
           }
         }
         if ((name.startsWith("dashboard-") || name === "professor-com-turmas") && width === 390 && zoom === 1) {

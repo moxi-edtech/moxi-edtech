@@ -3,6 +3,10 @@ on:
   pull_request:
     paths:
       - 'apps/web/src/components/aluno/PortalVisualFixtures.stories.tsx'
+      - 'apps/web/src/components/professor/GradeEntryGrid.tsx'
+      - 'apps/web/src/components/portal/ui/PortalDrawerNavigator.tsx'
+      - 'apps/web/scripts/visual/grade-concurrency.mjs'
+      - 'apps/web/scripts/visual/drawer-history.mjs'
       - 'apps/web/scripts/visual/portais-screenshot.mjs'
       - 'apps/web/scripts/visual/portal-motion-performance.mjs'
       - 'apps/web/scripts/visual/portal-context-sheets.mjs'
@@ -84,6 +88,14 @@ jobs:
         env:
           PLAYWRIGHT_MODULE: /tmp/klasse-visual/node_modules/playwright/index.mjs
         run: node apps/web/scripts/visual/portal-context-sheets.mjs
+      - name: Grade autosave and manual retry in both numeric scales
+        env:
+          PLAYWRIGHT_MODULE: /tmp/klasse-visual/node_modules/playwright/index.mjs
+        run: node apps/web/scripts/visual/grade-concurrency.mjs
+      - name: Drawer history, guards, school scope and multiple roots
+        env:
+          PLAYWRIGHT_MODULE: /tmp/klasse-visual/node_modules/playwright/index.mjs
+        run: node apps/web/scripts/visual/drawer-history.mjs
       - name: Sidebar geometry and label contract
         run: node --test --import tsx apps/web/tests/unit/sidebar-presentation.spec.ts
       - name: Sidebar overflow matrix (synthetic)
