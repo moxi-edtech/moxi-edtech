@@ -1,7 +1,7 @@
 'use client';
 
-import { usePortalDrawerGuard, usePortalDrawerNavigation } from "@/components/portal/ui/PortalDrawerNavigator";
-import { useState, useEffect, useCallback } from "react";
+import { usePortalDrawerGuard, PortalFrameActiveContext, usePortalDrawerNavigation } from "@/components/portal/ui/PortalDrawerNavigator";
+import { useContext, useState, useEffect, useCallback } from "react";
 import { FileText, Download, Loader2, Clock, AlertCircle, Upload, ChevronRight } from "lucide-react";
 import { PortalSurface } from "@/components/portal/ui/PortalSurface";
 import { PortalEmptyState } from "@/components/portal/ui/PortalEmptyState";
@@ -83,6 +83,7 @@ export function TabDocumentos({ embedded = false, focusServiceCode = null, onOpe
   // Modal state
   const [selectedDoc, setSelectedDoc] = useState<DocumentoCatalogo | null>(null);
   const [showDrawer, setShowDrawer] = useState(false);
+  const frameActive = useContext(PortalFrameActiveContext);
   const navigation = usePortalDrawerNavigation();
   usePortalDrawerGuard(false, loading !== null);
   const visibleDocs = docs.filter((doc) =>
@@ -117,7 +118,7 @@ export function TabDocumentos({ embedded = false, focusServiceCode = null, onOpe
 
   const hasPending = docs.some((item) => item.status === "pending");
   useEffect(() => {
-    if (!hasPending) return;
+    if (!hasPending || !frameActive) return;
     let stopped = false;
     let inFlight = false;
     let timer: ReturnType<typeof setTimeout> | undefined;
@@ -154,7 +155,7 @@ export function TabDocumentos({ embedded = false, focusServiceCode = null, onOpe
       window.removeEventListener("focus", onVisible);
       document.removeEventListener("visibilitychange", onVisible);
     };
-  }, [hasPending, fetchCatalogo]);
+  }, [frameActive, hasPending, fetchCatalogo]);
 
   const handleAction = async (doc: DocumentoCatalogo) => {
     if (navigation && (showDrawer || loading !== null)) return;
