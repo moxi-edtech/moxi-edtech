@@ -56,7 +56,8 @@ test("aborting one consumer does not cancel another; invalidation cannot republi
   cache.invalidate();
   const latest = await cache.read("/api/fixture");
   release(Response.json({ ok: true, version: 1 }));
-  assert.equal((await remaining.json()).version, 1);
+  const original = await remaining;
+  assert.equal((await original.json()).version, 1);
   assert.equal((await latest.json()).version, 2);
   assert.equal((await (await cache.read("/api/fixture")).json()).version, 2);
   assert.equal(calls, 2);
