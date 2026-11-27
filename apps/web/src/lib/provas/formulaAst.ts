@@ -163,8 +163,9 @@ function lastSignificant(nodes:readonly MathNode[]):MathNode|undefined{
  * accidental subtraction, sign concatenation or exponent precedence changes. */
 export function editableValueNode(value:string,before:readonly MathNode[],after:readonly MathNode[],previous?:MathNode):MathNode{
  const literal=tokenNode(value);
- if(!value.startsWith("-")||previous?.kind==="token"&&previous.value.startsWith("-"))return literal;
  const prior=lastSignificant(before),following=significant(after)[0];
+ if(following?.kind==="script"&&/^(?:\d{2,}|\d*\.\d+)$/.test(value)&&previous?.kind==="token"&&previous.value!==value)return {kind:"group",open:"{",body:[literal]};
+ if(!value.startsWith("-")||previous?.kind==="token"&&previous.value.startsWith("-"))return literal;
  if(following?.kind==="script"||prior&&!(prior.kind==="token"&&prior.value==="=")){
   return {kind:"group",open:"(",body:[literal]};
  }
@@ -215,4 +216,19 @@ export function attachMathScript(nodes:MathNode[],index:number,symbol:"^"|"_"): 
  const script:MathNode={kind:"script",symbol,braced:true,body:[tokenNode(symbol==="^"?"2":"1")]};
  const next=[...nodes.slice(0,index),replacement,...nodes.slice(index+1,end),script,...nodes.slice(end)];
  return mathTreeValid(next,true)?{nodes:next,index:end}:null;
+}
+
+
+/** Before/after refers to a complete base + scripts, not the gap inside it. */
+export function mathInsertionIndex(nodes:readonly MathNode[],selection:number|null,position:"before"|"after"|"end"|"replace"):number{
+ if(selection===null||position==="end")return nodes.length;
+ if(position==="replace")return selection;
+ let index=selection;
+ if(position==="before"){
+  while(index>0&&nodes[index]?.kind==="script")index--;
+  return index;
+ }
+ index++;
+ while(nodes[index]?.kind==="script")index++;
+ return index;
 }
