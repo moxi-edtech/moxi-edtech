@@ -6,7 +6,6 @@ import { useRouter } from 'next/navigation';
 import { Copy, Loader2, ReceiptText, RefreshCw } from 'lucide-react';
 import { usePortalDrawerGuard, usePortalDrawerNavigation } from '@/components/portal/ui/PortalDrawerNavigator';
 import { PortalSheet } from '@/components/portal/ui/PortalSheet';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 type Reference = { id: string; entity: string; reference: string; amount: number; currency: string; expires_at: string; status: string };
 type Preview = { amount: number; environment: 'production' | 'sandbox'; canIssue: boolean; reference: Reference | null; message?: string };
@@ -32,7 +31,7 @@ async function requestJson(url: string, escolaId: string, init?: RequestInit) {
   if (!response.ok || !body) throw new Error(body?.error || 'Não foi possível consultar o pagamento. Tente consultar novamente.');
   return body;
 }
-function ReferenceDialog({ escolaId, mensalidadeId, alunoNome, descricao, onPaid, onClose, restoreFocus, student }: Props & { onClose: () => void; restoreFocus: () => void }) {
+function ReferenceDialog({ escolaId, mensalidadeId, alunoNome, descricao, onPaid, onClose, student }: Props & { onClose: () => void }) {
   const router = useRouter();
   const paths = api({ escolaId, mensalidadeId, alunoNome, descricao, student });
   const [preview, setPreview] = useState<Preview | null>(null);
@@ -121,27 +120,17 @@ function ReferenceDialog({ escolaId, mensalidadeId, alunoNome, descricao, onPaid
           : <button type="button" className={button} onClick={() => load()} disabled={Boolean(busy)}>Consultar estado</button>}
       </div>
   </>;
-  if (navigation) return <PortalSheet inline open title="Pagamento por referência" description={`${alunoNome} · ${descricao}`} busy={busy === 'create' || busy === 'check'} onClose={onClose}>{controls}</PortalSheet>;
-  return <Dialog open onOpenChange={open => { if (!open && busy !== 'create' && busy !== 'check') onClose(); }}>
-    <DialogContent onCloseAutoFocus={event => { event.preventDefault(); restoreFocus(); }} className="max-h-[90vh] overflow-y-auto bg-card text-foreground" closeButton={busy !== 'create' && busy !== 'check'}>
-      <DialogHeader>
-        <DialogTitle>Pagamento por referência</DialogTitle>
-        <DialogDescription>{alunoNome} · {descricao}</DialogDescription>
-      </DialogHeader>
-      {controls}
-    </DialogContent>
-  </Dialog>;
+  return <PortalSheet open title="Pagamento por referência" description={`${alunoNome} · ${descricao}`} busy={busy === 'create' || busy === 'check'} onClose={onClose}>{controls}</PortalSheet>;
 }
 export function AppyPayReferenceButton(props: Props) {
   const [open, setOpen] = useState(false);
-  const trigger = useRef<HTMLButtonElement>(null);
   const paths = api(props);
   const { data } = useSWR(props.escolaId || props.student ? [paths.status, props.escolaId] : null,
     ([url, school]: [string, string]) => requestJson(url, school), { revalidateOnFocus: true, shouldRetryOnError: false });
   if (!data?.enabled) return null;
   return <>
-    <button ref={trigger} type="button" className={button} onClick={() => setOpen(true)}><ReceiptText className="h-4 w-4" aria-hidden="true" />{props.student ? 'Pagar com AppyPay' : 'Gerar referência'}</button>
-    {open ? <ReferenceDialog key={`${props.escolaId}:${props.mensalidadeId}`} {...props} onClose={() => setOpen(false)} restoreFocus={() => trigger.current?.focus()} /> : null}
+    <button type="button" className={button} onClick={() => setOpen(true)}><ReceiptText className="h-4 w-4" aria-hidden="true" />{props.student ? 'Pagar com AppyPay' : 'Gerar referência'}</button>
+    {open ? <ReferenceDialog key={`${props.escolaId}:${props.mensalidadeId}`} {...props} onClose={() => setOpen(false)} /> : null}
   </>;
 }
 
