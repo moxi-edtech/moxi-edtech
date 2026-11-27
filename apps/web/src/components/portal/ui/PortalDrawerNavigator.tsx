@@ -2,6 +2,7 @@
 
 import { createContext, useCallback, useContext, useId, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { PortalPresentationContext, PortalSheet } from "@/components/portal/ui/PortalSheet";
+import { createDrawerReadCache } from "./drawerReadCache";
 
 export type PortalDrawerFrame = {
   id: string;
@@ -13,7 +14,7 @@ export type PortalDrawerFrame = {
 
 type Entry = { frame: PortalDrawerFrame; previousScroll: number; opener: HTMLElement | null };
 type Guard = { dirty: boolean; busy: boolean };
-type Navigation = { push: (frame: PortalDrawerFrame) => void; registerGuard: (frameId: string, sourceId: string, guard: Guard | null) => void; notifyChanged: () => void; busy: boolean; dirty: boolean };
+type Navigation = { read: ReturnType<typeof createDrawerReadCache>["read"]; push: (frame: PortalDrawerFrame) => void; registerGuard: (frameId: string, sourceId: string, guard: Guard | null) => void; notifyChanged: () => void; busy: boolean; dirty: boolean };
 export const PortalFrameActiveContext = createContext(true);
 const FrameContext = createContext<string | null>(null);
 const Context = createContext<Navigation | null>(null);
@@ -51,7 +52,8 @@ export function PortalDrawerNavigator({ root, open, onClose, onReopen, onChanged
   const active = entries[entries.length - 1]?.frame ?? root;
   const [guards, setGuards] = useState<Record<string, Record<string, Guard>>>({});
   const changed = useRef(false);
-  const notifyChanged = useCallback(() => { changed.current = true; }, []);
+  const readCache = useMemo(() => createDrawerReadCache(), [open, root.id]);
+  const notifyChanged = useCallback(() => { changed.current = true; readCache.invalidate(); }, [readCache]);
   const registerGuard = useCallback((frameId: string, sourceId: string, guard: Guard | null) => {
     setGuards(current => {
       const prior = current[frameId] ?? {};
@@ -218,7 +220,7 @@ export function PortalDrawerNavigator({ root, open, onClose, onReopen, onChanged
     <PortalSheet open={open} onClose={close} title={active.title} description={active.description}
       size={root.size ?? "expanded"} busy={busy} onBack={entries.length ? back : undefined} navigationKey={active.id} bodyRef={body}>
       <PortalPresentationContext.Provider value="drawer">
-      <Context.Provider value={{ push, registerGuard, notifyChanged, busy, dirty }}>
+      <Context.Provider value={{ read: readCache.read, push, registerGuard, notifyChanged, busy, dirty }}>
         <div key={root.id} hidden={entries.length > 0} className={entries.length ? "hidden" : "space-y-4"}>
           <PortalFrameActiveContext.Provider value={open && entries.length === 0}><FrameContext.Provider value={root.id}>{root.content}</FrameContext.Provider></PortalFrameActiveContext.Provider>
         </div>
