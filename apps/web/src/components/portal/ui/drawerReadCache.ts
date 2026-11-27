@@ -39,7 +39,9 @@ export function createDrawerReadCache({ fetcher = fetch, now = Date.now, ttlMs =
         const response = await fetcher(url, { cache: "no-store" });
         const payload = response.ok ? await response.clone().json().catch(() => null) : null;
         if (entries.get(key) === entry) {
-          if (response.ok && payload?.ok === true) entry.expiresAt = now() + ttlMs;
+          // Pauta is the only opted-in endpoint with a bare array contract. Keep its revision headers.
+          const valid = payload?.ok === true || (parsed.pathname === "/api/professor/pauta" && Array.isArray(payload));
+          if (response.ok && valid) entry.expiresAt = now() + ttlMs;
           else entries.delete(key);
         }
         return response;
