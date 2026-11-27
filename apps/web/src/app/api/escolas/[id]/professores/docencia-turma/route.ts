@@ -32,7 +32,8 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     })
     if (error) {
       const message = /CARGA_EXCEEDED/.test(error.message) ? 'A carga lectiva projectada ultrapassa o limite. Nenhuma atribuição foi alterada.'
-        : /DURATION_UNCONFIGURED/.test(error.message) ? 'Configure a duração dos tempos lectivos.'
+        : /DURATION_UNCONFIGURED/.test(error.message) ? 'Não foi possível confirmar a disponibilidade do professor. Peça à administração para rever o horário da turma.'
+        : /TITULAR_CONFLICT/.test(error.message) ? 'Esta turma já tem um professor titular. Nenhuma atribuição foi alterada.'
         : /ALREADY_ASSIGNED/.test(error.message) ? 'Existem disciplinas atribuídas a outro docente. Nenhuma atribuição foi alterada.'
         : 'Não foi possível configurar a docência da turma.'
       return NextResponse.json({ ok: false, error: message }, { status: 409 })
