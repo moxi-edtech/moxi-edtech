@@ -89,6 +89,33 @@ BEGIN
   UPDATE public.turma_disciplinas SET professor_id='40000000-0000-0000-0000-000000000002' WHERE turma_id=t AND curso_matriz_id=m;
   RAISE EXCEPTION 'EXPECTED_DIRECT_MONO_REJECTION';
  EXCEPTION WHEN OTHERS THEN IF SQLERRM NOT LIKE 'TEACHER_MONODOCENCIA_TITULAR_MISMATCH%' THEN RAISE; END IF; END;
+ -- Direct assignment cannot circumvent the minute limit on a different turma.
+ PERFORM public.configure_teacher_workload_atomic(s,p,'minutos',90,1200);
+ BEGIN
+  UPDATE public.turma_disciplinas SET professor_id=p
+   WHERE turma_id='b0000000-0000-0000-0000-000000000002';
+  RAISE EXCEPTION 'EXPECTED_LEGACY_WORKLOAD_REJECTION';
+ EXCEPTION WHEN OTHERS THEN IF SQLERRM NOT LIKE 'ASSIGN_PROF_CARGA_EXCEEDED%' THEN RAISE; END IF; END;
+ BEGIN
+  INSERT INTO public.turma_disciplinas_professores(escola_id,turma_id,disciplina_id,professor_id)
+  VALUES(s,'b0000000-0000-0000-0000-000000000002','80000000-0000-0000-0000-000000000001',p);
+  RAISE EXCEPTION 'EXPECTED_SHARED_WORKLOAD_REJECTION';
+ EXCEPTION WHEN OTHERS THEN IF SQLERRM NOT LIKE 'ASSIGN_PROF_CARGA_EXCEEDED%' THEN RAISE; END IF; END;
+ -- A new published subject can be assigned to a specialist without silently
+ -- changing the titular; the exact same assignment motor is reused.
+ INSERT INTO public.disciplinas_catalogo(id,escola_id,nome) VALUES ('80000000-0000-0000-0000-000000000009',s,'Música');
+ INSERT INTO public.curso_matriz(id,escola_id,curso_id,classe_id,disciplina_id,curso_curriculo_id,carga_horaria_semanal,ativo)
+ VALUES ('a0000000-0000-0000-0000-000000000019',s,'60000000-0000-0000-0000-000000000001','70000000-0000-0000-0000-000000000005','80000000-0000-0000-0000-000000000009','90000000-0000-0000-0000-000000000005',2,true);
+ INSERT INTO public.turma_disciplinas(id,escola_id,turma_id,curso_matriz_id,carga_horaria_semanal)
+ VALUES ('c0000000-0000-0000-0000-000000000019',s,t,'a0000000-0000-0000-0000-000000000019',2);
+ PERFORM public.assign_teacher_regime_atomic(s,t,'misto','40000000-0000-0000-0000-000000000002',ARRAY['a0000000-0000-0000-0000-000000000019'::uuid]);
+ IF NOT EXISTS (SELECT 1 FROM public.turmas WHERE id=t AND professor_titular_id=p AND regime_docencia='misto') THEN RAISE EXCEPTION 'MIXED_TITULAR_CHANGED'; END IF;
+ IF NOT EXISTS (SELECT 1 FROM public.turma_disciplinas WHERE turma_id=t AND curso_matriz_id='a0000000-0000-0000-0000-000000000019' AND professor_id='40000000-0000-0000-0000-000000000002') THEN RAISE EXCEPTION 'MIXED_SPECIALIST_MISSING'; END IF;
+ -- A confirmed single-subject swap must not remove the last titular link.
+ BEGIN
+  PERFORM public.trocar_professor_turma_disciplina_atomic(s,t,m,p,'40000000-0000-0000-0000-000000000002');
+  RAISE EXCEPTION 'EXPECTED_LAST_TITULAR_REJECTION';
+ EXCEPTION WHEN OTHERS THEN IF SQLERRM NOT LIKE 'TEACHER_REGIME_TITULAR_LAST_SUBJECT%' THEN RAISE; END IF; END;
  -- Missing duration is fail-closed for minute limits, not legacy periods.
  UPDATE public.turmas SET tempo_lectivo_minutos=NULL WHERE id=t;
  BEGIN
