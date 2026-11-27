@@ -280,7 +280,7 @@ export function ProfessorGradesWorkspace({ embedded = false, requestedAnoLetivoI
     void loadReopenRequests()
     const timer = window.setInterval(() => void loadReopenRequests(), 30_000)
     return () => { active = false; window.clearInterval(timer) }
-  }, [turmaId, disciplinaId, turmaDisciplinaId, trimestreSelecionado, anoLetivoId, pautaReload])
+  }, [turmaId, disciplinaId, turmaDisciplinaId, trimestreSelecionado, anoLetivoId])
 
   const handleRequestReopen = async () => {
     if (requestingReopen) return
@@ -387,7 +387,7 @@ export function ProfessorGradesWorkspace({ embedded = false, requestedAnoLetivoI
     return () => {
       active = false
     }
-  }, [turmaId, disciplinaId, turmaDisciplinaId, trimestreSelecionado, anoLetivoId])
+  }, [turmaId, disciplinaId, turmaDisciplinaId, trimestreSelecionado, anoLetivoId, pautaReload])
 
   useEffect(() => {
     setExamSessions([])
