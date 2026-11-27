@@ -347,12 +347,23 @@ async function validateDashboardNavigation() {
       window.drawerRequests = [];
       const fetch = window.fetch.bind(window);
       window.fetch = (input, init) => {
-        window.drawerRequests.push(new URL(typeof input === "string" ? input : input.url ?? input, location.href).pathname);
+        const url = new URL(typeof input === "string" ? input : input.url ?? input, location.href);
+        url.searchParams.sort();
+        window.drawerRequests.push({ path: url.pathname, key: (init?.method ?? input?.method ?? "GET").toUpperCase() + " " + url.pathname + url.search });
         return fetch(input, init);
       };
     });
   };
-  const count = path => page.evaluate(path => window.drawerRequests.filter(url => url === path).length, path);
+  const count = path => page.evaluate(path => window.drawerRequests.filter(request => request.path === path).length, path);
+  const reads = async paths => page.evaluate(paths => window.drawerRequests.filter(request => request.key.startsWith("GET ") && paths.some(path => request.path === path || (path.endsWith("*") && request.path.startsWith(path.slice(0,-1))))).map(request => request.key).sort(), paths);
+  const assertNoRepeat = async (paths, action, label) => {
+    await page.waitForLoadState("networkidle");
+    const before = await reads(paths);
+    await action();
+    await page.waitForLoadState("networkidle");
+    assert.deepEqual(await reads(paths), before, `${label}: repeated GET`);
+    console.log("Drawer request budget:", label, "0 redundant GETs", paths.join(", "));
+  };
   const click = (scope, name) => scope.getByRole("button", {name,exact:true}).first().click();
   const child = async (name, title) => {
     console.log("Drawer navigation:", name, "→", title);
@@ -389,23 +400,34 @@ async function validateDashboardNavigation() {
     await close();
     await page.getByRole("button",{name:/Reunião de encarregados/}).first().click();
     await click(dialog,"Ver todos os avisos");
-    await child(/Circular sintética/,"Circular sintética");
+    await assertNoRepeat(["/api/aluno/avisos"], () => child(/Circular sintética/,"Circular sintética"), "Aviso: detalhe e retorno");
     await close();
     await page.getByTestId("aluno-summary-cards").getByRole("button",{name:/^Propinas vencidas/}).click();
-    await click(dialog,/^Filtrar período/);
-    await dialog.getByRole("region",{name:"Filtrar período"}).getByRole("button",{name:"Voltar"}).click();
-    await click(dialog,/2026-11/);
-    await click(dialog,"Enviar comprovativo");
-    await dialog.getByRole("region",{name:"Pagamento consolidado"}).waitFor();
-    assert.equal(await page.getByRole("dialog").count(),1);
-    await dialog.getByRole("region",{name:"Pagamento consolidado"}).getByRole("button",{name:"Voltar",exact:true}).first().click();
+    await assertNoRepeat(["/api/aluno/financeiro"], async () => {
+      await click(dialog,/^Filtrar período/);
+      await dialog.getByRole("region",{name:"Filtrar período"}).getByRole("button",{name:"Voltar"}).click();
+      await click(dialog,/2026-11/);
+      await click(dialog,"Enviar comprovativo");
+      await dialog.getByRole("region",{name:"Pagamento consolidado"}).waitFor();
+      assert.equal(await page.getByRole("dialog").count(),1);
+      await dialog.getByRole("region",{name:"Pagamento consolidado"}).getByRole("button",{name:"Voltar",exact:true}).first().click();
+    }, "Financeiro: filtro sem aplicar, propina e pagamento sem confirmar");
     await click(dialog,/Serviço sintético/);
     await child(/Secretaria Digital/,"Documentos e serviços");
+    await assertNoRepeat(["/api/aluno/documentos/catalogo"], () => child(/Secretaria Digital/,"Documentos e serviços"), "Serviço: reentrada na Secretaria Digital");
     await close();
     await visit("professor-com-turmas");
     const turma = page.getByRole("button",{name:/Matemática.*Língua Portuguesa/}).first();
     await turma.click();
     for (const [label,title] of [["Chamada","Registar chamada"],["Notas","Lançamento de notas"],["Plano de aula","Planos de aula"],["Materiais","Materiais pedagógicos"],["Horário da turma","Horário da turma"],["Aluno sintético","Aluno sintético"]]) await child(label,title);
+    for (const [label,title,paths] of [
+      ["Chamada","Registar chamada",["/api/professor/atribuicoes","/api/professor/turmas/*"]],
+      ["Notas","Lançamento de notas",["/api/professor/atribuicoes"]],
+      ["Plano de aula","Planos de aula",["/api/professor/planos-aula","/api/professor/agenda"]],
+      ["Materiais","Materiais pedagógicos",["/api/professor/materiais-pedagogicos","/api/professor/agenda"]],
+      ["Horário da turma","Horário da turma",["/api/professor/turmas/*"]],
+      ["Aluno sintético","Aluno sintético",["/api/professor/periodos"]],
+    ]) await assertNoRepeat(paths, () => child(label,title), `Turma: reentrada em ${title}`);
     assert.equal(await count("/api/professor/agenda"),0);
     await close();
     await page.locator('button[aria-expanded][aria-haspopup="dialog"]').filter({hasText:"08:00"}).first().click();
@@ -414,13 +436,15 @@ async function validateDashboardNavigation() {
     for (const [label,title] of [["Ver calendário","Calendário académico"],["Calendário de Avaliações","Calendário de avaliações"]]) {
       await click(page,label);
       await page.getByRole("dialog",{name:title,exact:true}).waitFor();
-      await click(dialog,"Eventos");
-      await click(dialog,"Ver detalhes de Reunião sintética");
-      await dialog.getByRole("region",{name:"Reunião sintética"}).getByRole("button",{name:"Voltar"}).click();
-      await click(dialog,"Períodos lectivos");
-      await click(dialog,"Avaliações");
-      await click(dialog,"Histórico de avaliações");
-      await dialog.getByRole("region",{name:"Histórico de avaliações"}).waitFor();
+      await assertNoRepeat(["/api/professor/calendario"], async () => {
+        await click(dialog,"Eventos");
+        await click(dialog,"Ver detalhes de Reunião sintética");
+        await dialog.getByRole("region",{name:"Reunião sintética"}).getByRole("button",{name:"Voltar"}).click();
+        await click(dialog,"Períodos lectivos");
+        await click(dialog,"Avaliações");
+        await click(dialog,"Histórico de avaliações");
+        await dialog.getByRole("region",{name:"Histórico de avaliações"}).waitFor();
+      }, `${title}: abas, evento e histórico`);
       assert.equal(await dialog.count(),1);
       await close();
     }
