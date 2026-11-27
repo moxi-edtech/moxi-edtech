@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useContext, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import AcaoRapidaCard from "@/components/shared/AcaoRapidaCard";
 import Link from "next/link";
@@ -8,7 +8,7 @@ import { Check, Filter, Wallet, ArrowUpCircle, ArrowDownCircle, Printer, Loader2
 import { Button } from "@/components/ui/Button";
 import { StudentAppyPayButton } from "@/components/financeiro/AppyPayReferenceButton";
 import { PaymentDrawer } from "@/components/aluno/financeiro-portal/PaymentDrawer";
-import { usePortalDrawerNavigation } from "@/components/portal/ui/PortalDrawerNavigator";
+import { PortalFrameActiveContext, usePortalDrawerNavigation } from "@/components/portal/ui/PortalDrawerNavigator";
 import { PortalSheet } from "@/components/portal/ui/PortalSheet";
 import type { AlunoServicoFinanceiro } from "@/lib/financeiro/servicosPagamento";
 
@@ -81,6 +81,7 @@ export function TabFinanceiro({ onOpenDocuments }: { onOpenDocuments?: (serviceC
 }
 
 function FinanceiroScope({ studentId, onOpenDocuments }: { studentId: string | null; onOpenDocuments?: (serviceCode: string | null) => void }) {
+  const frameActive = useContext(PortalFrameActiveContext);
   const navigation = usePortalDrawerNavigation();
   const currentYear = Number(new Intl.DateTimeFormat("en", { year: "numeric", timeZone: "Africa/Luanda" }).format(new Date()));
 
@@ -166,16 +167,21 @@ function FinanceiroScope({ studentId, onOpenDocuments }: { studentId: string | n
   }, [query]);
   useEffect(() => {
     void refresh();
-    const timer = window.setInterval(() => void refresh(), 30000);
-    const focus = () => void refresh();
-    window.addEventListener("focus", focus);
     return () => {
       activeRequest.current?.abort();
       activeRequest.current = null;
-      window.clearInterval(timer);
-      window.removeEventListener("focus", focus);
     };
   }, [refresh]);
+  useEffect(() => {
+    if (!frameActive) return;
+    const refreshVisible = () => { if (!document.hidden) void refresh(); };
+    const timer = window.setInterval(refreshVisible, 30000);
+    window.addEventListener("focus", refreshVisible);
+    return () => {
+      window.clearInterval(timer);
+      window.removeEventListener("focus", refreshVisible);
+    };
+  }, [frameActive, refresh]);
   const ready = loadedQuery === query;
   const selectedMonthly = ready && detail?.scope === query && detail.kind === "monthly" ? rows.find(item => item.id === detail.id) : undefined;
   const selectedService = ready && detail?.scope === query && detail.kind === "service" ? servicos.find(item => item.id === detail.id) : undefined;
