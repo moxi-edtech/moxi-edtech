@@ -594,7 +594,7 @@ export function Dashboard({
             Ano lectivo {anoLetivoLabel}
           </p>
         </div>
-        <div className="operations-kpi-grid grid">
+        <div className="operations-daily-grid grid">
           {metrics.map((metric) => (
             <OperationalMetricCard
               key={metric.key}
@@ -624,6 +624,7 @@ export function Dashboard({
             icon={Megaphone}
             value={currentProductivity && !currentProductivity.error ? generalAvisos.length : null}
             needsAttention={generalAvisos.some(item => item.is_priority)}
+            description="Avisos disponíveis nesta consulta"
             onClick={() => setNoticeView("general")}
             dialogOpen={noticeView === "general"}
           />
