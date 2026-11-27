@@ -92,15 +92,21 @@ const dayLabel = (day: number) => {
   }
 };
 
-const AttendanceWorkspace = dynamic(() => import("@/components/professor/ProfessorFrequenciasWorkspace").then(module => module.ProfessorFrequenciasWorkspace), { loading: () => <p role="status" className="text-sm text-muted-foreground">A carregar chamada…</p> });
-const PlansWorkspace = dynamic(() => import("@/components/professor/ProfessorPlanosWorkspace").then(module => module.ProfessorPlanosWorkspace), { loading: () => <p role="status" className="text-sm text-muted-foreground">A carregar planos…</p> });
+const loadAttendanceWorkspace = () => import("@/components/professor/ProfessorFrequenciasWorkspace").then(module => module.ProfessorFrequenciasWorkspace);
+const AttendanceWorkspace = dynamic(loadAttendanceWorkspace, { loading: () => <p role="status" className="text-sm text-muted-foreground">A carregar chamada…</p> });
+const loadPlansWorkspace = () => import("@/components/professor/ProfessorPlanosWorkspace").then(module => module.ProfessorPlanosWorkspace);
+const PlansWorkspace = dynamic(loadPlansWorkspace, { loading: () => <p role="status" className="text-sm text-muted-foreground">A carregar planos…</p> });
 
-const MaterialsWorkspace = dynamic(() => import("@/components/professor/ProfessorMateriaisWorkspace").then(module => module.ProfessorMateriaisWorkspace), { loading: () => <p role="status" className="text-sm text-muted-foreground">A carregar materiais…</p> });
+const loadMaterialsWorkspace = () => import("@/components/professor/ProfessorMateriaisWorkspace").then(module => module.ProfessorMateriaisWorkspace);
+const MaterialsWorkspace = dynamic(loadMaterialsWorkspace, { loading: () => <p role="status" className="text-sm text-muted-foreground">A carregar materiais…</p> });
 
-const CalendarWorkspace = dynamic(() => import("@/components/professor/ProfessorCalendarWorkspace").then(module => module.ProfessorCalendarWorkspace), { loading: () => <p role="status" className="text-sm text-muted-foreground">A carregar calendário…</p> });
-const GradesWorkspace = dynamic(() => import("@/components/professor/ProfessorGradesWorkspace").then(module => module.ProfessorGradesWorkspace), { loading: () => <p role="status" className="text-sm text-muted-foreground">A carregar notas…</p> });
+const loadCalendarWorkspace = () => import("@/components/professor/ProfessorCalendarWorkspace").then(module => module.ProfessorCalendarWorkspace);
+const CalendarWorkspace = dynamic(loadCalendarWorkspace, { loading: () => <p role="status" className="text-sm text-muted-foreground">A carregar calendário…</p> });
+const loadGradesWorkspace = () => import("@/components/professor/ProfessorGradesWorkspace").then(module => module.ProfessorGradesWorkspace);
+const GradesWorkspace = dynamic(loadGradesWorkspace, { loading: () => <p role="status" className="text-sm text-muted-foreground">A carregar notas…</p> });
 
-const ExamList = dynamic(() => import("@/components/professor/ProfessorExamList").then(module => module.ProfessorExamList));
+const loadExamList = () => import("@/components/professor/ProfessorExamList").then(module => module.ProfessorExamList);
+const ExamList = dynamic(loadExamList);
 type OperationKind = "exams" | "attendance" | "plans" | "materials" | "grades" | "calendar" | "assessments" | "periods";
 
 export default function Page() {
@@ -369,6 +375,7 @@ export default function Page() {
     setFinalizeSummary("");
   }, [operationScope]);
   const operationFrame = (kind: OperationKind, turmaId?: string | null, disciplinaId?: string | null): PortalDrawerFrame => ({
+    prepare: { attendance: loadAttendanceWorkspace, plans: loadPlansWorkspace, materials: loadMaterialsWorkspace, calendar: loadCalendarWorkspace, grades: loadGradesWorkspace, exams: loadExamList, assessments: loadCalendarWorkspace, periods: loadCalendarWorkspace }[kind],
     id: JSON.stringify([operationScope, kind, turmaId ?? "", disciplinaId ?? ""]),
     title: ({ exams: "Provas", attendance: "Registar chamada", plans: "Planos de aula", materials: "Materiais pedagógicos", grades: "Lançamento de notas", calendar: "Calendário académico", assessments: "Calendário de avaliações", periods: "Períodos lectivos" })[kind],
     description: ({ exams: "Consulta as provas das tuas disciplinas.", attendance: "Regista e guarda as presenças da turma.", plans: "Prepara, guarda e acompanha os planos de aula.", materials: "Cria, consulta e publica os materiais.", grades: "Selecciona o contexto, guarda as notas e exporta a mini-pauta.", calendar: "Consulta eventos oficiais da escola.", assessments: "Consulta avaliações próximas e anteriores.", periods: "Consulta períodos e datas de fecho." })[kind],
