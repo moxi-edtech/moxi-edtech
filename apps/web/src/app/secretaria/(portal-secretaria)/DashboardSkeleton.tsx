@@ -19,6 +19,28 @@ export default function DashboardSkeleton() {
         aria-hidden="true"
         className="h-20 rounded-xl border border-border bg-card motion-safe:animate-pulse"
       />
+      <div className="space-y-4">
+        <div
+          aria-hidden="true"
+          className="h-5 w-36 rounded-xl bg-muted motion-safe:animate-pulse"
+        />
+        <div className="grid min-w-0 gap-4 @min-[520px]:grid-cols-2">
+          {[0, 1].map((key) => (
+            <OperationalMetricSkeleton key={key} />
+          ))}
+        </div>
+      </div>
+      <div className="space-y-4">
+        <div
+          aria-hidden="true"
+          className="h-5 w-48 rounded-xl bg-muted motion-safe:animate-pulse"
+        />
+        <div className="operations-daily-grid grid">
+          {[0, 1, 2].map((key) => (
+            <OperationalMetricSkeleton key={key} />
+          ))}
+        </div>
+      </div>
       <div
         aria-hidden="true"
         className="h-56 @min-[920px]:h-36 rounded-xl border border-border bg-card motion-safe:animate-pulse"
@@ -35,28 +57,6 @@ export default function DashboardSkeleton() {
               aria-hidden="true"
               className="min-h-[88px] rounded-xl border border-border bg-card motion-safe:animate-pulse"
             />
-          ))}
-        </div>
-      </div>
-      <div className="space-y-4">
-        <div
-          aria-hidden="true"
-          className="h-5 w-36 rounded-xl bg-muted motion-safe:animate-pulse"
-        />
-        <div className="operations-daily-grid grid">
-          {[0, 1, 2].map((key) => (
-            <OperationalMetricSkeleton key={key} />
-          ))}
-        </div>
-      </div>
-      <div className="space-y-4">
-        <div
-          aria-hidden="true"
-          className="h-5 w-48 rounded-xl bg-muted motion-safe:animate-pulse"
-        />
-        <div className="operations-kpi-grid grid">
-          {[0, 1, 2, 3].map((key) => (
-            <OperationalMetricSkeleton key={key} />
           ))}
         </div>
       </div>
