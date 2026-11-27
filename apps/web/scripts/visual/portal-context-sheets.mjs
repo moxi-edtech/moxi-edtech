@@ -348,6 +348,13 @@ async function validateDashboardNavigation() {
     await click(dialog, name);
     await page.getByRole("dialog",{name:title,exact:true}).waitFor();
     assert.equal(await dialog.count(), 1);
+    if (title === "Materiais pedagógicos") {
+      const before = await count("/api/professor/materiais-pedagogicos");
+      await click(dialog,"Novo Material");
+      assert.equal(await page.getByRole("dialog").count(),1);
+      await click(dialog,"Cancelar");
+      assert.equal(await count("/api/professor/materiais-pedagogicos"),before);
+    }
     await page.evaluate(() => history.back());
     await page.getByRole("dialog",{name:heading,exact:true}).waitFor();
   };
@@ -355,7 +362,7 @@ async function validateDashboardNavigation() {
   try {
     await page.route("**/api/**", route => {
       const path = new URL(route.request().url()).pathname;
-      const data = path.endsWith("/avisos") ? {ok:true,avisos:[{id:"notice",titulo:"Circular sintética",resumo:"Mensagem"}]}
+      const data = path.endsWith("/calendario") ? {ok:true,periodos:[],items:[{id:"evt",nome:"Reunião sintética",descricao:"Detalhe do evento",data_inicio:"2099-12-01",data_fim:"2099-12-01",tipo:"REUNIAO"}]} : path.endsWith("/avisos") ? {ok:true,avisos:[{id:"notice",titulo:"Circular sintética",resumo:"Mensagem"}]}
         : path.endsWith("/financeiro") ? {ok:true,mensalidades:[{id:"month",competencia:"2026-11",valor:500,status:"pendente"}],servicos:[{id:"service",nome:"Serviço sintético",valor:500,status:"pendente",acao:{label:"Consultar",href:"/aluno/documentos?servico=DOC"}}],movimentos:[]}
         : path.endsWith("/pauta") ? [] : {ok:true,items:[],periodos:[],eventos:[],slots:[],assignments:[]};
       return route.fulfill({json:data});
@@ -394,6 +401,13 @@ async function validateDashboardNavigation() {
     for (const [label,title] of [["Ver calendário","Calendário académico"],["Calendário de Avaliações","Calendário de avaliações"]]) {
       await click(page,label);
       await page.getByRole("dialog",{name:title,exact:true}).waitFor();
+      await click(dialog,"Eventos");
+      await click(dialog,"Ver detalhes de Reunião sintética");
+      await dialog.getByRole("region",{name:"Reunião sintética"}).getByRole("button",{name:"Voltar"}).click();
+      await click(dialog,"Períodos lectivos");
+      await click(dialog,"Avaliações");
+      await click(dialog,"Histórico de avaliações");
+      await dialog.getByRole("region",{name:"Histórico de avaliações"}).waitFor();
       assert.equal(await dialog.count(),1);
       await close();
     }
