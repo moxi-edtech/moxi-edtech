@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { X, UserCheck, UserX, BookOpen, AlertCircle, Loader2, Check, Plus, ChevronDown } from "lucide-react";
 import { useToast } from "@/components/feedback/FeedbackSystem";
+import TeacherWorkloadEditor from "@/components/professores/TeacherWorkloadEditor";
 import { planTurmaModalBatch, selectedProfessorForLegacyId } from "@/lib/professores/turma-modal-assignment";
 import type { AssignmentCandidate } from "@/lib/professores/assignment-candidates";
 
@@ -66,6 +67,7 @@ export default function TurmaAtribuirProfessoresModal({
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [savingId, setSavingId] = useState<string | null>(null);
+  const [singleRetry, setSingleRetry] = useState<{ matrizId: string; userId: string; error: string } | null>(null);
   const [replaceDisciplinaId, setReplaceDisciplinaId] = useState<string | null>(null);
   const [replaceProfessorUserId, setReplaceProfessorUserId] = useState("");
   const [replaceReviewed, setReplaceReviewed] = useState(false);
@@ -125,6 +127,7 @@ export default function TurmaAtribuirProfessoresModal({
   useEffect(() => { void loadData(); }, [loadData]);
   useEffect(() => {
     if (!isOpen) {
+      setSingleRetry(null);
       setBulkDisciplinaId(null);
       setBulkCandidates([]);
       setBulkSelected([]);
@@ -312,10 +315,13 @@ export default function TurmaAtribuirProfessoresModal({
       const json = await res.json().catch(() => null);
       if (!res.ok || !json?.ok) throw new Error(json?.error || "Falha ao atribuir professor.");
       await refreshDisciplinas();
+      setSingleRetry(null);
       success("Atribuição guardada", "O professor foi associado à turma.");
       onUpdated?.();
     } catch (err) {
-      toastError("Erro", err instanceof Error ? err.message : "Falha ao atribuir professor.");
+      const message = err instanceof Error ? err.message : "Falha ao atribuir professor.";
+      setSingleRetry({ matrizId: disc.curso_matriz_id, userId: professor.user_id, error: message });
+      toastError("Erro", message);
       // Refresh after a stale write, rather than displaying a professor who was not saved.
       await refreshDisciplinas().catch(() => null);
     } finally {
@@ -437,6 +443,9 @@ export default function TurmaAtribuirProfessoresModal({
                       {professores.filter((p) => p.professor_id).map((p) => <option key={p.user_id} value={p.user_id}>{p.nome}</option>)}
                     </select>
                   </label>
+                  {classTeacher?.professor_id && <TeacherWorkloadEditor key={classTeacher.user_id}
+                    escolaId={escolaId} profileId={classTeacher.user_id} name={classTeacher.nome}
+                    disabled={Boolean(savingId) || bulkSaving} onSaved={() => { setClassError(null); setClassReviewed(false); }}/>}
                   <fieldset disabled={Boolean(savingId) || bulkSaving} className="space-y-2">
                     <legend className="mb-1 text-sm font-medium">Disciplinas a atribuir</legend>
                     <label className="flex items-center gap-2 text-sm">
@@ -540,6 +549,19 @@ export default function TurmaAtribuirProfessoresModal({
                   )}
                   {isSaving && <Loader2 aria-label="A guardar" size={17} className="animate-spin text-klasse-gold"/>}
                 </div>
+                {!hasProf && isPublished && singleRetry?.matrizId === disc.curso_matriz_id && (
+                  <div className="mt-3 space-y-2 rounded-xl border border-border bg-muted p-3">
+                    <p role="alert" className="text-sm text-red-600">{singleRetry.error}</p>
+                    <TeacherWorkloadEditor key={singleRetry.userId} escolaId={escolaId} profileId={singleRetry.userId}
+                      name={professores.find(p => p.user_id === singleRetry.userId)?.nome} disabled={Boolean(savingId) || bulkSaving}/>
+                    <div className="flex flex-wrap gap-2">
+                      <button type="button" disabled={Boolean(savingId) || bulkSaving}
+                        onClick={() => { const p = professores.find(item => item.user_id === singleRetry.userId); if (p) void handleAssign(disc, p); }}
+                        className="rounded-xl bg-klasse-gold px-3 py-2 text-sm font-semibold text-klasse-gold-900 disabled:opacity-50">Tentar atribuir novamente</button>
+                      <button type="button" onClick={() => setSingleRetry(null)} className="rounded-xl border border-border bg-card px-3 py-2 text-sm">Cancelar</button>
+                    </div>
+                  </div>
+                )}
                 {!isPublished && <p className="mt-2 text-xs text-amber-700">Atribuição indisponível: a matriz desta disciplina ainda não está publicada.</p>}
                 {hasProf && isPublished && (
                   <button type="button" disabled={Boolean(savingId) || bulkSaving}
@@ -570,6 +592,9 @@ export default function TurmaAtribuirProfessoresModal({
                           .map((prof) => <option key={prof.user_id} value={prof.user_id}>{prof.nome}</option>)}
                       </select>
                     </label>
+                    {replaceProfessorUserId && <TeacherWorkloadEditor key={replaceProfessorUserId}
+                      escolaId={escolaId} profileId={replaceProfessorUserId} disabled={Boolean(savingId) || bulkSaving}
+                      onSaved={() => { setReplaceError(null); setReplaceReviewed(false); }}/>}
                     {replaceError && <p role="alert" className="text-xs text-red-600">{replaceError}</p>}
                     {replaceReviewed && replaceProfessorUserId && (
                       <p role="status" className="rounded-xl border border-border bg-card p-3 text-xs text-foreground">
@@ -612,6 +637,9 @@ export default function TurmaAtribuirProfessoresModal({
                         {professores.map((prof) => <option key={prof.user_id} value={prof.user_id}>{prof.nome}</option>)}
                       </select>
                     </label>
+                    {selectedBulkTeacher?.professor_id && <TeacherWorkloadEditor key={selectedBulkTeacher.user_id}
+                      escolaId={escolaId} profileId={selectedBulkTeacher.user_id} disabled={Boolean(savingId) || bulkSaving}
+                      onSaved={() => setBulkError(null)}/>}
                     {sourceAlreadyAssigned && !currentTeacher && (
                       <p role="alert" className="text-xs text-amber-700">Não foi possível identificar o professor atual. Recarregue os dados antes de distribuir a disciplina.</p>
                     )}
