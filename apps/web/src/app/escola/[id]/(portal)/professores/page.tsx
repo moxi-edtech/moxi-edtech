@@ -1,6 +1,7 @@
 "use client"
 
 import TeacherWorkloadEditor, { type TeacherWorkloadConfig } from "@/components/professores/TeacherWorkloadEditor"
+import { DEFAULT_TEACHER_WORKLOAD, parseTeacherWorkload, type TeacherWorkloadDraft } from "@/lib/professores/teacher-workload-form"
 import { PORTAL_PAGE_INSET } from "@/lib/layout/portal-page";
 
 import React, { useEffect, useMemo, useState, useCallback, useRef } from "react"
@@ -694,6 +695,7 @@ export default function ProfessoresPage() {
     is_diretor_turma: false,
   }
   const [teacherForm, setTeacherForm] = useState(TEACHER_FORM_DEFAULT)
+  const [teacherWorkload, setTeacherWorkload] = useState<TeacherWorkloadDraft>(DEFAULT_TEACHER_WORKLOAD)
   const updateTeacher = (key: keyof typeof TEACHER_FORM_DEFAULT, value: any) =>
     setTeacherForm((prev) => ({ ...prev, [key]: value }))
 
@@ -706,7 +708,7 @@ export default function ProfessoresPage() {
   const [editOpen,          setEditOpen]          = useState(false)
   const [editTarget,        setEditTarget]        = useState<Professor | null>(null)
   const [editSaving,        setEditSaving]        = useState(false)
-  const [editWorkload, setEditWorkload] = useState<{ unidade: "tempos" | "minutos"; limite: string; contratual: string }>({ unidade: "tempos", limite: "20", contratual: "" })
+  const [editWorkload, setEditWorkload] = useState<TeacherWorkloadDraft>(DEFAULT_TEACHER_WORKLOAD)
   const [editForm,          setEditForm]          = useState({
     email: "",
     nome_completo: "",
@@ -1108,18 +1110,22 @@ export default function ProfessoresPage() {
       if (!teacherForm.vinculo_contratual) return "Informe o vínculo contratual"
     }
     if (step === 2) {
-      if (!teacherForm.carga_horaria_maxima || teacherForm.carga_horaria_maxima <= 0) return "Informe a carga horária máxima"
+      try { parseTeacherWorkload(teacherWorkload) } catch (err) { return err instanceof Error ? err.message : "Informe a carga lectiva." }
       if (teacherForm.turnos_disponiveis.length === 0) return "Selecione ao menos um turno"
     }
     return null
   }
 
   const handleCreateProfessor = async () => {
+    if (teacherSubmitting) return
     setTeacherSubmitting(true)
     try {
+      const workload = parseTeacherWorkload(teacherWorkload)
       const res  = await fetch(`/api/escolas/${escolaId}/professores/create`, {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...teacherForm, carga_horaria_maxima: Number(teacherForm.carga_horaria_maxima) }),
+        body: JSON.stringify({ ...teacherForm,
+          carga_horaria_maxima: workload.carga_lectiva_unidade === "tempos" ? workload.carga_lectiva_limite : teacherForm.carga_horaria_maxima,
+          ...workload }),
       })
       const json = await res.json().catch(() => null)
       if (!res.ok || !json?.ok) throw new Error(json?.error || "Falha ao criar professor")
@@ -1131,6 +1137,7 @@ export default function ProfessoresPage() {
       }
       showToast("Professor criado com sucesso!", "success")
       setTeacherForm(TEACHER_FORM_DEFAULT)
+      setTeacherWorkload(DEFAULT_TEACHER_WORKLOAD)
       setTeacherStep(0)
       await loadBootstrapData()
       setTab("gerenciar")
@@ -1185,21 +1192,15 @@ export default function ProfessoresPage() {
 
   const handleUpdateProfessor = async () => {
     if (!editTarget || editSaving) return
-    const rawLimit = Number(editWorkload.limite)
-    const limit = editWorkload.unidade === "minutos" ? Math.round(rawLimit * 60) : rawLimit
-    const contract = editWorkload.contratual.trim() === "" ? null : Math.round(Number(editWorkload.contratual) * 60)
-    if (!Number.isInteger(limit) || limit <= 0 || limit > (editWorkload.unidade === "tempos" ? 100 : 10080) ||
-      (contract !== null && (!Number.isInteger(contract) || contract <= 0 || contract > 10080 || (editWorkload.unidade === "minutos" && limit > contract)))) {
-      showToast("Informe um limite lectivo válido e compatível com a carga contratual.", "error")
-      return
-    }
+    let workload
+    try { workload = parseTeacherWorkload(editWorkload) }
+    catch (err) { showToast(err instanceof Error ? err.message : "Informe a carga lectiva.", "error"); return }
     setEditSaving(true)
     try {
       const res  = await fetch(`/api/escolas/${escolaId}/professores/${editTarget.user_id}/update`, {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ...editForm, email_atual: editTarget.email,
-          carga_horaria_maxima: Number(editForm.carga_horaria_maxima), carga_lectiva_unidade: editWorkload.unidade,
-          carga_lectiva_limite: limit, carga_contratual_minutos: contract }),
+          carga_horaria_maxima: Number(editForm.carga_horaria_maxima), ...workload }),
       })
       const json = await res.json().catch(() => null)
       if (!res.ok || !json?.ok) throw new Error(json?.error || "Falha ao atualizar professor")
@@ -1381,10 +1382,33 @@ export default function ProfessoresPage() {
           {teacherStep === 2 && (
             <div className="space-y-4">
               <div className="grid gap-4 md:grid-cols-2">
-                <input className={inputCls} type="number" min={1}
-                  placeholder="Carga horária máxima (tempos/semana)"
-                  value={teacherForm.carga_horaria_maxima}
-                  onChange={(e) => updateTeacher("carga_horaria_maxima", Number(e.target.value))} />
+                <section className="md:col-span-2 rounded-xl border border-border p-4 space-y-3">
+                  <h3 className="text-sm font-semibold text-foreground">Carga lectiva semanal</h3>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <label className="block space-y-1">
+                      <span className="text-xs font-semibold text-muted-foreground">Limite semanal</span>
+                      <input className={inputCls} type="number" min={teacherWorkload.unidade === "tempos" ? 1 : 0.01}
+                        step={teacherWorkload.unidade === "tempos" ? 1 : "any"}
+                        value={teacherWorkload.limite} disabled={teacherSubmitting}
+                        onChange={(e) => setTeacherWorkload(p => ({ ...p, limite: e.target.value }))} />
+                    </label>
+                    <label className="block space-y-1">
+                      <span className="text-xs font-semibold text-muted-foreground">Unidade</span>
+                      <select className={selectCls} value={teacherWorkload.unidade} disabled={teacherSubmitting}
+                        onChange={(e) => setTeacherWorkload(p => ({ ...p, unidade: e.target.value as TeacherWorkloadDraft["unidade"], limite: "" }))}>
+                        <option value="tempos">Tempos</option>
+                        <option value="minutos">Horas</option>
+                      </select>
+                    </label>
+                  </div>
+                  <p className="text-xs text-muted-foreground">{teacherWorkload.unidade === "tempos" ? "Número de aulas por semana." : "Horas efectivas de aula por semana."}</p>
+                  <label className="block space-y-1">
+                    <span className="text-xs font-semibold text-muted-foreground">Carga contratual (horas por semana, opcional)</span>
+                    <input className={inputCls} type="number" min={0.01} step="any"
+                      placeholder="Ex.: 40" value={teacherWorkload.contratual} disabled={teacherSubmitting}
+                      onChange={(e) => setTeacherWorkload(p => ({ ...p, contratual: e.target.value }))} />
+                  </label>
+                </section>
                 <div className="flex flex-wrap gap-4 items-center rounded-xl border border-border px-3 py-2.5 bg-card">
                   {(["Manhã","Tarde","Noite"] as const).map((turno) => (
                     <label key={turno} className="flex items-center gap-2 text-sm cursor-pointer">
@@ -1433,7 +1457,7 @@ export default function ProfessoresPage() {
           {/* Step navigation */}
           <div className="mt-8 flex items-center justify-between">
             <button onClick={() => setTeacherStep((s) => Math.max(0, s - 1))}
-              disabled={teacherStep === 0}
+              disabled={teacherStep === 0 || teacherSubmitting}
               className="rounded-xl border border-border px-4 py-2 text-sm font-semibold text-muted-foreground disabled:opacity-40 hover:bg-muted transition-colors">
               Voltar
             </button>
