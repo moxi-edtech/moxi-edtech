@@ -81,7 +81,7 @@ export function AcademicoWorkspace({ embedded = false, initialTab, onOpenNotices
         {(embedded || visited.includes("faltas")) && <TabFaltas />}
       </section>
       <section id="academic-panel-documentos" role="tabpanel" aria-labelledby="academic-tab-documentos" hidden={activeTab !== "documentos"} tabIndex={0}>
-        {(embedded || visited.includes("documentos")) && <TabDocumentos embedded focusServiceCode={focusService} onOpenNotas={() => navigateTab("notas")} onOpenNotices={onOpenNotices} />}
+        {(embedded || visited.includes("documentos")) && <TabDocumentos embedded active={activeTab === "documentos"} focusServiceCode={focusService} onOpenNotas={() => navigateTab("notas")} onOpenNotices={onOpenNotices} />}
       </section>
     </div>
   );
