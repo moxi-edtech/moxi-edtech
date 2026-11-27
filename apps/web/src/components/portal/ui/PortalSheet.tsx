@@ -26,11 +26,12 @@ type Props = {
 const sizes = { compact: "40dvh", medium: "65dvh", expanded: "90dvh" };
 
 /** Secondary operations can opt into an inline region inside the parent drawer. */
-export const DashboardDrawerContext = createContext(false);
+export type PortalPresentationSurface = "page" | "drawer";
+export const PortalPresentationContext = createContext<PortalPresentationSurface>("page");
 
 export function PortalSheet(props: Props) {
-  const inDashboardDrawer = useContext(DashboardDrawerContext);
-  return props.inline || inDashboardDrawer ? <InlinePortalPanel {...props} /> : <ModalPortalSheet {...props} />;
+  const surface = useContext(PortalPresentationContext);
+  return props.inline || surface === "drawer" ? <InlinePortalPanel {...props} /> : <ModalPortalSheet {...props} />;
 }
 
 function InlinePortalPanel({ open, onClose, title, description, busy = false, children, footer, closeLabel = "Voltar", contentId }: Props) {
