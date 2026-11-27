@@ -215,7 +215,7 @@ function FinanceiroScope({ studentId, onOpenDocuments }: { studentId: string | n
     activeRequest.current?.abort(); activeRequest.current = null; setRefreshing(false);
     setPaymentRows(items.map(item => ({...item}))); setPaymentOpen(true);
   };
-  const closePayment = () => { paymentLock.current = false; setPaymentOpen(false); void refresh(); };
+  const closePayment = () => { paymentLock.current = false; setPaymentOpen(false); };
   const refreshAfterPayment = () => { navigation?.notifyChanged(); activeRequest.current?.abort(); activeRequest.current = null; void refresh(); };
 
   const handleReprintRecibo = (reciboId: string | null | undefined) => {
@@ -225,7 +225,7 @@ function FinanceiroScope({ studentId, onOpenDocuments }: { studentId: string | n
 
   return (
     <div className="space-y-6">
-      <div inert={Boolean(navigation && paymentOpen)} className="space-y-6">
+      <div hidden={Boolean(navigation && paymentOpen)} className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-2">
         {!navigation && <h1 className="text-2xl font-semibold tracking-tight text-primary">Financeiro</h1>}
         <button
@@ -469,7 +469,7 @@ function FinanceiroScope({ studentId, onOpenDocuments }: { studentId: string | n
         mensalidades={paymentRows}
         dadosPagamento={dadosPagamento}
         onClose={closePayment}
-        onUploaded={(ids) => { navigation?.notifyChanged(); setRows((prev) => prev.map((r) => (ids.includes(r.id) ? { ...r, status: "em_verificacao" } : r))); setSelectedIds(prev => prev.filter(id => !ids.includes(id))); }}
+        onUploaded={(ids) => { paymentLock.current = false; refreshAfterPayment(); setRows((prev) => prev.map((r) => (ids.includes(r.id) ? { ...r, status: "em_verificacao" } : r))); setSelectedIds(prev => prev.filter(id => !ids.includes(id))); }}
         studentId={studentId}
       />
     </div>
