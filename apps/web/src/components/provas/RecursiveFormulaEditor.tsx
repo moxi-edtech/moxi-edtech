@@ -1,6 +1,6 @@
 "use client";
-import { useState } from "react";
-import { ArrowLeft,ChevronRight,Plus,Trash2,MoveLeft,MoveRight } from "lucide-react";
+import { useState,type ReactNode } from "react";
+import { ArrowLeft,Plus,Trash2,MoveLeft,MoveRight,Undo2,Redo2,SlidersHorizontal,ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { mathMarkup } from "@/lib/provas/math";
 import { AST_LIMITS,editableMathToken,mathAt,mathNodeLabel,mathSlots,mathSymbols,mathTreeValid,modelMathTree,replaceMathAt,serializeMath,tokenNode,validMathExpression,validMathToken,type MathNode,type MathPath } from "@/lib/provas/formulaAst";
@@ -35,15 +35,25 @@ export default function RecursiveFormulaEditor({initial,onInsert,onBack,disabled
  const [atom,setAtom]=useState("1");
  const [category,setCategory]=useState<FormulaCategory>("Aritmética");
  const [error,setError]=useState("");
+ const [advanced,setAdvanced]=useState(false);
+ const [live,setLive]=useState(false);
+ const [past,setPast]=useState<MathNode[][]>([]);
+ const [future,setFuture]=useState<MathNode[][]>([]);
+ const liveInvalid=live&&!validMathToken(atom.replace(",","."));
+ function resetSelection(){setPath([]);setSelection(null);setPicker(null);setLive(false);setError("");}
+ function undo(){if(disabled||!past.length)return;setFuture(f=>[tree,...f].slice(0,50));setTree(past[past.length-1]);setPast(p=>p.slice(0,-1));resetSelection();}
+ function redo(){if(disabled||!future.length)return;setPast(p=>[...p,tree].slice(-50));setTree(future[0]);setFuture(f=>f.slice(1));resetSelection();}
  const list=mathAt(tree,path)??[];
  const selected=selection===null?null:list[selection]??null;
  const source=serializeMath(tree);
  const valid=validMathExpression(tree);
  const crumbLabels=path.map((step,i)=>{const n=mathAt(tree,path.slice(0,i))?.[step.index];return n?mathSlots(n).find(s=>s.key===step.slot)?.label??"Expressão":"Expressão";});
- function change(next:MathNode[],focus:number|null){
+ function change(next:MathNode[],focus:number|null,keepLive=false){
+  if(disabled)return false;
   const updated=replaceMathAt(tree,path,next);
   if(!updated||!mathTreeValid(updated,true)){setError("Limite de profundidade, 160 elementos ou 300 caracteres atingido.");return false;}
-  setTree(updated);setSelection(focus);setPicker(null);setError("");return true;
+  if(serializeMath(updated)!==serializeMath(tree)){setPast(p=>[...p,tree].slice(-50));setFuture([]);setTree(updated);}
+  setSelection(focus);if(!keepLive){setPicker(null);setLive(false);}setError("");return true;
  }
  function add(nodes:MathNode[]){
   if(disabled||!nodes.length)return;
@@ -52,12 +62,66 @@ export default function RecursiveFormulaEditor({initial,onInsert,onBack,disabled
   const next=[...list];next.splice(index,remove,...nodes);change(next,index);
  }
  function openPicker(kind:Picker,at:typeof position){
-  setPosition(at);setPicker(kind);setAtom(kind==="numbers"&&at==="replace"&&selected?.kind==="token"?selected.value:"1");setError("");
+  setLive(false);setPosition(at);setPicker(kind);setAtom(kind==="numbers"&&at==="replace"&&selected?.kind==="token"?selected.value:"1");setError("");
  }
  function openSlot(index:number,slot:MathPath[number]["slot"]){
-  setPath(p=>[...p,{index,slot}]);setSelection(null);setPicker(null);setError("");
+  setPath(p=>[...p,{index,slot}]);setSelection(null);setPicker(null);setLive(false);setError("");
  }
- function navigate(depth:number){setPath(p=>p.slice(0,depth));setSelection(null);setPicker(null);setError("");}
+ function navigate(depth:number){setPath(p=>p.slice(0,depth));setSelection(null);setPicker(null);setLive(false);setError("");}
+ function selectElement(at:MathPath,index:number){
+  if(disabled||liveInvalid||error&&live)return;
+  const node=mathAt(tree,at)?.[index];if(!node)return;
+  setPath(at);setSelection(index);setPosition("replace");setError("");
+  const numeric=node.kind==="token"&&editableMathToken(node.value);
+  setLive(numeric);setPicker(numeric?"numbers":node.kind==="token"?"symbols":null);
+  if(numeric)setAtom(node.value);else if(node.kind!=="token")setAdvanced(true);
+ }
+ function selectEmpty(at:MathPath){
+  if(disabled||liveInvalid)return;
+  setPath(at);setSelection(null);setLive(false);setPicker("numbers");setPosition("end");setAtom("1");setError("");
+ }
+ function editLive(raw:string){
+  setAtom(raw);
+  const normalized=raw.replace(",",".");
+  if(selection===null||!validMathToken(normalized)){setError("");return;}
+  change(list.map((n,i)=>i===selection?tokenNode(normalized):n),selection,true);
+ }
+ function renderSequence(nodes:MathNode[],at:MathPath,context="Expressão"):ReactNode{
+  const slot=(i:number,key:MathPath[number]["slot"],children:MathNode[],label:string)=>renderSequence(children,[...at,{index:i,slot:key}],label);
+  return <span className="inline-flex w-max max-w-none items-center gap-1 align-middle">
+   {nodes.length===0&&<button type="button" className="min-h-11 min-w-11 rounded-xl border border-dashed border-border" aria-label={"Preencher "+context} disabled={disabled||liveInvalid} onClick={()=>selectEmpty(at)}>□</button>}
+   {nodes.map((node,i)=>{
+    const active=selection===i&&JSON.stringify(path)===JSON.stringify(at);
+    const mark=active?"border-klasse-gold bg-klasse-gold/10 ring-2 ring-klasse-gold/20":"border-border bg-background";
+    const control=(name:string,children:ReactNode,extra="")=><button type="button" disabled={disabled||liveInvalid} aria-label={context+" · "+name} aria-pressed={active} onClick={()=>selectElement(at,i)} className={"inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-xl border px-2 text-base focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-klasse-gold/20 "+mark+" "+extra}>{children}</button>;
+    const display=node.kind==="token"?(allSymbols.find(sym=>sym[1]===node.value)?.[0]??node.value):"";
+    if(node.kind==="token")return <span key={i}>{control(display.trim()?display:"Espaço",display.trim()?display:"␣")}</span>;
+    if(node.kind==="fraction")return <span key={i} className={"inline-flex shrink-0 flex-col items-stretch gap-1 rounded-xl border p-1 "+(active?"border-klasse-gold":"border-transparent")}>
+     <span className="flex justify-center">{slot(i,"numerator",node.numerator,"Numerador")}</span>
+     <button type="button" aria-label={context+" · Seleccionar fracção"} aria-pressed={active} disabled={disabled||liveInvalid} onClick={()=>selectElement(at,i)} className="flex min-h-11 items-center justify-center rounded-xl focus-visible:ring-4 focus-visible:ring-klasse-gold/20"><span className="h-px w-full bg-current"/></button>
+     <span className="flex justify-center">{slot(i,"denominator",node.denominator,"Denominador")}</span>
+    </span>;
+    if(node.kind==="script")return <span key={i} className={"inline-flex shrink-0 "+(node.symbol==="^"?"-translate-y-3 self-start":"translate-y-3 self-end")}>{slot(i,"body",node.body,node.symbol==="^"?"Expoente":"Índice")}</span>;
+    if(node.kind==="root")return <span key={i} className="inline-flex shrink-0 items-start gap-0.5">
+     {node.index&&slot(i,"index",node.index,"Índice da raiz")}
+     {control("Seleccionar raiz","√","self-stretch text-xl")}
+     <span className="border-t border-current pt-1">{slot(i,"body",node.body,"Radicando")}</span>
+    </span>;
+    if(node.kind==="group")return <span key={i} className="inline-flex shrink-0 items-center gap-1">
+     {control("Seleccionar grupo",node.open)}
+     {slot(i,"body",node.body,"Expressão interna")}
+     <span aria-hidden="true" className="text-xl">{node.open==="("?")":node.open==="["?"]":"}"}</span>
+    </span>;
+    return <span key={i} className="inline-flex shrink-0 items-stretch gap-1">
+     {control("Seleccionar "+mathNodeLabel(node),node.env==="cases"?"{":node.env==="vmatrix"?"|":"(","self-stretch text-xl")}
+     <span className="grid items-center gap-1" style={{gridTemplateColumns:"repeat("+node.rows[0].length+", max-content)"}}>
+      {node.rows.flatMap((row,r)=>row.map((cell,c)=><span key={r+":"+c} className="flex justify-center">{slot(i,`cell:${r}:${c}`,cell,node.env==="cases"?"Equação "+(r+1):"Linha "+(r+1)+" · Coluna "+(c+1))}</span>))}
+     </span>
+     {node.env!=="cases"&&<span aria-hidden="true" className="self-center text-xl">{node.env==="vmatrix"?"|":")"}</span>}
+    </span>;
+   })}
+  </span>;
+ }
  function move(delta:number){
   if(selection===null||disabled)return;
   const to=selection+delta;if(to<0||to>=list.length)return;
@@ -74,18 +138,25 @@ export default function RecursiveFormulaEditor({initial,onInsert,onBack,disabled
  }
  const previewStyle="flex min-h-20 min-w-0 items-center justify-center overflow-x-auto rounded-xl border border-border bg-card p-3 text-2xl";
  return <section aria-label="Compositor de estruturas" className="min-w-0 space-y-3">
-  <div className="flex items-center justify-between gap-2"><h3 className="text-base font-semibold text-klasse-green dark:text-foreground">Personalizar expressão</h3><Button type="button" variant="ghost" size="sm" onClick={()=>{if(source===serializeMath(initial)||window.confirm("Descartar as alterações feitas nesta expressão?"))onBack();}} disabled={disabled}><ArrowLeft/> Voltar</Button></div>
+  <div className="flex items-center justify-between gap-2"><h3 className="text-base font-semibold text-klasse-green dark:text-foreground">Editar expressão</h3><Button type="button" variant="ghost" size="sm" onClick={()=>{if((!liveInvalid&&!error&&source===serializeMath(initial))||window.confirm("Descartar as alterações feitas nesta expressão?"))onBack();}} disabled={disabled}><ArrowLeft/> Voltar</Button></div>
   <div aria-label="Pré-visualização completa" className={previewStyle}><MathPreview source={source}/></div>
-  <nav aria-label="Local da edição" className="flex flex-wrap items-center gap-1 text-xs"><button type="button" className="min-h-11 rounded-xl px-2 font-medium text-klasse-green dark:text-foreground" onClick={()=>navigate(0)}>Expressão</button>{crumbLabels.map((name,i)=><span key={i} className="flex items-center gap-1"><ChevronRight className="size-3"/><button type="button" className="min-h-11 rounded-xl px-2 font-medium" aria-current={i===crumbLabels.length-1?"location":undefined} onClick={()=>navigate(i+1)}>{name}</button></span>)}</nav>
-  {path.length>0&&<div aria-label="Pré-visualização da parte" className="flex min-h-12 items-center justify-center overflow-x-auto rounded-xl bg-muted/30 p-2 text-xl"><MathPreview source={serializeMath(list)}/></div>}
-  <p className="text-xs text-muted-foreground">Toque num elemento para alterar, inserir antes ou depois, ou abrir uma parte interna.</p>
-  <div role="group" aria-label="Elementos da expressão" className="flex flex-wrap gap-1.5">
-   {list.map((node,i)=><button key={i} type="button" aria-label={"Elemento "+(i+1)+": "+mathNodeLabel(node)} aria-pressed={selection===i} disabled={disabled} onClick={()=>{setSelection(i);setPicker(null);setError("");}} className={"flex min-h-11 min-w-11 max-w-full flex-wrap items-center justify-center gap-1 rounded-xl border px-2 py-1 text-base "+(selection===i?"border-primary/25 bg-accent text-accent-foreground ring-1 ring-primary/15":"border-border bg-card")}>
-    {node.kind==="token"?(allSymbols.find(s=>s[1]===node.value)?.[0]??mathNodeLabel(node)):node.kind==="script"?<span>{node.symbol==="^"?"xⁿ":"xₙ"} <span className="text-xs">{mathNodeLabel(node)}</span></span>:<MathPreview source={serializeMath([node])}/>}
-   </button>)}
-   {list.length===0&&<p className="py-2 text-sm text-muted-foreground">Nenhum elemento. Adicione um número, símbolo ou estrutura.</p>}
+  <div className="flex flex-wrap items-center justify-between gap-1">
+   <div className="flex gap-1"><Button type="button" size="sm" variant="ghost" disabled={disabled||!past.length} onClick={undo}><Undo2/> Desfazer</Button><Button type="button" size="sm" variant="ghost" disabled={disabled||!future.length} onClick={redo}><Redo2/> Refazer</Button></div>
+   <Button type="button" size="sm" variant="ghost" aria-expanded={advanced} disabled={disabled||liveInvalid} onClick={()=>setAdvanced(v=>!v)}><SlidersHorizontal/> Estrutura</Button>
   </div>
-  {selected&&selection!==null&&<div className="space-y-2 rounded-xl border border-border p-3">
+  <p className="text-xs text-muted-foreground">Toque no número, símbolo ou parte da fórmula para editar.</p>
+  <div role="group" aria-label="Elementos da expressão" className="min-w-0 overflow-x-auto rounded-xl border border-border bg-card p-3 py-6">{renderSequence(tree,[])}</div>
+  {live&&selected?.kind==="token"&&<div className="space-y-2 rounded-xl border border-border p-3">
+   <label className="grid gap-1 text-sm font-medium">Alterar valor ou variável
+    <input key={JSON.stringify(path)+":"+selection} aria-label="Valor ou variável" className={fieldStyle} inputMode={/^[A-Za-z]$/.test(selected.value)?"text":"decimal"} autoCapitalize="off" autoComplete="off" spellCheck={false} maxLength={16} value={atom} onFocus={e=>e.currentTarget.select()} onChange={e=>editLive(e.target.value)} disabled={disabled} aria-invalid={liveInvalid||Boolean(error)}/>
+   </label>
+   {(liveInvalid||error)&&<div className="flex flex-wrap items-center gap-2"><p role="status" className="text-xs text-destructive">Introduza um número ou uma variável válida.</p><Button type="button" size="sm" variant="ghost" onClick={()=>{setAtom(selected.value);setError("");}}>Restaurar valor</Button></div>}
+  </div>}
+  {!live&&picker==="symbols"&&position==="replace"&&selected?.kind==="token"&&<div role="group" aria-label="Trocar símbolo" className="grid grid-cols-5 gap-1">
+   {allSymbols.map(([display,value])=><button type="button" key={value} aria-label={"Símbolo "+display} aria-pressed={selected.value===value} disabled={disabled} onClick={()=>add([tokenNode(value)])} className="min-h-11 rounded-xl border border-border text-base focus-visible:ring-4 focus-visible:ring-klasse-gold/20">{display}</button>)}
+  </div>}
+  {advanced&&path.length>0&&<nav aria-label="Local da edição" className="flex flex-wrap gap-1"><button type="button" className="min-h-11 rounded-xl px-2" disabled={liveInvalid} onClick={()=>navigate(0)}>Expressão</button>{crumbLabels.map((name,i)=><button key={i} type="button" disabled={liveInvalid} className="min-h-11 rounded-xl px-2" onClick={()=>navigate(i+1)}>{name}</button>)}<Button type="button" size="sm" variant="outline" disabled={disabled||liveInvalid} onClick={()=>{const last=path[path.length-1];selectElement(path.slice(0,-1),last.index);}}>Seleccionar estrutura envolvente</Button></nav>}
+  {advanced&&!liveInvalid&&!(error&&live)&&selected&&selection!==null&&<div className="space-y-2 rounded-xl border border-border p-3">
    <p className="text-sm font-medium">{mathNodeLabel(selected)}</p>
    {selected.kind==="grid"&&<div className="space-y-2"><p className="text-xs text-muted-foreground">{selected.env==="cases"?selected.rows.length+" equações":selected.rows.length+" × "+selected.rows[0].length}</p><div className="flex flex-wrap gap-1">
     <Button type="button" size="sm" variant="outline" disabled={disabled||selected.rows.length>=4||selected.env==="vmatrix"&&selected.rows[0].length>=4} onClick={()=>resizeGrid("row",1)}><Plus/> {selected.env==="cases"?"Equação":selected.env==="vmatrix"?"Dimensão":"Linha"}</Button>
@@ -105,13 +176,13 @@ export default function RecursiveFormulaEditor({initial,onInsert,onBack,disabled
     <Button type="button" size="sm" variant="ghost" className="text-destructive" onClick={()=>change(list.filter((_,i)=>i!==selection),null)} disabled={disabled}><Trash2/> Remover</Button>
    </div>
   </div>}
-  {!picker&&<div className="grid grid-cols-2 gap-2">
+  {!liveInvalid&&!(error&&live)&&(!picker||live)&&<div className="grid grid-cols-2 gap-2">
    <Button type="button" variant="outline" disabled={disabled} onClick={()=>openPicker("numbers","end")}><Plus/> Número / variável</Button>
    <Button type="button" variant="outline" disabled={disabled} onClick={()=>openPicker("symbols","end")}><Plus/> Operador / símbolo</Button>
    <Button type="button" variant="outline" disabled={disabled} onClick={()=>openPicker("structures","end")}><Plus/> Estrutura</Button>
    <Button type="button" variant="outline" disabled={disabled} onClick={()=>openPicker("models","end")}><Plus/> Modelo</Button>
   </div>}
-  {picker&&<div className="space-y-3 rounded-xl border border-border p-3">
+  {picker&&!live&&!(picker==="symbols"&&position==="replace"&&selected?.kind==="token")&&<div className="space-y-3 rounded-xl border border-border p-3">
    <div className="flex items-center justify-between gap-2"><p className="text-sm font-medium">{position==="replace"?"Substituir elemento":position==="before"?"Inserir antes":position==="after"?"Inserir depois":"Adicionar elemento"}</p><Button type="button" variant="ghost" size="sm" onClick={()=>setPicker(null)}>Cancelar selecção</Button></div>
    <div className="flex flex-wrap gap-1">{([["numbers","Número / variável"],["symbols","Símbolo"],["structures","Estrutura"],["models","Modelo"]] as const).map(([key,name])=><Button key={key} type="button" size="sm" variant={picker===key?"secondary":"ghost"} onClick={()=>setPicker(key)} disabled={disabled}>{name}</Button>)}</div>
    {picker==="numbers"?<div className="flex items-end gap-2"><label className="min-w-0 flex-1 text-xs font-medium">Valor ou variável<input aria-label="Valor ou variável" className={fieldStyle} inputMode="text" autoCapitalize="off" autoComplete="off" spellCheck={false} maxLength={16} value={atom} onChange={e=>setAtom(e.target.value)} disabled={disabled}/></label><Button type="button" tone="gold" disabled={disabled||!validMathToken(atom.replace(",","."))} onClick={()=>add([tokenNode(atom.replace(",","."))])}>Aplicar</Button></div>:picker==="symbols"?<div className="grid grid-cols-5 gap-1">{allSymbols.map(([display,value])=><button key={value} type="button" aria-label={"Símbolo "+display} className="min-h-11 rounded-xl border border-border bg-background text-base focus-visible:ring-4 focus-visible:ring-klasse-gold/20" disabled={disabled} onClick={()=>add([tokenNode(value)])}>{display}</button>)}</div>:picker==="structures"?<div className="grid grid-cols-2 gap-2">{structures.map(s=><button key={s.name} type="button" disabled={disabled} onClick={()=>add(s.nodes())} className="flex min-h-16 min-w-0 flex-col items-center justify-center gap-1 rounded-xl border border-border p-2"><MathPreview source={s.sample}/><span className="text-xs">{s.name}</span></button>)}</div>:<><label className="grid gap-1 text-xs">Categoria<select className={fieldStyle} value={category} onChange={e=>setCategory(e.target.value as FormulaCategory)}>{formulaCategories.map(c=><option key={c}>{c}</option>)}</select></label><div className="grid grid-cols-2 gap-2">{formulaModels.filter(m=>m.category===category).map(m=><button key={m.id} type="button" disabled={disabled} onClick={()=>{const nodes=modelMathTree(m.id);if(nodes)add(nodes);else setError("Modelo não suportado nesta estrutura.");}} className="flex min-h-16 min-w-0 flex-col items-center justify-center gap-1 rounded-xl border border-border p-2"><MathPreview source={m.sample}/><span className="text-xs">{m.label}</span></button>)}</div></>}
@@ -119,8 +190,8 @@ export default function RecursiveFormulaEditor({initial,onInsert,onBack,disabled
   <div className="sticky bottom-0 z-10 space-y-2 border-t border-border bg-card pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2 group-data-[keyboard-open=true]/modal:static">
    {error&&<p role="alert" className="text-sm text-destructive">{error}</p>}
    {!valid&&<p className="text-xs text-muted-foreground">Complete as partes em falta para inserir a expressão.</p>}
-   <p className="text-xs text-muted-foreground">{source.length} / {AST_LIMITS.characters} caracteres</p>
-   <Button type="button" tone="gold" className="w-full" disabled={disabled||!valid||picker!==null} onClick={()=>{if(valid)onInsert(valid);}}>{label}</Button>
+
+   <Button type="button" tone="gold" className="w-full" disabled={disabled||!valid||liveInvalid||Boolean(error)||(picker!==null&&!live&&!(picker==="symbols"&&position==="replace"&&selected?.kind==="token"))} onClick={()=>{if(valid&&!liveInvalid&&!error)onInsert(valid);}}>{label}</Button>
   </div>
  </section>;
 }
