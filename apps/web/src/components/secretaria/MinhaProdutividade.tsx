@@ -84,10 +84,12 @@ export function MinhaProdutividade({
   escolaId,
   onData,
   onAtenderAluno,
+  fichasHref,
 }: {
   escolaId: string;
   onData?: (data: any) => void;
   onAtenderAluno?: (alunoId: string) => void;
+  fichasHref?: string;
 }) {
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -141,6 +143,8 @@ export function MinhaProdutividade({
           value={data.documentos_pendentes}
           icon={FileWarning}
           needsAttention={Number(data.documentos_pendentes) > 0}
+          description="Alunos com dados ou documentos em falta"
+          {...(fichasHref ? { href: fichasHref } : {})}
         />
       </div>
       <button
