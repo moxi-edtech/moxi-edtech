@@ -14,7 +14,10 @@ async function validateDrawerData() {
   const writes = [];
   let release;
   const slow = new Promise(resolve => { release = resolve; });
+  const roster = "/api/professor/turmas/fixture-class/alunos";
   const responses = {
+    "/api/professor/atribuicoes": { ok: true, items: [{ id: "assignment", turma: {id:"fixture-class", nome:"Turma A"}, disciplina: {id:"disc", nome:"Matemática"} }] },
+    [roster]: { ok: true, items: [{id:"fixture-student", nome:"Aluno sintético", matricula_id:"fixture-enrollment"}] },
     "/api/aluno/rematricula/status": { ok: true, eligible: true, nextAno: 2027, rematricula: { service: { nome: "Rematrícula", valor: 2500 }, services: [] } },
     "/api/aluno/disciplinas": { ok: true, disciplinas: [{ id: "disc", nome: "Disciplina sintética", periodos_ativos: [1] }] },
     "/api/aluno/faltas": { ok: true, resumo: {faltas: 0, presencas: 1, atrasos: 0}, items: [] },
@@ -52,12 +55,16 @@ async function validateDrawerData() {
     await page.waitForLoadState("networkidle");
     assert.deepEqual(Object.fromEntries(counts), loaded, "tab switches repeated API calls");
     await open("withdrawal");
+    await page.getByRole("button", {name:"Outras ações para Aluno sintético"}).click();
     await page.getByRole("button", {name:"Sinalizar desistência"}).click();
     const signal = page.getByRole("region", {name:"Sinalizar possível desistência"});
     await signal.getByRole("textbox").fill("Sinalização sintética para teste.");
     assert.equal(await page.getByRole("dialog").count(), 1);
     await signal.getByRole("button", {name:"Enviar sinalização"}).click();
     await signal.getByText("Sinalização enviada à Secretaria.").waitFor();
+    await signal.getByRole("button", {name:"Fechar", exact:true}).click();
+    await page.getByText("Aluno sintético", {exact:true}).waitFor();
+    assert.equal(counts.get(roster), 1, "opening the signal refetched the roster");
     await open("enrollment");
     const review = page.getByRole("button", {name:"Continuar para pagamento"});
     await review.click();
