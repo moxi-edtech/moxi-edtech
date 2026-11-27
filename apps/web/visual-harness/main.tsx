@@ -2,6 +2,10 @@ import React, { useState } from "react";
 import { TabFinanceiro } from "../src/components/aluno/tabs/TabFinanceiro";
 import { TabFaltas } from "../src/components/aluno/tabs/TabFaltas";
 import { EstadoVitalBanner } from "../src/components/layout/escola-admin/EstadoVitalBanner";
+import { PortalDrawerNavigator } from "../src/components/portal/ui/PortalDrawerNavigator";
+import { AcademicoWorkspace } from "../src/components/aluno/academico/AcademicoWorkspace";
+import { RematriculaBanner } from "../src/components/aluno/home/RematriculaBanner";
+import { DesistenciaMatriculaAction } from "../src/components/matriculas/DesistenciaMatriculaAction";
 import { PortalSheet } from "../src/components/portal/ui/PortalSheet";
 import { ModalShell } from "../src/components/ui/ModalShell";
 import { FilaAtendimentoModal } from "../src/components/secretaria/FilaAtendimentoModal";
@@ -408,7 +412,20 @@ function PortalPaymentSheetFixture() {
       dadosPagamento={null} studentId="00000000-0000-4000-8000-000000000402" />
   </main>;
 }
-if (target && name === "dashboard-dialog-geometry") createRoot(target).render(<DashboardDialogFixture />);
+function DrawerDataFixture() {
+  const [open, setOpen] = useState(false);
+  const flow = new URLSearchParams(location.search).get("flow");
+  const content = flow === "academic" ? <AcademicoWorkspace embedded />
+    : flow === "enrollment" ? <RematriculaBanner embedded />
+    : <DesistenciaMatriculaAction tipo="sinalizar" alunoId="fixture-student" alunoNome="Aluno sintético" turmaId="fixture-class" matriculaId="fixture-enrollment" />;
+  return <FeedbackProvider>
+    <button onClick={() => setOpen(true)}>Abrir portal</button>
+    <PortalDrawerNavigator open={open} root={{ id: "fixture", title: "Portal", description: "Teste de navegação", content }}
+      onClose={() => setOpen(false)} onReopen={() => setOpen(true)} />
+  </FeedbackProvider>;
+}
+if (target && name === "drawer-data") createRoot(target).render(<DrawerDataFixture />);
+else if (target && name === "dashboard-dialog-geometry") createRoot(target).render(<DashboardDialogFixture />);
 else if (target && name === "portal-finance-context") createRoot(target).render(<main className="klasse-portal-theme klasse-academic-mobile min-h-screen p-4"><TabFinanceiro /></main>);
 else if (target && name === "portal-absence-context") createRoot(target).render(<main className="klasse-portal-theme klasse-academic-mobile min-h-screen p-4"><TabFaltas /></main>);
 else if (target && name === "operations-academic-card") createRoot(target).render(<main className="mx-auto min-h-screen max-w-6xl p-4"><EstadoVitalBanner compact calendarHref="/escola/fixture/operacoes/calendario" estado={{escola_id:"fixture",session_id:null,ano_ativo:2026,periodo_id:null,periodo_tipo:"TRIMESTRE",periodo_numero:1,hoje_bloqueado_pedagogico:false,evento_hoje_nome:"Reunião pedagógica sintética",fase_operacional:"REGULAR"}} /></main>);
