@@ -197,3 +197,22 @@ export function ungroupMathRange(nodes:MathNode[],index:number):MathNode[]|null{
  const next=[...nodes.slice(0,index),...group.body,...nodes.slice(index+1)];
  return mathTreeValid(next,true)?next:null;
 }
+
+
+/** Attach a script to an existing atom, keeping its other script intact.
+ * Numeric literals with several digits need TeX braces: 12^2 would bind to 2.
+ * A negative literal needs visible parentheses when used as a new power base. */
+export function attachMathScript(nodes:MathNode[],index:number,symbol:"^"|"_"): {nodes:MathNode[];index:number}|null{
+ const base=nodes[index];
+ if(!base||base.kind==="script"||base.kind==="token"&&(!base.value.trim()||isMathOperator(base.value)||/^[.,:;|!′°]$/.test(base.value)||/^\\[,;! ]$/.test(base.value)))return null;
+ let end=index+1;
+ while(nodes[end]?.kind==="script"){
+  const script=nodes[end] as Extract<MathNode,{kind:"script"}>;
+  if(script.symbol===symbol)return null;
+  end++;
+ }
+ const replacement:MathNode=base.kind==="token"&&/^-/.test(base.value)?{kind:"group",open:"(",body:[base]}:base.kind==="token"&&/^(?:\d{2,}|\d*\.\d+)$/.test(base.value)?{kind:"group",open:"{",body:[base]}:base;
+ const script:MathNode={kind:"script",symbol,braced:true,body:[tokenNode(symbol==="^"?"2":"1")]};
+ const next=[...nodes.slice(0,index),replacement,...nodes.slice(index+1,end),script,...nodes.slice(end)];
+ return mathTreeValid(next,true)?{nodes:next,index:end}:null;
+}
