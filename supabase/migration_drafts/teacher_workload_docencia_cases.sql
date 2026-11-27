@@ -74,8 +74,28 @@ BEGIN
  BEGIN
    PERFORM public.assign_teacher_regime_atomic(s,t,'monodocencia','40000000-0000-0000-0000-000000000002',NULL);
    RAISE EXCEPTION 'EXPECTED_CONFLICT';
- EXCEPTION WHEN OTHERS THEN IF SQLERRM NOT LIKE 'ASSIGN_PROF_ALREADY_ASSIGNED%' THEN RAISE; END IF; END;
+ EXCEPTION WHEN OTHERS THEN IF SQLERRM NOT LIKE 'TEACHER_REGIME_TITULAR_CONFLICT%' THEN RAISE; END IF; END;
  IF NOT EXISTS (SELECT 1 FROM public.turmas WHERE id=t AND professor_titular_id=p) THEN RAISE EXCEPTION 'REGIME_PARTIAL_WRITE'; END IF;
+ -- Lowering an assigned 90-minute load to 89 is rejected.
+ BEGIN
+  PERFORM public.configure_teacher_workload_atomic(s,p,'minutos',89,1200);
+  RAISE EXCEPTION 'EXPECTED_LOW_LIMIT_REJECTION';
+ EXCEPTION WHEN OTHERS THEN IF SQLERRM NOT LIKE 'TEACHER_LOAD_BELOW_ASSIGNED%' THEN RAISE; END IF; END;
+ -- A subset assigned to the same teacher cannot downgrade mono.
+ PERFORM public.assign_teacher_regime_atomic(s,t,'misto',p,ARRAY[m]);
+ IF NOT EXISTS (SELECT 1 FROM public.turmas WHERE id=t AND regime_docencia='monodocencia' AND professor_titular_id=p) THEN RAISE EXCEPTION 'MONO_DOWNGRADE'; END IF;
+ -- Direct legacy assignment to a different professor is forbidden.
+ BEGIN
+  UPDATE public.turma_disciplinas SET professor_id='40000000-0000-0000-0000-000000000002' WHERE turma_id=t AND curso_matriz_id=m;
+  RAISE EXCEPTION 'EXPECTED_DIRECT_MONO_REJECTION';
+ EXCEPTION WHEN OTHERS THEN IF SQLERRM NOT LIKE 'TEACHER_MONODOCENCIA_TITULAR_MISMATCH%' THEN RAISE; END IF; END;
+ -- Missing duration is fail-closed for minute limits, not legacy periods.
+ UPDATE public.turmas SET tempo_lectivo_minutos=NULL WHERE id=t;
+ BEGIN
+  PERFORM public.teacher_workload_exceeds(s,t,0,0,1,20,1200);
+  RAISE EXCEPTION 'EXPECTED_DURATION_REJECTION';
+ EXCEPTION WHEN OTHERS THEN IF SQLERRM NOT LIKE 'TEACHER_LOAD_DURATION_UNCONFIGURED%' THEN RAISE; END IF; END;
+ IF public.teacher_workload_exceeds(s,t,0,0,1,20,NULL) THEN RAISE EXCEPTION 'LEGACY_DURATION_REQUIRED'; END IF;
 END $tests$;
 SELECT pg_catalog.set_config('app.test_uid','20000000-0000-0000-0000-000000000002',true);
 DO $tests$ BEGIN
