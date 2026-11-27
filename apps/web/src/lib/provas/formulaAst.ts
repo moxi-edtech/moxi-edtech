@@ -97,7 +97,7 @@ export function parseMath(source:string):MathNode[]|null{
     continue;
    }
    // A minus is part of a literal only in unary position; binary subtraction stays a separate token.
-   const prior=nodes.filter(n=>n.kind!=="token"||n.value.trim()).at(-1);
+   const prior=lastSignificant(nodes);
    const signed=c==="-"&&(!prior||prior.kind==="token"&&isMathOperator(prior.value))?source.slice(pos).match(/^-(?:\d+(?:\.\d+)?|\.\d+)/)?.[0]:undefined;
    const lexeme=signed??source.slice(pos).match(/^(?:\\[A-Za-z]+|\\[,;! ]|\d+(?:\.\d+)?|\.\d+|[A-Za-z]|[+\-=*/.,:;|!′°→≤≥≠×÷±∞]| +)/u)?.[0];
    if(!lexeme||forbiddenCommands.has(lexeme))throw Error("token");
@@ -154,13 +154,17 @@ function isMathOperator(value:string):boolean{
  return /^(?:[+\-*/=×÷±≤≥≠]|\\(?:times|div|cdot|pm|mp|le|leq|ge|geq|ne|neq|approx|equiv|in|notin))$/.test(value);
 }
 function significant(nodes:readonly MathNode[]):MathNode[]{return nodes.filter(n=>n.kind!=="token"||n.value.trim());}
+function lastSignificant(nodes:readonly MathNode[]):MathNode|undefined{
+ for(let i=nodes.length-1;i>=0;i--){const node=nodes[i];if(node.kind!=="token"||node.value.trim())return node;}
+ return undefined;
+}
 /** Preserve an existing unary literal's notation. For a newly negative base or
  * an operand following another token, use explicit parentheses to avoid
  * accidental subtraction, sign concatenation or exponent precedence changes. */
 export function editableValueNode(value:string,before:readonly MathNode[],after:readonly MathNode[],previous?:MathNode):MathNode{
  const literal=tokenNode(value);
  if(!value.startsWith("-")||previous?.kind==="token"&&previous.value.startsWith("-"))return literal;
- const prior=significant(before).at(-1),following=significant(after)[0];
+ const prior=lastSignificant(before),following=significant(after)[0];
  if(following?.kind==="script"||prior&&!(prior.kind==="token"&&prior.value==="=")){
   return {kind:"group",open:"(",body:[literal]};
  }
@@ -171,9 +175,10 @@ export function groupMathRange(nodes:MathNode[],first:number,last:number):MathNo
  const start=Math.min(first,last),end=Math.max(first,last);
  if(!Number.isInteger(start)||!Number.isInteger(end)||start<0||end>=nodes.length)return null;
  const body=nodes.slice(start,end+1),visible=significant(body);
- if(!visible.length||visible[0].kind==="script"||visible.at(-1)?.kind==="token"&&isMathOperator((visible.at(-1) as {value:string}).value))return null;
+ const tail=visible[visible.length-1];
+ if(!visible.length||visible[0].kind==="script"||tail?.kind==="token"&&isMathOperator(tail.value))return null;
  const head=visible[0];
- const before=significant(nodes.slice(0,start)).at(-1);
+ const before=lastSignificant(nodes.slice(0,start));
  if(head.kind==="token"&&isMathOperator(head.value)&&(!(head.value==="-"||head.value==="+")||before&&!(before.kind==="token"&&isMathOperator(before.value))))return null;
  if(significant(nodes.slice(end+1))[0]?.kind==="script")return null;
  const next:MathNode[]=[...nodes.slice(0,start),{kind:"group",open:"(",body},...nodes.slice(end+1)];
@@ -184,7 +189,7 @@ export function groupMathRange(nodes:MathNode[],first:number,last:number):MathNo
 export function ungroupMathRange(nodes:MathNode[],index:number):MathNode[]|null{
  const group=nodes[index];
  if(group?.kind!=="group"||group.open==="{"||!group.body.length)return null;
- const before=significant(nodes.slice(0,index)).at(-1),after=significant(nodes.slice(index+1))[0];
+ const before=lastSignificant(nodes.slice(0,index)),after=significant(nodes.slice(index+1))[0];
  // Do not turn implicit multiplication or a function argument into concatenation,
  // nor turn a power of a group into a power of its final token.
  if(before&&!(before.kind==="token"&&isMathOperator(before.value)))return null;
