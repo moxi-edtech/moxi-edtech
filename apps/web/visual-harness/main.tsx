@@ -5,6 +5,7 @@ import { EstadoVitalBanner } from "../src/components/layout/escola-admin/EstadoV
 import { PortalDrawerNavigator } from "../src/components/portal/ui/PortalDrawerNavigator";
 import { AcademicoWorkspace } from "../src/components/aluno/academico/AcademicoWorkspace";
 import { RematriculaBanner } from "../src/components/aluno/home/RematriculaBanner";
+import { ProfessorExamList } from "../src/components/professor/ProfessorExamList";
 import { ProfessorFrequenciasWorkspace } from "../src/components/professor/ProfessorFrequenciasWorkspace";
 import { PortalSheet } from "../src/components/portal/ui/PortalSheet";
 import { ModalShell } from "../src/components/ui/ModalShell";
@@ -416,6 +417,7 @@ function DrawerDataFixture() {
   const [open, setOpen] = useState(false);
   const flow = new URLSearchParams(location.search).get("flow");
   const content = flow === "academic" ? <AcademicoWorkspace embedded />
+    : flow === "exams" ? <ProfessorExamList school="fixture" yearId="year-a" editor="/professor/provas" />
     : flow === "enrollment" ? <RematriculaBanner embedded />
     : <ProfessorFrequenciasWorkspace embedded urlTurmaId="fixture-class" urlDisciplinaId="disc" />;
   return <FeedbackProvider>
