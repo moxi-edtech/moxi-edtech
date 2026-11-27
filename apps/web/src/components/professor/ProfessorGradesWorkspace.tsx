@@ -276,11 +276,11 @@ export function ProfessorGradesWorkspace({ embedded = false, requestedAnoLetivoI
     const params = new URLSearchParams({ turma_id: turmaId, disciplina_id: disciplinaId, trimestre: String(trimestreSelecionado), ano_letivo_id: anoLetivoId })
     const key = params.toString()
     let inFlight = false
-    const loadReopenRequests = async () => {
+    const loadReopenRequests = async (fresh = false) => {
       if (document.hidden || controller.signal.aborted || inFlight) return
       inFlight = true
       try {
-        const response = await fetch(`/api/professor/notas/reabertura?${key}`, { cache: "no-store", signal: controller.signal })
+        const response = await (read ? read(`/api/professor/notas/reabertura?${key}`, { fresh, signal: controller.signal }) : fetch(`/api/professor/notas/reabertura?${key}`, { cache: "no-store", signal: controller.signal }))
         const payload = await response.json().catch(() => null)
         if (!controller.signal.aborted && response.ok && payload?.ok) {
           reopenLoadedKey.current = key
@@ -292,9 +292,9 @@ export function ProfessorGradesWorkspace({ embedded = false, requestedAnoLetivoI
       } finally { inFlight = false }
     }
     if (reopenLoadedKey.current !== key) void loadReopenRequests()
-    const timer = window.setInterval(() => void loadReopenRequests(), 30_000)
+    const timer = window.setInterval(() => void loadReopenRequests(true), 30_000)
     return () => { controller.abort(); window.clearInterval(timer) }
-  }, [turmaId, disciplinaId, trimestreSelecionado, anoLetivoId, frameActive])
+  }, [turmaId, disciplinaId, trimestreSelecionado, anoLetivoId, frameActive, read])
 
   const handleRequestReopen = async () => {
     if (requestingReopen) return
@@ -344,7 +344,7 @@ export function ProfessorGradesWorkspace({ embedded = false, requestedAnoLetivoI
         if (turmaDisciplinaId) {
           params.set("turmaDisciplinaId", turmaDisciplinaId)
         }
-        const res = await fetch(`/api/professor/pauta?${params.toString()}`, { cache: "no-store" })
+        const res = await (read ? read(`/api/professor/pauta?${params.toString()}`, { fresh: pautaReload > 0 }) : fetch(`/api/professor/pauta?${params.toString()}`, { cache: "no-store" }))
         const maxRaw = res.headers.get("x-klasse-grade-max")
         const cutoffRaw = res.headers.get("x-klasse-grade-cutoff")
         const maxHeader = maxRaw === null || maxRaw === "" ? null : Number(maxRaw)
@@ -401,7 +401,7 @@ export function ProfessorGradesWorkspace({ embedded = false, requestedAnoLetivoI
     return () => {
       active = false
     }
-  }, [turmaId, disciplinaId, turmaDisciplinaId, trimestreSelecionado, anoLetivoId, pautaReload])
+  }, [turmaId, disciplinaId, turmaDisciplinaId, trimestreSelecionado, anoLetivoId, pautaReload, read])
 
   useEffect(() => {
     setExamSessions([])
@@ -414,7 +414,7 @@ export function ProfessorGradesWorkspace({ embedded = false, requestedAnoLetivoI
       setLoadingExamSessions(true)
       try {
         const params = new URLSearchParams({ ano_letivo_id: anoLetivoId, turma_id: turmaId })
-        const response = await fetch(`/api/academico/exames/sessoes?${params.toString()}`, { cache: "no-store" })
+        const response = await (read ? read(`/api/academico/exames/sessoes?${params.toString()}`) : fetch(`/api/academico/exames/sessoes?${params.toString()}`, { cache: "no-store" }))
         const payload = await response.json().catch(() => null)
         if (!active) return
         if (response.ok && payload?.ok) {
@@ -433,7 +433,7 @@ export function ProfessorGradesWorkspace({ embedded = false, requestedAnoLetivoI
     }
     void load()
     return () => { active = false }
-  }, [turmaId, anoLetivoId])
+  }, [turmaId, anoLetivoId, read])
 
   const selectedExamSession = examSessions.find((item) => item.id === selectedExamSessionId) ?? null
   const selectedExamComponent = selectedExamSession?.exame_componentes?.find((item) => item.id === selectedExamComponentId) ?? null
@@ -492,12 +492,12 @@ export function ProfessorGradesWorkspace({ embedded = false, requestedAnoLetivoI
       const params = new URLSearchParams({ matricula_id: matriculaId })
       if (anoLetivoId) params.set("ano_letivo_id", anoLetivoId)
       if (disciplinaId) params.set("disciplina_id", disciplinaId)
-      const response = await fetch(`/api/academico/raa/elegibilidade?${params.toString()}`, { cache: "no-store" })
+      const response = await (read ? read(`/api/academico/raa/elegibilidade?${params.toString()}`) : fetch(`/api/academico/raa/elegibilidade?${params.toString()}`, { cache: "no-store" }))
       const payload = await response.json().catch(() => null)
       if (!response.ok || !payload?.ok) throw new Error(payload?.error ?? "Não foi possível consultar a elegibilidade.")
       if (raaScopeRef.current !== scope) return
       setRaaResult(payload as RaaEligibilityResponse)
-      const existingResponse = await fetch(`/api/academico/raa/reapreciacao?matricula_id=${encodeURIComponent(matriculaId)}&disciplina_id=${encodeURIComponent(disciplinaId)}`, { cache: "no-store" })
+      const existingResponse = await (read ? read(`/api/academico/raa/reapreciacao?matricula_id=${encodeURIComponent(matriculaId)}&disciplina_id=${encodeURIComponent(disciplinaId)}`) : fetch(`/api/academico/raa/reapreciacao?matricula_id=${encodeURIComponent(matriculaId)}&disciplina_id=${encodeURIComponent(disciplinaId)}`, { cache: "no-store" }))
       const existingPayload = await existingResponse.json().catch(() => null)
       if (raaScopeRef.current === scope && existingResponse.ok && existingPayload?.ok) setReapreciacaoItem(existingPayload.items?.[0] ?? null)
     } catch (cause) {
@@ -561,7 +561,7 @@ export function ProfessorGradesWorkspace({ embedded = false, requestedAnoLetivoI
       setRaaRisksError(null)
       try {
         const params = new URLSearchParams({ turma_id: turmaId, disciplina_id: disciplinaId, ano_letivo_id: anoLetivoId })
-        const response = await fetch(`/api/academico/raa/riscos?${params.toString()}`, { cache: "no-store" })
+        const response = await (read ? read(`/api/academico/raa/riscos?${params.toString()}`, { fresh: raaRisksRetry > 0 }) : fetch(`/api/academico/raa/riscos?${params.toString()}`, { cache: "no-store" }))
         const payload = await response.json().catch(() => null)
         if (!response.ok || !payload?.ok) throw new Error(payload?.error ?? "Não foi possível carregar os riscos RAA.")
         if (active) {
@@ -583,7 +583,7 @@ export function ProfessorGradesWorkspace({ embedded = false, requestedAnoLetivoI
     }
     void load()
     return () => { active = false }
-  }, [turmaId, disciplinaId, anoLetivoId, raaRisksRetry])
+  }, [turmaId, disciplinaId, anoLetivoId, raaRisksRetry, read])
 
   useEffect(() => {
     if (!turmaId) {
@@ -601,7 +601,7 @@ export function ProfessorGradesWorkspace({ embedded = false, requestedAnoLetivoI
       try {
         const periodosParams = new URLSearchParams({ turma_id: turmaId })
         if (anoLetivoId) periodosParams.set("ano_letivo_id", anoLetivoId)
-        const res = await fetch(`/api/professor/periodos?${periodosParams.toString()}`, { cache: "no-store" })
+        const res = await (read ? read(`/api/professor/periodos?${periodosParams.toString()}`, { fresh: periodosRetry > 0 }) : fetch(`/api/professor/periodos?${periodosParams.toString()}`, { cache: "no-store" }))
         const json = await res.json().catch(() => null)
         if (!active) return
         if (!res.ok || !json?.ok || !Array.isArray(json.items)) {
@@ -636,7 +636,7 @@ export function ProfessorGradesWorkspace({ embedded = false, requestedAnoLetivoI
     return () => {
       active = false
     }
-  }, [turmaId, anoLetivoId, periodosRetry, requestedTrimestre, requestedTrimestreValid])
+  }, [turmaId, anoLetivoId, periodosRetry, requestedTrimestre, requestedTrimestreValid, read])
 
   const handleSaveBatch = async (rows: StudentGradeRow[]) => {
     if (gradeConflictRef.current) throw new Error("GRADE_CONFLICT: recarregue a pauta.")
@@ -770,10 +770,8 @@ export function ProfessorGradesWorkspace({ embedded = false, requestedAnoLetivoI
       turma_disciplina_id: turmaDisciplinaId,
       trimestre: String(trimestreSelecionado),
     })
-    void fetch(`/api/professor/notas/concluir?${params.toString()}`, {
-      cache: "no-store",
-      signal: controller.signal,
-    }).then(async (response) => {
+    const url = `/api/professor/notas/concluir?${params.toString()}`
+    void (read ? read(url, { signal: controller.signal }) : fetch(url, { cache: "no-store", signal: controller.signal })).then(async (response) => {
       if (!response.ok) return
       const payload = await response.json()
       if (payload?.ok && !controller.signal.aborted) {
@@ -784,7 +782,7 @@ export function ProfessorGradesWorkspace({ embedded = false, requestedAnoLetivoI
       }
     }).catch(() => undefined)
     return () => controller.abort()
-  }, [anoLetivoId, turmaId, disciplinaId, turmaDisciplinaId, trimestreSelecionado, online, completionKey])
+  }, [anoLetivoId, turmaId, disciplinaId, turmaDisciplinaId, trimestreSelecionado, online, completionKey, read])
   const hasUnsavedGrades = useMemo(() => {
     const persisted = new Map(pauta.map((row) => [row.id, row]))
     return gradeDraft.some((row) => {
