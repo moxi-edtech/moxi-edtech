@@ -719,3 +719,347 @@ BEGIN
 END $$;
 REVOKE ALL ON FUNCTION public.replace_teacher_titular_atomic(uuid,uuid,uuid,uuid) FROM PUBLIC,anon,authenticated;
 GRANT EXECUTE ON FUNCTION public.replace_teacher_titular_atomic(uuid,uuid,uuid,uuid) TO authenticated;
+
+
+-- One configuration writer shared by registration, editing and the standalone RPC.
+-- No public execute grant: callers must authorize before entering this helper.
+CREATE FUNCTION public.apply_teacher_workload_internal(p_escola_id uuid,p_profile_id uuid,p_unidade text,p_limite integer,p_contratual_minutos integer)
+RETURNS void LANGUAGE plpgsql SET search_path='' AS $$
+DECLARE v_ano uuid; v_prof uuid; v_periods integer; v_minutes integer; v_contract integer; v_load integer; v_actual bigint;
+BEGIN
+ IF p_unidade IS NULL OR p_unidade NOT IN ('tempos','minutos') OR p_limite IS NULL OR p_limite<=0
+  OR (p_unidade='tempos' AND p_limite>100) OR (p_unidade='minutos' AND p_limite>10080)
+  OR (p_contratual_minutos IS NOT NULL AND p_contratual_minutos NOT BETWEEN 1 AND 10080)
+  OR (p_unidade='minutos' AND p_contratual_minutos IS NOT NULL AND p_limite>p_contratual_minutos)
+ THEN RAISE EXCEPTION 'TEACHER_LOAD_INVALID'; END IF;
+ PERFORM pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended('klasse:teacher-assign:'||p_escola_id::text,0));
+ SELECT t.carga_horaria_maxima,t.carga_lectiva_limite_minutos,t.carga_contratual_minutos INTO v_periods,v_minutes,v_contract
+ FROM public.teachers t WHERE t.escola_id=p_escola_id AND t.profile_id=p_profile_id FOR UPDATE;
+ IF NOT FOUND THEN RAISE EXCEPTION 'TEACHER_LOAD_NOT_FOUND'; END IF;
+ -- Existing overloads or unknown historical durations do not block unrelated edits.
+ IF v_contract IS NOT DISTINCT FROM p_contratual_minutos AND
+    ((p_unidade='tempos' AND v_minutes IS NULL AND v_periods=p_limite) OR (p_unidade='minutos' AND v_minutes=p_limite))
+ THEN RETURN; END IF;
+ SELECT a.id INTO v_ano FROM public.anos_letivos a WHERE a.escola_id=p_escola_id AND a.ativo
+ ORDER BY a.data_inicio DESC NULLS LAST,a.ano DESC,a.id LIMIT 1;
+ SELECT pr.id INTO v_prof FROM public.professores pr WHERE pr.escola_id=p_escola_id AND pr.profile_id=p_profile_id;
+ IF v_ano IS NOT NULL AND v_prof IS NOT NULL THEN
+   SELECT w.tempos,w.minutos INTO v_load,v_actual FROM public.teacher_weekly_load_internal(p_escola_id,v_ano,v_prof) w;
+   IF p_unidade='minutos' AND v_actual IS NULL THEN RAISE EXCEPTION 'TEACHER_LOAD_DURATION_UNCONFIGURED'; END IF;
+   IF (p_unidade='tempos' AND v_load>p_limite) OR (p_unidade='minutos' AND v_actual>p_limite) THEN RAISE EXCEPTION 'TEACHER_LOAD_BELOW_ASSIGNED'; END IF;
+ END IF;
+ UPDATE public.teachers SET carga_horaria_maxima=CASE WHEN p_unidade='tempos' THEN p_limite ELSE carga_horaria_maxima END,
+ carga_lectiva_limite_minutos=CASE WHEN p_unidade='minutos' THEN p_limite ELSE NULL END,
+ carga_contratual_minutos=p_contratual_minutos
+ WHERE escola_id=p_escola_id AND profile_id=p_profile_id;
+END $$;
+REVOKE ALL ON FUNCTION public.apply_teacher_workload_internal(uuid,uuid,text,integer,integer) FROM PUBLIC,anon,authenticated,service_role;
+
+CREATE OR REPLACE FUNCTION public.configure_teacher_workload_atomic(p_escola_id uuid,p_professor_id uuid,
+ p_unidade text,p_limite integer,p_contratual_minutos integer DEFAULT NULL)
+RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $$
+DECLARE v_profile uuid;
+BEGIN
+ IF (SELECT auth.uid()) IS NULL OR NOT EXISTS (SELECT 1 FROM public.escola_users eu WHERE eu.escola_id=p_escola_id
+ AND eu.user_id=(SELECT auth.uid()) AND COALESCE(eu.papel,eu.role) IN ('admin','admin_escola','admin_secretaria','admin_secretario','admin_financeiro','diretor','staff_admin','secretaria','secretaria_financeiro'))
+ THEN RAISE EXCEPTION 'TEACHER_LOAD_FORBIDDEN'; END IF;
+ SELECT pr.profile_id INTO v_profile FROM public.professores pr WHERE pr.escola_id=p_escola_id AND pr.id=p_professor_id;
+ IF NOT FOUND THEN RAISE EXCEPTION 'TEACHER_LOAD_NOT_FOUND'; END IF;
+ PERFORM public.apply_teacher_workload_internal(p_escola_id,v_profile,p_unidade,p_limite,p_contratual_minutos);
+END $$;
+REVOKE ALL ON FUNCTION public.configure_teacher_workload_atomic(uuid,uuid,text,integer,integer) FROM PUBLIC,anon,authenticated;
+GRANT EXECUTE ON FUNCTION public.configure_teacher_workload_atomic(uuid,uuid,text,integer,integer) TO authenticated;
+
+CREATE OR REPLACE FUNCTION public.create_or_update_professor_academico(p_escola_id uuid, p_user_id uuid, p_profile jsonb, p_teacher jsonb, p_disciplina_ids uuid[] DEFAULT '{}'::uuid[])
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+DECLARE
+  v_teacher_id uuid;
+  v_professor_id uuid;
+  v_valid_disciplina_ids uuid[] := '{}';
+  v_skills_inserted int := 0;
+BEGIN
+  IF p_escola_id IS NULL OR p_user_id IS NULL THEN
+    RAISE EXCEPTION 'escola_id e user_id são obrigatórios';
+  END IF;
+
+  -- Direct RPC callers must be school managers; service callers remain supported.
+  IF COALESCE(pg_catalog.current_setting('request.jwt.claim.role',true),'') <> 'service_role'
+    AND ((SELECT auth.uid()) IS NULL OR NOT EXISTS (SELECT 1 FROM public.escola_users eu
+      WHERE eu.escola_id=p_escola_id AND eu.user_id=(SELECT auth.uid())
+      AND COALESCE(eu.papel,eu.role) IN ('admin','admin_escola','admin_secretaria','admin_secretario','admin_financeiro','diretor','staff_admin','secretaria','secretaria_financeiro')))
+  THEN RAISE EXCEPTION 'TEACHER_CREATE_FORBIDDEN'; END IF;
+  IF EXISTS (SELECT 1 FROM public.escola_users eu WHERE eu.user_id=p_user_id AND eu.escola_id<>p_escola_id)
+    OR EXISTS (SELECT 1 FROM public.teachers t WHERE t.profile_id=p_user_id AND t.escola_id<>p_escola_id)
+    OR EXISTS (SELECT 1 FROM public.professores pr WHERE pr.profile_id=p_user_id AND pr.escola_id<>p_escola_id)
+  THEN RAISE EXCEPTION 'TEACHER_CREATE_SHARED_IDENTITY'; END IF;
+  IF COALESCE(p_profile->>'role','professor') <> 'professor' THEN RAISE EXCEPTION 'TEACHER_CREATE_INVALID_ROLE'; END IF;
+  PERFORM pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended('klasse:teacher-assign:'||p_escola_id::text,0));
+  INSERT INTO public.profiles (
+    user_id,
+    email,
+    nome,
+    telefone,
+    role,
+    escola_id,
+    current_escola_id
+  )
+  VALUES (
+    p_user_id,
+    p_profile->>'email',
+    p_profile->>'nome',
+    NULLIF(p_profile->>'telefone', ''),
+    COALESCE((p_profile->>'role')::public.user_role, 'professor'::public.user_role),
+    p_escola_id,
+    p_escola_id
+  )
+  ON CONFLICT (user_id)
+  DO UPDATE SET
+    email = EXCLUDED.email,
+    nome = EXCLUDED.nome,
+    telefone = EXCLUDED.telefone,
+    role = CASE
+      WHEN public.profiles.role = 'professor'::public.user_role OR public.profiles.role IS NULL
+        THEN EXCLUDED.role
+      ELSE public.profiles.role
+    END,
+    escola_id = EXCLUDED.escola_id,
+    current_escola_id = EXCLUDED.current_escola_id;
+
+  INSERT INTO public.escola_users (
+    escola_id,
+    user_id,
+    papel
+  )
+  VALUES (
+    p_escola_id,
+    p_user_id,
+    'professor'
+  )
+  ON CONFLICT (escola_id, user_id)
+  DO UPDATE SET
+    papel = CASE
+      WHEN public.escola_users.papel = 'professor' OR public.escola_users.papel IS NULL
+        THEN 'professor'
+      ELSE public.escola_users.papel
+    END;
+
+  SELECT id
+    INTO v_professor_id
+  FROM public.professores
+  WHERE escola_id = p_escola_id
+    AND profile_id = p_user_id
+  ORDER BY created_at DESC NULLS LAST, id DESC
+  LIMIT 1;
+
+  IF v_professor_id IS NULL THEN
+    INSERT INTO public.professores (escola_id, profile_id)
+    VALUES (p_escola_id, p_user_id)
+    RETURNING id INTO v_professor_id;
+  END IF;
+
+  INSERT INTO public.teachers (
+    escola_id,
+    profile_id,
+    nome_completo,
+    genero,
+    data_nascimento,
+    numero_bi,
+    telefone_principal,
+    habilitacoes,
+    area_formacao,
+    vinculo_contratual,
+    carga_horaria_maxima,
+    turnos_disponiveis,
+    is_diretor_turma
+  )
+  VALUES (
+    p_escola_id,
+    p_user_id,
+    p_teacher->>'nome_completo',
+    p_teacher->>'genero',
+    NULLIF(p_teacher->>'data_nascimento', '')::date,
+    NULLIF(p_teacher->>'numero_bi', ''),
+    NULLIF(p_teacher->>'telefone_principal', ''),
+    p_teacher->>'habilitacoes',
+    NULLIF(p_teacher->>'area_formacao', ''),
+    p_teacher->>'vinculo_contratual',
+    COALESCE((p_teacher->>'carga_horaria_maxima')::integer, 0),
+    COALESCE(
+      ARRAY(SELECT jsonb_array_elements_text(COALESCE(p_teacher->'turnos_disponiveis', '[]'::jsonb))),
+      '{}'::text[]
+    ),
+    COALESCE((p_teacher->>'is_diretor_turma')::boolean, false)
+  )
+  ON CONFLICT (escola_id, profile_id)
+  DO UPDATE SET
+    nome_completo = EXCLUDED.nome_completo,
+    genero = EXCLUDED.genero,
+    data_nascimento = EXCLUDED.data_nascimento,
+    numero_bi = EXCLUDED.numero_bi,
+    telefone_principal = EXCLUDED.telefone_principal,
+    habilitacoes = EXCLUDED.habilitacoes,
+    area_formacao = EXCLUDED.area_formacao,
+    vinculo_contratual = EXCLUDED.vinculo_contratual,
+    carga_horaria_maxima = CASE WHEN p_teacher ? 'carga_lectiva_unidade' THEN public.teachers.carga_horaria_maxima ELSE EXCLUDED.carga_horaria_maxima END,
+    turnos_disponiveis = EXCLUDED.turnos_disponiveis,
+    is_diretor_turma = EXCLUDED.is_diretor_turma,
+    updated_at = now()
+  RETURNING id INTO v_teacher_id;
+
+  IF p_teacher ? 'carga_lectiva_unidade' THEN
+    PERFORM public.apply_teacher_workload_internal(p_escola_id,p_user_id,p_teacher->>'carga_lectiva_unidade',(p_teacher->>'carga_lectiva_limite')::integer,(p_teacher->>'carga_contratual_minutos')::integer);
+  END IF;
+
+  DELETE FROM public.teacher_skills
+  WHERE teacher_id = v_teacher_id;
+
+  IF COALESCE(array_length(p_disciplina_ids, 1), 0) > 0 THEN
+    SELECT COALESCE(array_agg(id), '{}')
+      INTO v_valid_disciplina_ids
+    FROM public.disciplinas_catalogo
+    WHERE escola_id = p_escola_id
+      AND id = ANY(p_disciplina_ids);
+
+    IF COALESCE(array_length(v_valid_disciplina_ids, 1), 0) > 0 THEN
+      INSERT INTO public.teacher_skills (escola_id, teacher_id, disciplina_id)
+      SELECT p_escola_id, v_teacher_id, disciplina_id
+      FROM unnest(v_valid_disciplina_ids) AS disciplina_id
+      ON CONFLICT (teacher_id, disciplina_id)
+      DO UPDATE SET escola_id = EXCLUDED.escola_id;
+
+      GET DIAGNOSTICS v_skills_inserted = ROW_COUNT;
+    END IF;
+  END IF;
+
+  RETURN jsonb_build_object(
+    'ok', true,
+    'teacher_id', v_teacher_id,
+    'professor_id', v_professor_id,
+    'skills_count', v_skills_inserted,
+    'valid_disciplina_ids', v_valid_disciplina_ids
+  );
+END;
+$function$;
+CREATE OR REPLACE FUNCTION public.update_teacher_details_atomic(p_escola_id uuid, p_profile_id uuid, p_details jsonb, p_skill_ids uuid[])
+ RETURNS void
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+DECLARE
+  v_teacher_id uuid;
+  v_nome text := pg_catalog.btrim(p_details ->> 'nome_completo');
+  v_skill_ids uuid[] := COALESCE(p_skill_ids, ARRAY[]::uuid[]);
+BEGIN
+  IF auth.uid() IS NULL OR p_escola_id IS NULL OR p_profile_id IS NULL THEN
+    RAISE EXCEPTION 'UPDATE_TEACHER_FORBIDDEN';
+  END IF;
+  IF NOT EXISTS (
+    SELECT 1 FROM public.escola_users eu
+    WHERE eu.escola_id = p_escola_id AND eu.user_id = auth.uid()
+      AND coalesce(eu.papel, eu.role) IN
+        ('admin', 'admin_escola', 'admin_secretaria', 'admin_secretario', 'admin_financeiro', 'diretor', 'staff_admin', 'secretaria', 'secretaria_financeiro')
+  ) THEN
+    RAISE EXCEPTION 'UPDATE_TEACHER_FORBIDDEN';
+  END IF;
+  IF p_details IS NULL OR jsonb_typeof(p_details) <> 'object'
+    OR v_nome IS NULL OR char_length(v_nome) < 3 OR char_length(v_nome) > 160
+    OR cardinality(v_skill_ids) > 200 THEN
+    RAISE EXCEPTION 'UPDATE_TEACHER_INVALID_INPUT';
+  END IF;
+
+  PERFORM pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended('klasse:teacher-assign:'||p_escola_id::text,0));
+  SELECT t.id INTO v_teacher_id
+  FROM public.teachers t
+  WHERE t.escola_id = p_escola_id AND t.profile_id = p_profile_id
+    AND EXISTS (
+      SELECT 1 FROM public.escola_users eu
+      WHERE eu.escola_id = p_escola_id AND eu.user_id = p_profile_id
+    )
+  FOR UPDATE OF t;
+  IF v_teacher_id IS NULL THEN
+    RAISE EXCEPTION 'UPDATE_TEACHER_NOT_FOUND';
+  END IF;
+
+  IF (
+    SELECT count(*) FROM public.disciplinas_catalogo d
+    WHERE d.escola_id = p_escola_id AND d.id = ANY(v_skill_ids)
+  ) <> cardinality(v_skill_ids) THEN
+    RAISE EXCEPTION 'UPDATE_TEACHER_INVALID_SKILLS';
+  END IF;
+
+  IF p_details ? 'carga_lectiva_unidade' THEN
+    PERFORM public.apply_teacher_workload_internal(p_escola_id,p_profile_id,p_details->>'carga_lectiva_unidade',(p_details->>'carga_lectiva_limite')::integer,(p_details->>'carga_contratual_minutos')::integer);
+  END IF;
+
+  UPDATE public.teachers SET
+    nome_completo = v_nome,
+    genero = p_details ->> 'genero',
+    data_nascimento = nullif(p_details ->> 'data_nascimento', '')::date,
+    numero_bi = nullif(p_details ->> 'numero_bi', ''),
+    telefone_principal = nullif(p_details ->> 'telefone_principal', ''),
+    habilitacoes = p_details ->> 'habilitacoes',
+    area_formacao = nullif(p_details ->> 'area_formacao', ''),
+    vinculo_contratual = p_details ->> 'vinculo_contratual',
+    carga_horaria_maxima = CASE WHEN p_details ? 'carga_lectiva_unidade' THEN carga_horaria_maxima ELSE (p_details ->> 'carga_horaria_maxima')::integer END,
+    turnos_disponiveis = ARRAY(
+      SELECT jsonb_array_elements_text(COALESCE(p_details -> 'turnos_disponiveis', '[]'::jsonb))
+    ),
+    is_diretor_turma = COALESCE((p_details ->> 'is_diretor_turma')::boolean, false),
+    updated_by = auth.uid()
+  WHERE id = v_teacher_id AND escola_id = p_escola_id;
+
+  -- profiles é global. Num docente de várias escolas, editar apenas o
+  -- cadastro local de teachers para não modificar outra organização.
+  IF NOT EXISTS (
+    SELECT 1 FROM public.escola_users eu
+    WHERE eu.user_id = p_profile_id AND eu.escola_id <> p_escola_id
+  ) AND NOT EXISTS (
+    SELECT 1 FROM public.professores p
+    WHERE p.profile_id = p_profile_id AND p.escola_id <> p_escola_id
+  ) AND NOT EXISTS (
+    SELECT 1 FROM public.teachers t
+    WHERE t.profile_id = p_profile_id AND t.escola_id <> p_escola_id
+  ) THEN
+    UPDATE public.profiles SET
+      nome = v_nome,
+      telefone = nullif(p_details ->> 'telefone_principal', '')
+    WHERE user_id = p_profile_id;
+    IF NOT FOUND THEN
+      RAISE EXCEPTION 'UPDATE_TEACHER_PROFILE_NOT_FOUND';
+    END IF;
+  END IF;
+
+  DELETE FROM public.teacher_skills
+  WHERE escola_id = p_escola_id AND teacher_id = v_teacher_id;
+
+  INSERT INTO public.teacher_skills (escola_id, teacher_id, disciplina_id)
+  SELECT p_escola_id, v_teacher_id, s.disciplina_id
+  FROM pg_catalog.unnest(v_skill_ids) AS s(disciplina_id);
+END;
+$function$;
+
+-- Batch read, no request-per-teacher; same calculation as write guards.
+CREATE FUNCTION public.get_teacher_workloads_by_profiles(p_escola_id uuid,p_profile_ids uuid[])
+RETURNS TABLE(profile_id uuid,tempos_atribuidos integer,minutos_atribuidos bigint)
+LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path='' AS $$
+DECLARE v_ano uuid;
+BEGIN
+ IF (SELECT auth.uid()) IS NULL OR p_escola_id IS DISTINCT FROM public.current_tenant_escola_id()
+ OR NOT EXISTS (SELECT 1 FROM public.escola_users eu WHERE eu.escola_id=p_escola_id AND eu.user_id=(SELECT auth.uid())
+ AND COALESCE(eu.papel,eu.role) IN ('admin','admin_escola','admin_secretaria','admin_secretario','admin_financeiro','diretor','staff_admin','secretaria','secretaria_financeiro'))
+ THEN RAISE EXCEPTION 'TEACHER_LOAD_FORBIDDEN'; END IF;
+ IF COALESCE(cardinality(p_profile_ids),0)=0 THEN RETURN; END IF;
+ IF cardinality(p_profile_ids)>200 THEN RAISE EXCEPTION 'TEACHER_LOAD_INVALID'; END IF;
+ SELECT a.id INTO v_ano FROM public.anos_letivos a WHERE a.escola_id=p_escola_id AND a.ativo ORDER BY a.data_inicio DESC NULLS LAST,a.ano DESC,a.id LIMIT 1;
+ IF v_ano IS NULL THEN RETURN; END IF;
+ RETURN QUERY SELECT pr.profile_id,w.tempos,w.minutos FROM public.professores pr
+ CROSS JOIN LATERAL public.teacher_weekly_load_internal(p_escola_id,v_ano,pr.id) w
+ WHERE pr.escola_id=p_escola_id AND pr.profile_id=ANY(p_profile_ids);
+END $$;
+REVOKE ALL ON FUNCTION public.get_teacher_workloads_by_profiles(uuid,uuid[]) FROM PUBLIC,anon,authenticated;
+GRANT EXECUTE ON FUNCTION public.get_teacher_workloads_by_profiles(uuid,uuid[]) TO authenticated;
