@@ -671,3 +671,51 @@ END $$;
 REVOKE ALL ON FUNCTION public.guard_legacy_teacher_limit_change() FROM PUBLIC,anon,authenticated;
 CREATE TRIGGER trg_guard_legacy_teacher_limit BEFORE UPDATE OF carga_horaria_maxima ON public.teachers
  FOR EACH ROW EXECUTE FUNCTION public.guard_legacy_teacher_limit_change();
+
+-- Explicit titular replacement. The same CAS, workload engine and audit paths
+-- are reused for each subject, and all changes are rolled back together.
+CREATE FUNCTION public.replace_teacher_titular_atomic(p_escola_id uuid,p_turma_id uuid,
+ p_professor_anterior_id uuid,p_professor_novo_id uuid)
+RETURNS integer LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $$
+DECLARE v_actor uuid:=(SELECT auth.uid()); v_ano uuid; v_regime text; v_titular uuid;
+ v_item record; v_total integer:=0;
+BEGIN
+ IF v_actor IS NULL OR NOT EXISTS (SELECT 1 FROM public.escola_users eu WHERE eu.escola_id=p_escola_id AND eu.user_id=v_actor
+ AND COALESCE(eu.papel,eu.role) IN ('admin','admin_escola','admin_secretaria','admin_secretario','admin_financeiro','diretor','staff_admin','secretaria','secretaria_financeiro'))
+ THEN RAISE EXCEPTION 'TEACHER_REGIME_FORBIDDEN'; END IF;
+ IF p_professor_anterior_id IS NULL OR p_professor_novo_id IS NULL OR p_professor_anterior_id=p_professor_novo_id THEN RAISE EXCEPTION 'TEACHER_REPLACE_INVALID_INPUT'; END IF;
+ PERFORM pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended('klasse:teacher-assign:'||p_escola_id::text,0));
+ SELECT a.id INTO v_ano FROM public.anos_letivos a WHERE a.escola_id=p_escola_id AND a.ativo
+ ORDER BY a.data_inicio DESC NULLS LAST,a.ano DESC,a.id LIMIT 1;
+ SELECT t.regime_docencia,t.professor_titular_id INTO v_regime,v_titular FROM public.turmas t
+ WHERE t.id=p_turma_id AND t.escola_id=p_escola_id AND t.session_id=v_ano FOR UPDATE;
+ IF NOT FOUND OR v_regime='pluridocencia' OR v_titular IS DISTINCT FROM p_professor_anterior_id THEN RAISE EXCEPTION 'TEACHER_REGIME_TITULAR_CONFLICT'; END IF;
+ IF NOT EXISTS (SELECT 1 FROM public.professores pr JOIN public.teachers t ON t.escola_id=pr.escola_id AND t.profile_id=pr.profile_id
+ WHERE pr.id=p_professor_novo_id AND pr.escola_id=p_escola_id) THEN RAISE EXCEPTION 'TEACHER_REGIME_PROFESSOR_INVALID'; END IF;
+ UPDATE public.turmas SET professor_titular_id=p_professor_novo_id WHERE id=p_turma_id AND escola_id=p_escola_id;
+ FOR v_item IN
+   SELECT td.curso_matriz_id,td.professor_id AS owner,tdp.professor_id AS shared_owner
+   FROM public.turma_disciplinas td
+   JOIN public.turmas tu ON tu.id=td.turma_id AND tu.escola_id=td.escola_id
+   JOIN public.curso_matriz cm ON cm.id=td.curso_matriz_id AND cm.escola_id=td.escola_id
+     AND cm.curso_id=tu.curso_id AND cm.classe_id=tu.classe_id AND cm.ativo
+   JOIN public.curso_curriculos cc ON cc.id=cm.curso_curriculo_id AND cc.escola_id=td.escola_id AND cc.ano_letivo_id=v_ano AND cc.status='published'
+   LEFT JOIN public.turma_disciplinas_professores tdp ON tdp.escola_id=td.escola_id AND tdp.turma_id=td.turma_id AND tdp.disciplina_id=cm.disciplina_id
+   WHERE td.escola_id=p_escola_id AND td.turma_id=p_turma_id
+     AND (v_regime='monodocencia' OR td.professor_id=p_professor_anterior_id OR tdp.professor_id=p_professor_anterior_id)
+   ORDER BY td.curso_matriz_id
+ LOOP
+   IF v_item.owner=p_professor_anterior_id OR v_item.shared_owner=p_professor_anterior_id THEN
+     PERFORM public.trocar_professor_turma_disciplina_atomic(p_escola_id,p_turma_id,v_item.curso_matriz_id,p_professor_anterior_id,p_professor_novo_id);
+   ELSIF v_item.owner IS NULL AND v_item.shared_owner IS NULL AND v_regime='monodocencia' THEN
+     PERFORM public.assign_professor_turma_disciplina_atomic(p_escola_id,p_turma_id,v_item.curso_matriz_id,p_professor_novo_id,NULL,NULL);
+   ELSE
+     RAISE EXCEPTION 'TEACHER_REGIME_TITULAR_CONFLICT';
+   END IF;
+   v_total:=v_total+1;
+ END LOOP;
+ IF v_total=0 THEN RAISE EXCEPTION 'TEACHER_REGIME_NO_OFFERINGS'; END IF;
+ RETURN v_total;
+END $$;
+REVOKE ALL ON FUNCTION public.replace_teacher_titular_atomic(uuid,uuid,uuid,uuid) FROM PUBLIC,anon,authenticated;
+GRANT EXECUTE ON FUNCTION public.replace_teacher_titular_atomic(uuid,uuid,uuid,uuid) TO authenticated;
