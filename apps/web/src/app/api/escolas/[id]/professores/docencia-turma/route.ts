@@ -1,0 +1,44 @@
+import { NextResponse } from 'next/server'
+import { z } from 'zod'
+import { supabaseServerTyped } from '@/lib/supabaseServer'
+import { authorizeTeacherManage } from '@/lib/escola/disciplinas'
+import { resolveEscolaIdForUser } from '@/lib/tenant/resolveEscolaIdForUser'
+
+const UUID = z.string().uuid()
+const Body = z.discriminatedUnion('regime', [
+  z.object({ turma_id: UUID, regime: z.literal('pluridocencia') }).strict(),
+  z.object({ turma_id: UUID, regime: z.literal('monodocencia'), professor_id: UUID }).strict(),
+  z.object({ turma_id: UUID, regime: z.literal('misto'), professor_id: UUID, matriz_ids: z.array(UUID).min(1).max(100) }).strict(),
+])
+
+export async function POST(req: Request, ctx: { params: Promise<{ id: string }> }) {
+  try {
+    const { id: escolaId } = await ctx.params
+    const parsed = Body.safeParse(await req.json().catch(() => null))
+    if (!UUID.safeParse(escolaId).success || !parsed.success)
+      return NextResponse.json({ ok: false, error: 'Dados inválidos.' }, { status: 400 })
+    const supabase = await supabaseServerTyped<any>()
+    const { data: auth } = await supabase.auth.getUser()
+    if (!auth?.user) return NextResponse.json({ ok: false, error: 'Não autenticado.' }, { status: 401 })
+    const resolved = await resolveEscolaIdForUser(supabase as any, auth.user.id, escolaId)
+    const permission = await authorizeTeacherManage(supabase as any, escolaId, auth.user.id)
+    if (resolved !== escolaId || !permission.allowed)
+      return NextResponse.json({ ok: false, error: 'Sem permissão.' }, { status: 403 })
+    const body = parsed.data
+    const { data, error } = await supabase.rpc('assign_teacher_regime_atomic', {
+      p_escola_id: escolaId, p_turma_id: body.turma_id, p_regime: body.regime,
+      p_professor_id: body.regime === 'pluridocencia' ? null : body.professor_id,
+      p_matriz_ids: body.regime === 'misto' ? body.matriz_ids : null,
+    })
+    if (error) {
+      const message = /CARGA_EXCEEDED/.test(error.message) ? 'A carga lectiva projectada ultrapassa o limite. Nenhuma atribuição foi alterada.'
+        : /DURATION_UNCONFIGURED/.test(error.message) ? 'Configure a duração dos tempos lectivos.'
+        : /ALREADY_ASSIGNED/.test(error.message) ? 'Existem disciplinas atribuídas a outro docente. Nenhuma atribuição foi alterada.'
+        : 'Não foi possível configurar a docência da turma.'
+      return NextResponse.json({ ok: false, error: message }, { status: 409 })
+    }
+    return NextResponse.json({ ok: true, processadas: data })
+  } catch {
+    return NextResponse.json({ ok: false, error: 'Falha ao configurar a docência.' }, { status: 500 })
+  }
+}
