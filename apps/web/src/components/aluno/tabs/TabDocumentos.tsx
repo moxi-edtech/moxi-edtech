@@ -57,7 +57,7 @@ const DIGITAL_DOCUMENT_CODES = new Set([
   'DOC_CERTIFICADO_HABILITACOES',
 ]);
 
-export function TabDocumentos({ embedded = false, focusServiceCode = null, onOpenNotas, onOpenNotices }: { embedded?: boolean; focusServiceCode?: string | null; onOpenNotas?: () => void; onOpenNotices?: () => void } = {}) {
+export function TabDocumentos({ embedded = false, active = true, focusServiceCode = null, onOpenNotas, onOpenNotices }: { embedded?: boolean; active?: boolean; focusServiceCode?: string | null; onOpenNotas?: () => void; onOpenNotices?: () => void } = {}) {
   const searchParams = useSearchParams();
   const pathname = usePathname();
   const router = useRouter();
@@ -118,7 +118,7 @@ export function TabDocumentos({ embedded = false, focusServiceCode = null, onOpe
 
   const hasPending = docs.some((item) => item.status === "pending");
   useEffect(() => {
-    if (!hasPending || !frameActive) return;
+    if (!hasPending || !frameActive || !active) return;
     let stopped = false;
     let inFlight = false;
     let timer: ReturnType<typeof setTimeout> | undefined;
@@ -155,7 +155,7 @@ export function TabDocumentos({ embedded = false, focusServiceCode = null, onOpe
       window.removeEventListener("focus", onVisible);
       document.removeEventListener("visibilitychange", onVisible);
     };
-  }, [frameActive, hasPending, fetchCatalogo]);
+  }, [active, frameActive, hasPending, fetchCatalogo]);
 
   const handleAction = async (doc: DocumentoCatalogo) => {
     if (navigation && (showDrawer || loading !== null)) return;
