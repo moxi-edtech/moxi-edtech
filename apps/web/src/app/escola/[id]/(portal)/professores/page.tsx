@@ -1,4 +1,6 @@
 "use client"
+
+import TeacherWorkloadEditor, { type TeacherWorkloadConfig } from "@/components/professores/TeacherWorkloadEditor"
 import { PORTAL_PAGE_INSET } from "@/lib/layout/portal-page";
 
 import React, { useEffect, useMemo, useState, useCallback, useRef } from "react"
@@ -291,7 +293,9 @@ function CredentialsBanner({ creds, onCopy, onDismiss }: {
 // Unified view: dados pessoais + formação + turmas + carga + pendências.
 // Replaces the old standalone pendências drawer.
 
-function ProfDetailDrawer({ prof, pendenciasState, onClose, onEdit }: {
+function ProfDetailDrawer({ prof, pendenciasState, onClose, onEdit, escolaId, onWorkloadSaved }: {
+  escolaId: string
+  onWorkloadSaved: (config: TeacherWorkloadConfig) => void
   prof:            Professor
   pendenciasState: PendenciasState | undefined
   onClose:         () => void
@@ -373,6 +377,12 @@ function ProfDetailDrawer({ prof, pendenciasState, onClose, onEdit }: {
 
         {/* ── Body ────────────────────────────────────────────────────────── */}
         <div className="flex-1 overflow-y-auto p-6 space-y-6">
+
+          <section className="space-y-2 rounded-xl border border-border p-4">
+            <h3 className="text-sm font-semibold text-foreground">Carga lectiva semanal</h3>
+            <p className="text-sm text-muted-foreground">{cargaLabel}</p>
+            <TeacherWorkloadEditor key={prof.user_id} escolaId={escolaId} profileId={prof.user_id} onSaved={onWorkloadSaved}/>
+          </section>
 
           {/* Dados pessoais + formação */}
           <section>
@@ -1894,9 +1904,21 @@ export default function ProfessoresPage() {
       )}
 
       {/* ── Drawer: professor detail (dados + turmas + carga + pendências) ──── */}
-      {detailTarget && (
+      {detailTarget && escolaId && (
         <ProfDetailDrawer
           prof={detailTarget}
+          escolaId={escolaId}
+          onWorkloadSaved={(config) => {
+            const patch = (p: Professor): Professor => ({ ...p,
+              carga_horaria_maxima: config.unidade === "tempos" ? config.limite : p.carga_horaria_maxima,
+              carga_lectiva_limite_minutos: config.unidade === "minutos" ? config.limite : null,
+              carga_contratual_minutos: config.contratual_minutos,
+              carga_lectiva_minutos: config.minutos_atribuidos,
+              carga_horaria_real: config.tempos_atribuidos,
+            })
+            setProfessores(prev => prev.map(p => p.user_id === detailTarget.user_id ? patch(p) : p))
+            setDetailTarget(prev => prev?.user_id === detailTarget.user_id ? patch(prev) : prev)
+          }}
           pendenciasState={pendenciasByProfessor[detailTarget.user_id]}
           onClose={() => setDetailTarget(null)}
           onEdit={() => openEdit(detailTarget)}
