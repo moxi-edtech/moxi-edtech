@@ -42,7 +42,12 @@ async function handle(req: Request, ctx: Context, write: boolean) {
         ...params, p_unidade: parsed.data.unidade, p_limite: parsed.data.limite,
         p_contratual_minutos: parsed.data.contratual_minutos,
       })
-      if (error) return NextResponse.json({ ok: false, error: 'Não foi possível configurar o limite lectivo.' }, { status: 409 })
+      if (error) {
+        const message = /BELOW_ASSIGNED/.test(error.message) ? 'O novo limite é inferior à carga já atribuída ao professor.'
+          : /DURATION_UNCONFIGURED/.test(error.message) ? 'Não foi possível determinar a carga das turmas atribuídas. Reveja os horários.'
+          : 'Não foi possível configurar o limite lectivo.'
+        return NextResponse.json({ ok: false, error: message }, { status: 409 })
+      }
       return NextResponse.json({ ok: true })
     }
     const { data, error } = await supabase.rpc('get_teacher_workload_config', params)
