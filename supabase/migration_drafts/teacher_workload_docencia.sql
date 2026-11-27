@@ -5,9 +5,11 @@ ALTER TABLE public.teachers ADD COLUMN carga_contratual_minutos integer CHECK (c
   ADD CONSTRAINT teachers_lectiva_contratual_check CHECK (
     carga_contratual_minutos IS NULL OR carga_lectiva_limite_minutos IS NULL OR
     carga_lectiva_limite_minutos <= carga_contratual_minutos);
+ALTER TABLE public.professores ADD CONSTRAINT professores_escola_id_id_docencia_key UNIQUE(escola_id,id);
 ALTER TABLE public.turmas ADD COLUMN regime_docencia text NOT NULL DEFAULT 'pluridocencia'
     CHECK (regime_docencia IN ('monodocencia','pluridocencia','misto')),
-  ADD COLUMN professor_titular_id uuid REFERENCES public.professores(id),
+  ADD COLUMN professor_titular_id uuid,
+  ADD CONSTRAINT turmas_docencia_titular_fk FOREIGN KEY(escola_id,professor_titular_id) REFERENCES public.professores(escola_id,id),
   ADD COLUMN tempo_lectivo_minutos integer CHECK (tempo_lectivo_minutos BETWEEN 1 AND 240),
   ADD CONSTRAINT turmas_docencia_titular_check CHECK (
     (regime_docencia = 'pluridocencia' AND professor_titular_id IS NULL) OR
@@ -54,7 +56,7 @@ RETURNS TABLE(tempos integer,minutos bigint) LANGUAGE sql STABLE SET search_path
  )
  SELECT COALESCE(sum(loads.tempos),0)::integer,
    CASE WHEN count(*) FILTER (WHERE loads.tempos>0 AND loads.duracao IS NULL)>0 THEN NULL
-        ELSE COALESCE(sum(loads.tempos::bigint*loads.duracao),0) END
+        ELSE COALESCE(sum(loads.tempos::bigint*loads.duracao),0)::bigint END
  FROM loads
 $$;
 REVOKE ALL ON FUNCTION public.teacher_weekly_load_internal(uuid,uuid,uuid,uuid,uuid) FROM PUBLIC,anon,authenticated;
@@ -484,3 +486,25 @@ END
 $$;
 REVOKE ALL ON FUNCTION public.assign_teacher_regime_atomic(uuid,uuid,text,uuid,uuid[]) FROM PUBLIC,anon,authenticated;
 GRANT EXECUTE ON FUNCTION public.assign_teacher_regime_atomic(uuid,uuid,text,uuid,uuid[]) TO authenticated;
+
+-- Read model: separate configured unit, contract and actual projected teaching load.
+CREATE FUNCTION public.get_teacher_workload_config(p_escola_id uuid,p_professor_id uuid)
+RETURNS TABLE(unidade text,limite integer,contratual_minutos integer,tempos_atribuidos integer,minutos_atribuidos bigint)
+LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = '' AS $$
+DECLARE v_actor uuid:=(SELECT auth.uid()); v_ano uuid;
+BEGIN
+ IF v_actor IS NULL OR NOT EXISTS (SELECT 1 FROM public.escola_users eu WHERE eu.escola_id=p_escola_id AND eu.user_id=v_actor
+ AND COALESCE(eu.papel,eu.role) IN ('admin','admin_escola','admin_secretaria','admin_secretario','admin_financeiro','diretor','staff_admin','secretaria','secretaria_financeiro'))
+ THEN RAISE EXCEPTION 'TEACHER_LOAD_FORBIDDEN'; END IF;
+ SELECT a.id INTO v_ano FROM public.anos_letivos a WHERE a.escola_id=p_escola_id AND a.ativo
+ ORDER BY a.data_inicio DESC NULLS LAST,a.ano DESC,a.id LIMIT 1;
+ RETURN QUERY SELECT CASE WHEN t.carga_lectiva_limite_minutos IS NULL THEN 'tempos' ELSE 'minutos' END,
+   COALESCE(t.carga_lectiva_limite_minutos,t.carga_horaria_maxima),t.carga_contratual_minutos,
+   CASE WHEN v_ano IS NULL THEN NULL ELSE w.tempos END,CASE WHEN v_ano IS NULL THEN NULL ELSE w.minutos END
+ FROM public.teachers t JOIN public.professores pr ON pr.escola_id=t.escola_id AND pr.profile_id=t.profile_id
+ CROSS JOIN LATERAL public.teacher_weekly_load_internal(p_escola_id,v_ano,p_professor_id) w
+ WHERE t.escola_id=p_escola_id AND pr.id=p_professor_id;
+END
+$$;
+REVOKE ALL ON FUNCTION public.get_teacher_workload_config(uuid,uuid) FROM PUBLIC,anon,authenticated;
+GRANT EXECUTE ON FUNCTION public.get_teacher_workload_config(uuid,uuid) TO authenticated;
