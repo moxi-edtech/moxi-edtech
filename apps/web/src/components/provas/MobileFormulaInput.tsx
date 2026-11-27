@@ -8,6 +8,31 @@ import RecursiveFormulaEditor from "./RecursiveFormulaEditor";
 import { recoverEditableExpression,formulaValueSlots,updateFormulaValues } from "@/lib/provas/formulaRecovery";
 import { composeExpression,formulaCategories,formulaModels,formulaOperators,partExpression,modelExpression,completeExpression,modelStarter,MAX_FORMULA_PARTS,type FormulaCategory,type FormulaModelId,type FormulaOperator,type FormulaPart } from "@/lib/provas/formulaModels";
 
+/** Lossless fallback for valid imported LaTeX outside the structural grammar.
+ * Never replace the original just because the user opened the editor. */
+function ImportedFormulaEditor({initial,onInsert,onCancel,onVisual,disabled}:{initial:string;onInsert:(value:string)=>void;onCancel:()=>void;onVisual:(nodes:MathNode[])=>void;disabled:boolean}){
+ const [raw,setRaw]=useState(initial);
+ const [mode,setMode]=useState<"values"|"raw">("values");
+ const [values,setValues]=useState(()=>formulaValueSlots(initial).map(slot=>slot.value));
+ const [active,setActive]=useState<number|null>(null);
+ const slots=formulaValueSlots(initial);
+ const candidate=mode==="raw"?raw:slots.length?updateFormulaValues(initial,values):initial;
+ const valid=candidate!==null&&completeExpression(candidate);
+ const visual=valid&&candidate!==null?parseMath(candidate):null;
+ return <section aria-label="Editor matemático" className="min-w-0 space-y-3">
+  <h3 className="text-base font-semibold text-klasse-green dark:text-foreground">Editar fórmula importada</h3>
+  <div aria-label="Pré-visualização da expressão" className="flex min-h-24 items-center justify-center overflow-x-auto rounded-xl border border-border bg-card p-3 text-2xl"><Formula value={valid?candidate:initial}/></div>
+  {!valid&&<p role="status" className="text-xs text-destructive">Alteração inválida. A pré-visualização mostra a fórmula original.</p>}
+  {mode==="values"?<>
+   <p className="text-xs text-muted-foreground">{slots.length?"Toque num valor para editar sem alterar a estrutura original.":"Esta estrutura não permite edição visual segura. A fórmula original será preservada."}</p>
+   <div role="group" aria-label="Valores da fórmula importada" className="flex flex-wrap gap-2">{slots.map((slot,i)=><button key={slot.start} type="button" aria-label={"Valor "+(i+1)+": "+values[i]} aria-pressed={active===i} disabled={disabled} onClick={()=>setActive(i)} className={"min-h-11 min-w-11 rounded-xl border px-2 "+(active===i?"border-klasse-gold bg-klasse-gold/10":"border-border")}>{values[i]||"□"}</button>)}</div>
+   {active!==null&&<label className="grid gap-1 text-sm">Valor {active+1}<input key={active} aria-label={"Valor "+(active+1)} type="text" inputMode="decimal" maxLength={16} autoComplete="off" value={values[active]} disabled={disabled} onChange={e=>setValues(v=>v.map((old,i)=>i===active?e.target.value:old))} className="min-h-11 w-full rounded-xl border border-border bg-background px-3 text-base focus:ring-4 focus:ring-klasse-gold/20"/></label>}
+   <Button type="button" variant="ghost" disabled={disabled||!valid} onClick={()=>{setRaw(candidate??initial);setMode("raw");}}>Edição avançada (LaTeX)</Button>
+  </>:<label className="grid gap-1 text-sm">Expressão em LaTeX<textarea className="min-h-24 w-full rounded-xl border border-border bg-background p-3 font-mono text-base" autoCapitalize="off" autoCorrect="off" spellCheck={false} maxLength={300} disabled={disabled} value={raw} onChange={e=>setRaw(e.target.value)}/></label>}
+  {visual&&<Button type="button" variant="outline" disabled={disabled} onClick={()=>onVisual(visual)}>Editar por blocos</Button>}
+  <div className="grid grid-cols-2 gap-2"><Button type="button" variant="outline" onClick={onCancel}>Cancelar</Button><Button type="button" tone="gold" disabled={disabled||!valid} onClick={()=>{if(!disabled&&valid&&candidate!==null)onInsert(candidate);}}>Actualizar fórmula</Button></div>
+ </section>;
+}
 function Formula({value}:{value:string|null}){
  const html=value?mathMarkup(value):null;
  return html?<span className="inline-block max-w-full overflow-x-auto align-middle" dangerouslySetInnerHTML={{__html:html}}/>:<span className="text-sm text-muted-foreground">Preencha os campos.</span>;
@@ -76,6 +101,7 @@ export default function MobileFormulaInput({initial,onInsert,onCancel,disabled=f
  const insertLabel=initial?"Actualizar fórmula":"Inserir fórmula";
  function openRecursive(source:string|null){if(disabled)return;const tree=source===null?null:parseMath(source);if(!tree){setError("Esta expressão contém uma estrutura ainda não reconhecida. Pode manter a fórmula original ou editar os valores disponíveis.");return;}setRecursiveOrigin("legacy");setRecursive(tree);setError("");}
  function customizeDraft(){if(!chosen||!draft)return;const previous=parts.find(p=>p.id===editing);const item:FormulaPart={id:previous?.id??nextId.current,operator:previous?.operator??"+",opens:previous?.opens,closes:previous?.closes,model:chosen,values:[...values]};const next=editing===null?[...parts,item]:parts.map(p=>p.id===editing?item:p);openRecursive(composeExpression(next,ending));}
+ if(initial&&!recursive&&!parseMath(initial))return <ImportedFormulaEditor initial={initial} disabled={disabled} onInsert={onInsert} onCancel={onCancel} onVisual={tree=>{setRecursiveOrigin("existing");setRecursive(tree);}}/>;
  if(recursive)return <RecursiveFormulaEditor initial={recursive} onInsert={onInsert} onBack={()=>{if(recursiveOrigin==="existing")onCancel();else setRecursive(null);}} disabled={disabled} label={insertLabel}/>;
  return <section aria-label="Editor matemático" className="min-w-0 space-y-3">
   <div><h3 className="text-base font-semibold text-klasse-green dark:text-foreground">Expressão matemática</h3><p className="text-xs text-muted-foreground">Escolha um modelo ou combine termos e operadores.</p></div>
