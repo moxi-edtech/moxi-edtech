@@ -16,14 +16,22 @@ test("não reusa um único horário para todas as disciplinas: cada linha tem es
   assert.doesNotMatch(client, /selected\.map\(\(s\) => \(\{[\s\S]*?tipo: kind, data: date, inicio: start/);
 });
 
-test("pesquisa apenas turmas do endpoint ativo e oferece seleção visível de disciplinas", () => {
+test("planeamento usa dropdown único de turmas e disciplinas disponíveis sem pesquisas redundantes", () => {
   assert.match(client, /data\.turmas\.map/);
-  assert.match(client, /classSearch/);
+  assert.doesNotMatch(client, /classSearch|ava-search|Pesquisar disciplinas…|Pesquisar classe ou turno…/);
   assert.match(client, /setClassIds\(e\.target\.value \? \[e\.target\.value\] : \[\]\)/);
-  assert.match(client, /setChosen\(\[\]\); setSchedule\(\{\}\)/);
-  assert.match(client, /Selecionar visíveis/);
-  assert.match(client, /Limpar visíveis/);
-  assert.match(client, /setChosen\(\(current\) => current\.filter/);
+  assert.match(client, /setChosen\(\[\]\); setSchedule\(\{\}\); setSharedDate\(""\)/);
+  assert.match(client, /const subjects = .*filter\(\(s\) => classIds\.includes\(s\.turma_id\)\)/);
+  assert.match(client, /allSubjectsSelected \? "Limpar seleção" : "Selecionar todas"/);
+  assert.match(client, /current\.filter\(\(id\) => !subjects\.some/);
+  assert.match(client, /body\.turmas\.length === 1/);
+});
+
+test("horários aparecem apenas após selecionar disciplinas e o CTA mantém a validação", () => {
+  assert.match(client, /selectedSubjects\.length > 0 && <fieldset disabled=\{saving\}/);
+  assert.match(client, /disabled=\{saving \|\| !ready\}/);
+  assert.match(client, /Guardar rascunho/);
+  assert.doesNotMatch(client, /Rever e guardar|pronta\(s\) ·|disciplina\(s\) selecionada\(s\)/);
 });
 
 test("conflitos são visíveis antes de guardar; base continua a validar corridas", () => {
