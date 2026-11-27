@@ -37,6 +37,9 @@ type Professor = {
   disciplinas_ids?:     string[]
   teacher_id?:          string | null
   carga_horaria_maxima?: number | null
+  carga_lectiva_limite_minutos?: number | null
+  carga_contratual_minutos?: number | null
+  carga_lectiva_minutos?: number | null
   turnos_disponiveis?:  Array<"Manhã" | "Tarde" | "Noite">
   telefone_principal?:  string | null
   habilitacoes?:        string | null
@@ -73,6 +76,28 @@ type Tab        = "adicionar" | "atribuir" | "gerenciar"
 
 const inputCls = "w-full rounded-xl border border-border bg-card px-3 py-2.5 text-sm outline-none focus:border-klasse-gold focus:ring-2 focus:ring-klasse-gold/20 transition-all placeholder:text-muted-foreground"
 const selectCls = `${inputCls} cursor-pointer`
+
+function workloadLabel(value: number, hours: boolean) {
+  if (!hours) return String(value)
+  const total = Math.round(value)
+  return `${Math.floor(total / 60)}h${total % 60 ? String(total % 60).padStart(2, "0") : ""}`
+}
+function hoursInput(minutes: number | null | undefined) {
+  return minutes == null ? "" : String(Number((minutes / 60).toFixed(3)))
+}
+function workloadView(prof: Professor) {
+  const hours = prof.carga_lectiva_limite_minutos != null
+  const max = (hours ? prof.carga_lectiva_limite_minutos : prof.carga_horaria_maxima) ?? 0
+  const actual = hours ? prof.carga_lectiva_minutos : prof.carga_horaria_real
+  const known = actual != null && max > 0
+  const real = actual ?? 0
+  const pct = known ? Math.min(Math.round(real / max * 100), 100) : null
+  const label = known
+    ? `${workloadLabel(real, hours)} / ${workloadLabel(max, hours)}${hours ? "" : " tempos"}`
+    : max > 0 ? `Carga a confirmar · limite ${workloadLabel(max, hours)}${hours ? "" : " tempos"}` : "Carga a confirmar"
+  return { max, real, pct, label }
+}
+
 
 // ─── Toast ────────────────────────────────────────────────────────────────────
 
@@ -273,9 +298,7 @@ function ProfDetailDrawer({ prof, pendenciasState, onClose, onEdit }: {
   onEdit:          () => void
 }) {
   const atribuicoes = prof.atribuicoes ?? []
-  const cargaMax    = prof.carga_horaria_maxima ?? 0
-  const cargaReal   = prof.carga_horaria_real   ?? 0
-  const cargaPct    = cargaMax > 0 ? Math.min(Math.round((cargaReal / cargaMax) * 100), 100) : 0
+  const { max: cargaMax, real: cargaReal, pct: cargaPct, label: cargaLabel } = workloadView(prof)
   const cargaColor  = cargaReal > cargaMax ? "bg-rose-500"
     : cargaReal >= cargaMax * 0.8 ? "bg-amber-400"
     : "bg-klasse-green"
@@ -288,6 +311,7 @@ function ProfDetailDrawer({ prof, pendenciasState, onClose, onEdit }: {
     { label: "Habilitações",value: prof.habilitacoes },
     { label: "Formação",    value: prof.area_formacao },
     { label: "Vínculo",     value: prof.vinculo_contratual },
+    { label: "Carga contratual", value: prof.carga_contratual_minutos != null ? `${workloadLabel(prof.carga_contratual_minutos, true)}/semana` : null },
     { label: "Turnos",      value: prof.turnos_disponiveis?.join(", ") || null },
   ]
 
@@ -337,11 +361,11 @@ function ProfDetailDrawer({ prof, pendenciasState, onClose, onEdit }: {
               <div className="flex justify-between text-[10px] font-bold text-white/70 mb-1.5">
                 <span>Carga horária</span>
                 <span className={cargaReal > cargaMax ? "text-rose-300" : cargaReal >= cargaMax * 0.8 ? "text-amber-300" : "text-white/80"}>
-                  {cargaReal} / {cargaMax} tempos · {cargaPct}%
+                  {cargaLabel}{cargaPct !== null ? ` · ${cargaPct}%` : ""}
                 </span>
               </div>
               <div className="h-1.5 w-full bg-white/20 rounded-full overflow-hidden">
-                <div className={`h-full rounded-full transition-all ${cargaColor}`} style={{ width: `${cargaPct}%` }} />
+                <div className={`h-full rounded-full transition-all ${cargaColor}`} style={{ width: `${cargaPct ?? 0}%` }} />
               </div>
             </div>
           )}
@@ -489,10 +513,7 @@ function ProfCard({ prof, onView, onEdit, onResend, onReset }: {
   const visible     = labels.slice(0, 2)
   const remaining   = labels.length - visible.length
 
-  const cargaMax   = prof.carga_horaria_maxima ?? 0
-  const cargaReal  = prof.carga_horaria_real   ?? 0
-  const cargaPct   = cargaMax > 0 ? Math.min(Math.round((cargaReal / cargaMax) * 100), 100) : null
-  const cargaLabel = cargaMax > 0 ? `${cargaReal} / ${cargaMax} tempos` : `${cargaReal} tempos`
+  const { max: cargaMax, real: cargaReal, pct: cargaPct, label: cargaLabel } = workloadView(prof)
   const avatarInitial = (prof.nome || prof.email || "?").trim().charAt(0).toUpperCase()
   const cargaBarCls = cargaPct === null
     ? "bg-muted-foreground/15"
@@ -532,7 +553,7 @@ function ProfCard({ prof, onView, onEdit, onResend, onReset }: {
         <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
           <div
             className={`h-full rounded-full transition-all ${cargaBarCls}`}
-            style={{ width: `${cargaPct ?? 100}%` }}
+            style={{ width: `${cargaPct ?? 0}%` }}
           />
         </div>
         <p className="mt-1 text-[10px] font-semibold text-muted-foreground">{cargaLabel}</p>
@@ -675,6 +696,7 @@ export default function ProfessoresPage() {
   const [editOpen,          setEditOpen]          = useState(false)
   const [editTarget,        setEditTarget]        = useState<Professor | null>(null)
   const [editSaving,        setEditSaving]        = useState(false)
+  const [editWorkload, setEditWorkload] = useState<{ unidade: "tempos" | "minutos"; limite: string; contratual: string }>({ unidade: "tempos", limite: "20", contratual: "" })
   const [editForm,          setEditForm]          = useState({
     email: "",
     nome_completo: "",
@@ -796,6 +818,9 @@ export default function ProfessoresPage() {
       genero: pp.genero ?? null, data_nascimento: pp.data_nascimento ?? null,
       numero_bi: pp.numero_bi ?? null,
       carga_horaria_maxima: pp.carga_horaria_maxima ?? null,
+      carga_lectiva_limite_minutos: pp.carga_lectiva_limite_minutos ?? null,
+      carga_contratual_minutos: pp.carga_contratual_minutos ?? null,
+      carga_lectiva_minutos: pp.carga_lectiva_minutos ?? null,
       turnos_disponiveis: Array.isArray(pp.turnos_disponiveis) ? pp.turnos_disponiveis : [],
       telefone_principal: pp.telefone_principal ?? null,
       habilitacoes: pp.habilitacoes ?? null, area_formacao: pp.area_formacao ?? null,
@@ -1113,6 +1138,9 @@ export default function ProfessoresPage() {
 
   const openEdit = useCallback((prof: Professor) => {
     setEditTarget(prof)
+    setEditWorkload({ unidade: prof.carga_lectiva_limite_minutos != null ? "minutos" : "tempos",
+      limite: prof.carga_lectiva_limite_minutos != null ? hoursInput(prof.carga_lectiva_limite_minutos) : String(prof.carga_horaria_maxima ?? 20),
+      contratual: hoursInput(prof.carga_contratual_minutos) })
     setEditForm({
       email: prof.email || "",
       nome_completo: prof.nome || "",
@@ -1147,11 +1175,21 @@ export default function ProfessoresPage() {
 
   const handleUpdateProfessor = async () => {
     if (!editTarget || editSaving) return
+    const rawLimit = Number(editWorkload.limite)
+    const limit = editWorkload.unidade === "minutos" ? Math.round(rawLimit * 60) : rawLimit
+    const contract = editWorkload.contratual.trim() === "" ? null : Math.round(Number(editWorkload.contratual) * 60)
+    if (!Number.isInteger(limit) || limit <= 0 || limit > (editWorkload.unidade === "tempos" ? 100 : 10080) ||
+      (contract !== null && (!Number.isInteger(contract) || contract <= 0 || contract > 10080 || (editWorkload.unidade === "minutos" && limit > contract)))) {
+      showToast("Informe um limite lectivo válido e compatível com a carga contratual.", "error")
+      return
+    }
     setEditSaving(true)
     try {
       const res  = await fetch(`/api/escolas/${escolaId}/professores/${editTarget.user_id}/update`, {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...editForm, email_atual: editTarget.email, carga_horaria_maxima: Number(editForm.carga_horaria_maxima) }),
+        body: JSON.stringify({ ...editForm, email_atual: editTarget.email,
+          carga_horaria_maxima: Number(editForm.carga_horaria_maxima), carga_lectiva_unidade: editWorkload.unidade,
+          carga_lectiva_limite: limit, carga_contratual_minutos: contract }),
       })
       const json = await res.json().catch(() => null)
       if (!res.ok || !json?.ok) throw new Error(json?.error || "Falha ao atualizar professor")
@@ -1917,9 +1955,24 @@ export default function ProfessoresPage() {
                   onChange={(e) => setEditForm((p) => ({ ...p, vinculo_contratual: e.target.value as any }))}>
                   {["Efetivo","Colaborador","Eventual"].map((o) => <option key={o} value={o}>{o}</option>)}
                 </select>
-                <input className={inputCls} type="number" min={1} placeholder="Carga horária máxima"
-                  value={editForm.carga_horaria_maxima}
-                  onChange={(e) => setEditForm((p) => ({ ...p, carga_horaria_maxima: Number(e.target.value) }))} />
+                <div className="space-y-1">
+                  <label htmlFor="teacher-lective-limit" className="text-xs font-semibold text-muted-foreground">Limite lectivo semanal</label>
+                  <div className="flex gap-2">
+                    <input id="teacher-lective-limit" className={inputCls} type="number" min={0.01}
+                      step={editWorkload.unidade === "tempos" ? 1 : "any"} value={editWorkload.limite}
+                      onChange={(e) => setEditWorkload((p) => ({ ...p, limite: e.target.value }))}/>
+                    <select aria-label="Unidade da carga lectiva" className={selectCls} value={editWorkload.unidade}
+                      onChange={(e) => setEditWorkload((p) => ({ ...p, unidade: e.target.value as "tempos" | "minutos", limite: "" }))}>
+                      <option value="tempos">Tempos</option><option value="minutos">Horas</option>
+                    </select>
+                  </div>
+                  <p className="text-xs text-muted-foreground">Máximo de aulas que o professor pode leccionar.</p>
+                </div>
+                <label className="block space-y-1">
+                  <span className="text-xs font-semibold text-muted-foreground">Carga contratual semanal (opcional)</span>
+                  <input className={inputCls} type="number" min={0.01} step="any" placeholder="Horas" value={editWorkload.contratual}
+                    onChange={(e) => setEditWorkload((p) => ({ ...p, contratual: e.target.value }))}/>
+                </label>
               </div>
 
               <div className="flex flex-wrap gap-4 rounded-xl border border-border px-3 py-2.5">
