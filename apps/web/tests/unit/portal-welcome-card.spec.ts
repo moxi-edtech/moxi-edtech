@@ -103,8 +103,8 @@ test("second round of sheets reuses authorized data without eager roster or time
   assert.ok(calendar.includes('item.tipo === "AVALIACAO_ESCOLAR" && item.data_fim < todayIso'));
   assert.ok(calendar.includes("<PortalSheet open={historyOpen}"));
   assert.ok(dashboard.includes("content: lessonOpen ? <>"));
-  assert.ok(dashboard.includes("<TabHorario dailyOnly />"));
-  assert.ok(dashboard.includes("content: <TabHorario />"));
+  assert.ok(dashboard.includes("<TabHorario dailyOnly>{snapshot =>"));
+  assert.ok(dashboard.includes("content: <TabHorario snapshot={snapshot} />"));
   assert.ok(schedule.includes("resolvedRequestKey === requestKey"));
   assert.ok(grades.includes("const sheetOpen = Boolean(expandedId && sheetSubject && sheetTerm)"));
   assert.ok(grades.includes("avaliacoes: locked ? [] : subject.avaliacoes"));
