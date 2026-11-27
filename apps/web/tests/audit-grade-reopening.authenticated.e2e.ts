@@ -94,21 +94,25 @@ test("pedido → aprovação → gravação → leitura → revogação com isol
   expect(status.status()).toBe(200);
   expect((await status.json()).can_edit).toBe(true);
 
-  const grade = await teacher.request.post("/api/professor/notas", {
-    headers: { "Idempotency-Key": randomUUID() },
-    data: {
-      ...scope, turma_disciplina_id: config.TEST_AUDIT_TURMA_DISCIPLINA_ID,
-      tipo_avaliacao: "MAC", notas: [{ aluno_id: config.TEST_AUDIT_ALUNO_ID, valor: 15 }],
-    },
-  });
-  expect(grade.status(), await grade.text()).toBe(200);
-  expect((await grade.json()).ok).toBe(true);
-
   const readParams = new URLSearchParams({
     turmaId: scope.turma_id, disciplinaId: scope.disciplina_id,
     turmaDisciplinaId: config.TEST_AUDIT_TURMA_DISCIPLINA_ID,
     ano_letivo_id: scope.ano_letivo_id, trimestre: String(trimestre), detalhado: "1",
   });
+  const baseline = await teacher.request.get(`/api/professor/pauta?${readParams}`);
+  expect(baseline.status(), await baseline.text()).toBe(200);
+  const baselineStudent = (await baseline.json()).find((row: { aluno_id: string }) => row.aluno_id === config.TEST_AUDIT_ALUNO_ID);
+  expect(baselineStudent?.versions?.MAC).not.toBeUndefined();
+  const grade = await teacher.request.post("/api/professor/notas", {
+    headers: { "Idempotency-Key": randomUUID() },
+    data: {
+      ...scope, turma_disciplina_id: config.TEST_AUDIT_TURMA_DISCIPLINA_ID,
+      tipo_avaliacao: "MAC", notas: [{ aluno_id: config.TEST_AUDIT_ALUNO_ID, matricula_id: baselineStudent.matricula_id, expected: baselineStudent.versions.MAC, valor: 15 }],
+    },
+  });
+  expect(grade.status(), await grade.text()).toBe(200);
+  expect((await grade.json()).ok).toBe(true);
+
   const read = await teacher.request.get(`/api/professor/pauta?${readParams}`);
   expect(read.status(), await read.text()).toBe(200);
   const rows = await read.json();
@@ -125,7 +129,7 @@ test("pedido → aprovação → gravação → leitura → revogação com isol
     headers: { "Idempotency-Key": randomUUID() },
     data: {
       ...scope, turma_disciplina_id: config.TEST_AUDIT_TURMA_DISCIPLINA_ID,
-      tipo_avaliacao: "MAC", notas: [{ aluno_id: config.TEST_AUDIT_ALUNO_ID, valor: 18 }],
+      tipo_avaliacao: "MAC", notas: [{ aluno_id: config.TEST_AUDIT_ALUNO_ID, matricula_id: pupil.matricula_id, expected: pupil.versions.MAC, valor: 18 }],
     },
   });
   expect([403, 409]).toContain(forbiddenGrade.status());
