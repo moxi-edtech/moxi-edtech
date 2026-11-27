@@ -3,7 +3,7 @@ import { PORTAL_PAGE_INSET } from "@/lib/layout/portal-page";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "next/navigation";
-import { CalendarCheck, CalendarDays, Printer, Check, ChevronLeft, ChevronRight, History, List, Pencil, Plus, RefreshCw, X, AlertTriangle, Search } from "lucide-react";
+import { CalendarCheck, CalendarDays, Printer, Check, ChevronLeft, ChevronRight, History, List, Pencil, Plus, RefreshCw, X, AlertTriangle } from "lucide-react";
 import { assessmentPlanOverlaps, type AssessmentScheduleSlot } from "@/lib/academico/assessment-plan-overlaps";
 
 type Period = { id: string; numero: number; data_inicio: string; data_fim: string; offering_id: string | null };
@@ -39,9 +39,7 @@ export default function CalendarioAvaliacoesClient({escolaId,embedded=false,acti
   const [classIds, setClassIds] = useState<string[]>([]);
   const [chosen, setChosen] = useState<string[]>([]);
   const [schedule, setSchedule] = useState<Record<string, ScheduledAssessment>>({});
-  const [classSearch, setClassSearch] = useState("");
   const [sharedDate, setSharedDate] = useState("");
-  const [search, setSearch] = useState("");
   const [kind, setKind] = useState("Teste");
   const [date, setDate] = useState("");
   const [start, setStart] = useState("08:00");
@@ -80,7 +78,7 @@ export default function CalendarioAvaliacoesClient({escolaId,embedded=false,acti
       const p = body.periodos.find((v) => v.data_inicio <= today() && v.data_fim >= today())
         || body.periodos.find((v) => v.numero === 1) || body.periodos[0];
       if (p) { const d = today() >= p.data_inicio && today() <= p.data_fim ? today() : p.data_inicio; setNum(p.numero); setDate(d); setWeek(startWeek(d)); }
-      if (body.turmas[0]) setClassIds([body.turmas[0].id]);
+      if (body.turmas.length === 1) setClassIds([body.turmas[0].id]);
     }).catch((e) => { if (alive) setErr(e.message); })
       .finally(() => { if (alive) setLoading(false); });
     return () => { alive = false; };
@@ -95,15 +93,14 @@ export default function CalendarioAvaliacoesClient({escolaId,embedded=false,acti
   const subjectMap = new Map((data?.disciplinas || []).map((s) => [s.id, s]));
   const periodMap = new Map((data?.periodos || []).map((p) => [p.id, p]));
   const items = (data?.items || []).filter((i) => periodMap.get(i.periodo_letivo_id)?.numero === num);
-  const draft = items.filter((i) => i.estado === "rascunho");
   const days = Array.from({length:7},(_,n)=>stepDay(week,n));
   const visible = items.filter(i => (!classFilter || i.turma_id === classFilter) &&
     (mode === "lista" || days.includes(i.data)) &&
     ((subjectMap.get(i.turma_disciplina_id)?.nome || "") + " " + (classMap.get(i.turma_id)?.nome || "") + " " + i.tipo).toLowerCase().includes(agendaSearch.toLowerCase().trim()));
   const visibleDrafts = visible.filter(i => i.estado === "rascunho");
   const selectedDrafts = visibleDrafts.filter((i) => selectedIds.includes(i.id));
-  const subjects = (data?.disciplinas || []).filter((s) => classIds.includes(s.turma_id)
-    && (s.nome + " " + (classMap.get(s.turma_id)?.nome || "")).toLocaleLowerCase("pt").includes(search.trim().toLocaleLowerCase("pt")));
+  const subjects = (data?.disciplinas || []).filter((s) => classIds.includes(s.turma_id));
+  const allSubjectsSelected = subjects.length > 0 && subjects.every((subject) => chosen.includes(subject.id));
   const selectedSubjects = (data?.disciplinas || []).filter((s) => chosen.includes(s.id) && classIds.includes(s.turma_id));
   const updateSchedule = (id: string, key: keyof ScheduledAssessment, value: string) =>
     setSchedule((current) => ({ ...current, [id]: { ...(current[id] ?? blankSchedule()), [key]: value } }));
@@ -141,7 +138,6 @@ export default function CalendarioAvaliacoesClient({escolaId,embedded=false,acti
     if (errors.length) issues[row.id] = errors;
   }
   const ready = rows.length > 0 && rows.every((r) => !issues[r.id]?.length);
-  const pendingCount = rows.filter((r) => issues[r.id]?.length).length;
 
   const mutate = async (body: unknown, msg: string) => {
     setSaving(true); setErr(""); setNotice("");
@@ -172,7 +168,7 @@ export default function CalendarioAvaliacoesClient({escolaId,embedded=false,acti
         setErr("O novo horário coincide com outra avaliação desta turma. Ajuste a data ou as horas."); return;
       }
       if (await mutate({ action: "edit", id: editing, tipo: kind, data: date, inicio: start, fim: end || null, descricao: details || null },
-        "Alteração guardada e auditada.")) { setEditing(null); setDetails(""); }
+        "Alteração guardada.")) { setEditing(null); setDetails(""); }
       return;
     }
     if (!rows.length) { setErr("Selecione pelo menos uma disciplina."); return; }
@@ -186,7 +182,7 @@ export default function CalendarioAvaliacoesClient({escolaId,embedded=false,acti
 
   const publish = () => {
     if (!selectedDrafts.length || saving || !window.confirm("Publicar apenas as " + selectedDrafts.length + " avaliações selecionadas? Os alunos e professores poderão consultá-las.")) return;
-    void mutate({ action: "publish", ids: selectedDrafts.map((i) => i.id) }, "Avaliações selecionadas publicadas com sucesso.").then((ok) => { if (ok) setSelectedIds([]); });
+    void mutate({ action: "publish", ids: selectedDrafts.map((i) => i.id) }, "Avaliações publicadas.").then((ok) => { if (ok) setSelectedIds([]); });
   };
 
   const showHistory = async (id: string) => {
@@ -249,7 +245,7 @@ export default function CalendarioAvaliacoesClient({escolaId,embedded=false,acti
     {notice && <p role="status" className="rounded-xl border border-border p-3 text-sm text-primary">{notice}</p>}
     {!data?.ano ? <p className="rounded-xl border p-6 text-sm">Configure um ano letivo ativo antes de planear avaliações.</p> : <>
 
-      <section className="grid gap-3 rounded-xl border border-border bg-card p-3 shadow-sm sm:grid-cols-[minmax(180px,1fr)_auto_auto] sm:items-end sm:p-4">
+      <section className="grid gap-3 rounded-xl border border-border bg-card p-3 shadow-sm sm:grid-cols-[minmax(180px,320px)_1fr] sm:items-end sm:p-4">
         <div className="min-w-0">
           <p className="text-xs font-medium text-muted-foreground">Ano letivo {data.ano.ano}/{data.ano.ano + 1}</p>
           <label htmlFor="ava-period" className="mt-1 block text-xs font-semibold text-foreground">Trimestre</label>
@@ -260,11 +256,7 @@ export default function CalendarioAvaliacoesClient({escolaId,embedded=false,acti
             if (p) { const d = today() >= p.data_inicio && today() <= p.data_fim ? today() : p.data_inicio; setDate(d); setWeek(startWeek(d)); }
           }}>{numbers.map((n) => <option key={n} value={n}>{n}.º Trimestre</option>)}</select>
         </div>
-        <div className="flex items-center gap-3 text-xs text-muted-foreground sm:pb-2">
-          <span><strong className="text-lg font-semibold text-foreground">{draft.length}</strong> rascunhos</span>
-          <span><strong className="text-lg font-semibold text-foreground">{items.filter((i) => i.estado === "publicado").length}</strong> publicados</span>
-        </div>
-        {(!embedded||planningOpen)&&<a href="#avaliacoes-agenda" className={action + " min-h-10 border border-border bg-card text-foreground hover:bg-muted"}>Ver agenda</a>}
+        {(!embedded||planningOpen)&&<a href="#avaliacoes-agenda" className={action + " min-h-10 border border-border bg-card text-foreground hover:bg-muted sm:justify-self-end"}>Ver agenda</a>}
       </section>
 
       {editing ? (
@@ -293,76 +285,52 @@ export default function CalendarioAvaliacoesClient({escolaId,embedded=false,acti
         </section>
       ) : (
         <section id="avaliacoes-planeamento" hidden={!planningOpen} className="space-y-4 rounded-xl border border-border bg-card p-3 sm:p-5">
-          <div className="flex items-start gap-2">
-            <Plus size={20} className="mt-0.5 text-primary" aria-hidden="true" />
-            <div>
-              <h2 className="font-semibold text-primary">Planear avaliações</h2>
-              
-            </div>
+          <h2 className="font-semibold text-primary">Planear avaliações</h2>
+
+          <div className="grid gap-3 sm:grid-cols-2">
+            <label className="text-xs font-semibold text-foreground">Turma
+              <select className={control + " mt-1"} value={classIds[0] ?? ""} disabled={saving} onChange={(e) => {
+                setClassIds(e.target.value ? [e.target.value] : []);
+                setChosen([]); setSchedule({}); setSharedDate("");
+              }}>
+                <option value="">Selecionar turma</option>
+                {data.turmas.map((turma) => <option key={turma.id} value={turma.id}>{turma.nome}</option>)}
+              </select>
+            </label>
+            <label className="text-xs font-semibold text-foreground">Tipo de avaliação
+              <select className={control + " mt-1"} value={kind} disabled={saving} onChange={(e) => setKind(e.target.value)}>
+                {types.map((t) => <option key={t}>{t}</option>)}
+              </select>
+            </label>
           </div>
 
-          <div className="space-y-2">
-            <h3 className="text-sm font-semibold text-foreground">1 · Selecionar turma</h3>
-            <div className="grid gap-2 sm:grid-cols-[minmax(180px,1fr)_minmax(220px,2fr)]">
-              <label className="relative block">
-                <span className="sr-only">Pesquisar turma por classe ou turno</span>
-                <Search size={16} aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-                <input className={control + " pl-9"} type="search" value={classSearch}
-                  placeholder="Pesquisar classe ou turno…" onChange={(e) => setClassSearch(e.target.value)} />
-              </label>
-              <label>
-                <span className="sr-only">Turma do ano letivo</span>
-                <select className={control} value={classIds[0] ?? ""} onChange={(e) => {
-                  setClassIds(e.target.value ? [e.target.value] : []);
-                  setChosen([]); setSchedule({}); setSearch(""); setSharedDate("");
-                }}>
-                  <option value="">Selecionar turma</option>
-                  {data.turmas.map((t) => ({ turma: t, match: t.nome.toLocaleLowerCase("pt").includes(classSearch.trim().toLocaleLowerCase("pt")) }))
-                    .filter(({ turma, match }) => match || turma.id === classIds[0])
-                    .map(({ turma }) => <option key={turma.id} value={turma.id}>{turma.nome}</option>)}
-                </select>
-              </label>
-            </div>
-            
-          </div>
-
-          <div className="space-y-2 border-t border-border pt-4">
+          {classIds.length > 0 && <div className="space-y-2">
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <h3 className="text-sm font-semibold text-foreground">2 · Escolher disciplinas</h3>
-              <div className="flex flex-wrap gap-3">
-                <button type="button" disabled={!subjects.length} className="text-xs font-semibold text-primary disabled:opacity-50"
-                  onClick={() => setChosen((current) => [...new Set([...current, ...subjects.map((subject) => subject.id)])])}>Selecionar visíveis</button>
-                <button type="button" disabled={!subjects.length} className="text-xs font-semibold text-muted-foreground disabled:opacity-50"
-                  onClick={() => setChosen((current) => current.filter((id) => !subjects.some((subject) => subject.id === id)))}>Limpar visíveis</button>
-              </div>
+              <h3 className="text-sm font-semibold text-foreground">Disciplinas</h3>
+              {subjects.length > 1 && <button type="button" disabled={saving} className="text-xs font-semibold text-primary disabled:opacity-50"
+                onClick={() => setChosen((current) => allSubjectsSelected
+                  ? current.filter((id) => !subjects.some((subject) => subject.id === id))
+                  : [...new Set([...current, ...subjects.map((subject) => subject.id)])])}>
+                {allSubjectsSelected ? "Limpar seleção" : "Selecionar todas"}
+              </button>}
             </div>
-            <label htmlFor="ava-search" className="sr-only">Filtrar disciplinas</label>
-            <input id="ava-search" className={control} placeholder="Pesquisar disciplinas…" value={search} onChange={(e) => setSearch(e.target.value)} />
-            <div className="grid max-h-48 gap-2 overflow-auto sm:grid-cols-2">
+            <div className="grid gap-x-4 gap-y-1 sm:grid-cols-2 lg:grid-cols-3">
               {subjects.map((subject) => (
-                <label key={subject.id} className="flex min-h-11 items-center gap-2 rounded-xl border border-border p-2 text-sm hover:bg-muted/30">
-                  <input type="checkbox" checked={chosen.includes(subject.id)}
-                    onChange={(e) => setChosen((current) => e.target.checked ? [...new Set([...current, subject.id])] : current.filter((id) => id !== subject.id))} className="h-4 w-4 accent-primary" />
-                  <span className="min-w-0"><span className="block font-medium text-foreground">{subject.nome}</span><small className="text-xs text-muted-foreground">{classMap.get(subject.turma_id)?.nome}</small></span>
+                <label key={subject.id} className="flex min-h-10 items-center gap-2 rounded-xl px-2 text-sm hover:bg-muted/30">
+                  <input type="checkbox" checked={chosen.includes(subject.id)} disabled={saving}
+                    onChange={(e) => setChosen((current) => e.target.checked ? [...new Set([...current, subject.id])] : current.filter((id) => id !== subject.id))} className="h-4 w-4 shrink-0 accent-primary" />
+                  <span className="min-w-0 font-medium text-foreground">{subject.nome}</span>
                 </label>
               ))}
-              {!classIds.length && <p className="text-sm text-muted-foreground">Selecione uma turma para ver as disciplinas.</p>}
-              {classIds.length > 0 && subjects.length === 0 && <p className="text-sm text-muted-foreground">Nenhuma disciplina encontrada para esta turma ou pesquisa.</p>}
+              {subjects.length === 0 && <p className="text-sm text-muted-foreground">Nenhuma disciplina disponível para esta turma.</p>}
             </div>
-            <p className="text-xs font-medium text-muted-foreground">{selectedSubjects.length} disciplina(s) selecionada(s).</p>
-          </div>
+          </div>}
 
-          <div className="space-y-3 border-t border-border pt-4">
+          {selectedSubjects.length > 0 && <fieldset disabled={saving} className="min-w-0 space-y-3 border-t border-border pt-4">
+            <legend className="sr-only">Horários das avaliações</legend>
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <div>
-                <h3 className="text-sm font-semibold text-foreground">3 · Agendar por disciplina</h3>
-                <p className="mt-0.5 text-xs text-muted-foreground">Fim em branco: 60 min.</p>
-              </div>
-              <label className="text-xs font-semibold text-foreground">Tipo de avaliação
-                <select className={control + " mt-1"} value={kind} onChange={(e) => setKind(e.target.value)}>
-                  {types.map((t) => <option key={t}>{t}</option>)}
-                </select>
-              </label>
+              <h3 className="text-sm font-semibold text-foreground">Horários</h3>
+              <p className="text-xs text-muted-foreground">Fim em branco: 60 min.</p>
             </div>
             {selectedSubjects.length > 1 && (
               <div className="flex flex-wrap items-end gap-2 rounded-xl border border-border bg-muted/40 p-2.5">
@@ -377,9 +345,6 @@ export default function CalendarioAvaliacoesClient({escolaId,embedded=false,acti
                 </button>
               </div>
             )}
-            {selectedSubjects.length === 0 ? (
-              <p className="rounded-xl border border-dashed border-border px-3 py-5 text-sm text-muted-foreground">Selecione uma ou mais disciplinas acima para definir a agenda.</p>
-            ) : (
               <div className="space-y-2">
                 {selectedSubjects.map((subject) => {
                   const current = schedule[subject.id] ?? blankSchedule();
@@ -387,18 +352,11 @@ export default function CalendarioAvaliacoesClient({escolaId,embedded=false,acti
                   const warnings = issues[subject.id] ?? [];
                   const conflicts = warnings.filter((value) => value.startsWith("Conflito") || value.startsWith("A data deve") || value.startsWith("O fim deve") || value.startsWith("Período"));
                   const missing = warnings.filter((value) => value.startsWith("Defina"));
-                  const isScheduled = Boolean(current.data && current.inicio && !warnings.length);
                   return (
                     <div key={subject.id} className={"space-y-2 rounded-xl border p-3 " + (conflicts.length ? "border-destructive/50 bg-destructive/5" : "border-border bg-card")}>
                       <div className="grid grid-cols-2 items-end gap-2 sm:grid-cols-3 lg:grid-cols-[minmax(180px,1fr)_minmax(150px,190px)_minmax(105px,135px)_minmax(105px,135px)]">
                         <div className="col-span-2 flex min-w-0 items-center justify-between gap-2 sm:col-span-3 lg:col-span-1 lg:flex-wrap">
-                          <div className="min-w-0">
-                            <h4 className="text-sm font-semibold leading-snug text-foreground">{subject.nome}</h4>
-                            <p className="text-xs text-muted-foreground">{classMap.get(subject.turma_id)?.nome}</p>
-                          </div>
-                          <span className={"shrink-0 rounded-full px-2 py-1 text-[11px] font-medium " + (conflicts.length ? "bg-destructive/10 text-destructive" : isScheduled ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground")}>
-                            {conflicts.length ? "Conflito" : isScheduled ? "Pronta" : "Por agendar"}
-                          </span>
+                          <h4 className="text-sm font-semibold leading-snug text-foreground">{subject.nome}</h4>
                         </div>
                         <label className="col-span-2 text-xs font-semibold text-foreground sm:col-span-1">Data
                           <input type="date" className={control + " mt-1"} value={current.data}
@@ -436,22 +394,14 @@ export default function CalendarioAvaliacoesClient({escolaId,embedded=false,acti
                   );
                 })}
               </div>
-            )}
-          </div>
+          </fieldset>}
 
-          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border pt-4">
-            <div aria-live="polite">
-              <h3 className="text-sm font-semibold text-foreground">4 · Rever e guardar</h3>
-              <p className="text-xs text-muted-foreground">
-                {rows.length - pendingCount} pronta(s) · {pendingCount} por corrigir · {rows.length} selecionada(s)
-              </p>
-            </div>
+          <div className="flex justify-end border-t border-border pt-4">
             <button type="button" disabled={saving || !ready} onClick={() => void save()}
-              className={action + " min-h-11 bg-klasse-gold px-4 text-klasse-gold-900"}>
-              <Check size={16} /> Guardar rascunhos ({rows.length})
+              className={action + " min-h-11 w-full bg-klasse-gold px-4 text-klasse-gold-900 sm:w-auto"}>
+              <Check size={16} /> {saving ? "A guardar…" : rows.length === 1 ? "Guardar rascunho" : rows.length > 1 ? `Guardar rascunhos (${rows.length})` : "Guardar rascunhos"}
             </button>
           </div>
-          {rows.length > 0 && !ready && <p className="text-xs text-muted-foreground">Complete os horários e resolva os conflitos.</p>}
         </section>
       )}
       <section id="avaliacoes-agenda" className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
@@ -520,7 +470,7 @@ export default function CalendarioAvaliacoesClient({escolaId,embedded=false,acti
               }}><Pencil size={16} /> Editar</button>}
               <button type="button" className={action + " border border-border"} onClick={() => void showHistory(item.id)}><History size={16} /> Histórico</button>
               {item.estado !== "cancelado" && <button type="button" className={action + " border border-border"} onClick={() => {
-                if (window.confirm("Cancelar avaliação? O histórico será preservado.")) void mutate({ action: "cancel", id: item.id }, "Avaliação cancelada e auditada.");
+                if (window.confirm("Cancelar esta avaliação?")) void mutate({ action: "cancel", id: item.id }, "Avaliação cancelada.");
               }}><X size={16} /> Cancelar</button>}
             </div>
           </div>
