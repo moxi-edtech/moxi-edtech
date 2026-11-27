@@ -1,5 +1,6 @@
 "use client";
 
+import { loadAgendaAssignments, type AgendaAssignment } from "./agendaAssignments";
 import { usePortalDrawerGuard, usePortalDrawerNavigation } from "@/components/portal/ui/PortalDrawerNavigator";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { FileText, Send, Save, Pencil } from "lucide-react";
@@ -25,7 +26,7 @@ const planFields = [
   ["anotacoes_alunos_avaliados", "Anotações de alunos avaliados"],
 ] as const;
 
-export function ProfessorPlanosWorkspace({ embedded = false, requestedTurmaId = "", requestedDisciplinaId = "" }: { embedded?: boolean; requestedTurmaId?: string; requestedDisciplinaId?: string }) {
+export function ProfessorPlanosWorkspace({ embedded = false, requestedTurmaId = "", requestedDisciplinaId = "", initialAgenda }: { embedded?: boolean; requestedTurmaId?: string; requestedDisciplinaId?: string; initialAgenda?: readonly AgendaAssignment[] }) {
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [plans, setPlans] = useState<Plan[]>([]);
   const [form, setForm] = useState(emptyForm);
@@ -41,12 +42,11 @@ export function ProfessorPlanosWorkspace({ embedded = false, requestedTurmaId = 
   const load = useCallback(async () => {
     setLoading(true); setLoadError(null);
     try {
-      const [agendaRes, plansRes] = await Promise.all([fetch("/api/professor/agenda", { cache: "no-store" }), fetch("/api/professor/planos-aula", { cache: "no-store" })]);
-      const agenda = await agendaRes.json().catch(() => null);
+      const [agendaItems, plansRes] = await Promise.all([loadAgendaAssignments(initialAgenda), fetch("/api/professor/planos-aula", { cache: "no-store" })]);
       const planData = await plansRes.json().catch(() => null);
-      if (!agendaRes.ok || !plansRes.ok || !planData?.ok) throw new Error(planData?.error ?? "Não foi possível carregar os planos.");
+      if (!plansRes.ok || !planData?.ok) throw new Error(planData?.error ?? "Não foi possível carregar os planos.");
       const map = new Map<string, Assignment>();
-      for (const item of agenda?.items ?? []) {
+      for (const item of agendaItems) {
         if (!item.turma_id || !item.disciplina_id) continue;
         const key = `${item.turma_id}:${item.disciplina_id}`;
         if (!map.has(key)) map.set(key, { turma_id: item.turma_id, disciplina_id: item.disciplina_id, turma_nome: item.turma_nome ?? "Turma", disciplina_nome: item.disciplina_nome ?? "Disciplina" });
@@ -59,7 +59,7 @@ export function ProfessorPlanosWorkspace({ embedded = false, requestedTurmaId = 
       if (requestedAssignment) setForm((current) => current.turma_id ? current : { ...current, turma_id: requestedAssignment.turma_id, disciplina_id: requestedAssignment.disciplina_id });
     } catch (cause) { setLoadError(cause instanceof Error ? cause.message : "Não foi possível carregar os planos."); }
     finally { setLoading(false); }
-  }, [embedded, requestedTurmaId, requestedDisciplinaId]);
+  }, [embedded, requestedTurmaId, requestedDisciplinaId, initialAgenda]);
 
   useEffect(() => { void load(); }, [load]);
 
