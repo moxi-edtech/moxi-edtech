@@ -1,10 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { isTeacherBiValid, normalizeTeacherBi } from '@/lib/escola/teacher-bi'
-import type { Database } from '~types/supabase'
 import { createRouteClient } from '@/lib/supabase/route-client'
 import { resolveEscolaIdForUser } from '@/lib/tenant/resolveEscolaIdForUser'
-import { hasPermission, mapPapelToGlobalRole, normalizePapel } from '@/lib/permissions'
+import { hasPermission, normalizePapel } from '@/lib/permissions'
 import { sanitizeEmail } from '@/lib/sanitize'
 import { callAuthAdminJob } from '@/lib/auth-admin-job'
 import { randomInt, randomUUID } from 'node:crypto'
@@ -66,7 +65,6 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
     const body = parse.data
     const email = sanitizeEmail(body.email)
     const nome = body.nome_completo.trim()
-    const roleEnum = mapPapelToGlobalRole('professor') as Database['public']['Enums']['user_role']
 
     const supabase = await createRouteClient()
     const { data: userRes } = await supabase.auth.getUser()
@@ -91,20 +89,12 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
       .select('papel, role')
       .eq('user_id', requesterId)
       .eq('escola_id', userEscolaId)
+      .eq('tenant_type', 'k12')
       .limit(1)
 
     const papelReq = normalizePapel(vinc?.[0]?.papel ?? (vinc?.[0] as { role?: string | null } | undefined)?.role)
 
-    const profCheckRes = await supabase
-      .from('profiles')
-      .select('escola_id, role')
-      .eq('user_id', requesterId)
-      .maybeSingle()
-
-    const profCheck = profCheckRes.data as { escola_id?: string | null; role?: string | null } | null
-    const profilePapel = profCheck?.escola_id === userEscolaId ? normalizePapel(profCheck?.role) : null
-
-    let allowed = hasPermission(papelReq, 'criar_usuario') || hasPermission(profilePapel, 'criar_usuario')
+    let allowed = hasPermission(papelReq, 'criar_usuario') && !String(papelReq).startsWith('formacao_')
     let adminLink: { user_id: string | null }[] | null = null
 
     if (!allowed) {
@@ -172,8 +162,8 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
     try {
       const created = await callAuthAdminJob(req, 'createUser', {
         email, password: tempPassword, email_confirm: true,
-        user_metadata: { nome, full_name: nome, role: roleEnum, escola_id: userEscolaId, must_change_password: true },
-        app_metadata: { role: roleEnum, escola_id: userEscolaId },
+        user_metadata: { nome, full_name: nome, role: 'encarregado', escola_id: userEscolaId, must_change_password: true },
+        app_metadata: { role: 'encarregado', escola_id: userEscolaId, teacher_provisioning_id: requestId },
       })
       userId = (created as { user?: { id?: string | null } | null } | null)?.user?.id ?? undefined
     } catch (error) {
@@ -212,7 +202,8 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
           email,
           nome,
           telefone: body.telefone_principal ?? null,
-          role: roleEnum,
+          role: 'professor',
+          provisioning_id: requestId,
         },
         p_teacher: {
           nome_completo: nome,
