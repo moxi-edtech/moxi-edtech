@@ -1,7 +1,7 @@
 'use client';
 
 import { usePortalDrawerGuard, PortalFrameActiveContext, usePortalDrawerNavigation } from "@/components/portal/ui/PortalDrawerNavigator";
-import { useContext, useState, useEffect, useCallback } from "react";
+import { useContext, useState, useEffect, useCallback, useRef } from "react";
 import { FileText, Download, Loader2, Clock, AlertCircle, Upload, ChevronRight } from "lucide-react";
 import { PortalSurface } from "@/components/portal/ui/PortalSurface";
 import { PortalEmptyState } from "@/components/portal/ui/PortalEmptyState";
@@ -85,35 +85,41 @@ export function TabDocumentos({ embedded = false, active = true, focusServiceCod
   const [showDrawer, setShowDrawer] = useState(false);
   const frameActive = useContext(PortalFrameActiveContext);
   const navigation = usePortalDrawerNavigation();
+  const read = navigation?.read;
+  const catalogSequence = useRef(0);
   usePortalDrawerGuard(false, loading !== null);
   const visibleDocs = docs.filter((doc) =>
     (!serviceCode || doc.codigo === serviceCode)
   );
 
-  const fetchCatalogo = useCallback(async (quiet = false) => {
+  const fetchCatalogo = useCallback(async (quiet = false, fresh = true) => {
+    const sequence = ++catalogSequence.current;
     setCatalogError(null);
     if (!quiet) setFetching(true);
     try {
-      const res = await fetch(`/api/aluno/documentos/catalogo${query}`, { cache: "no-store" });
+      const res = await (read ? read(`/api/aluno/documentos/catalogo${query}`, { fresh }) : fetch(`/api/aluno/documentos/catalogo${query}`, { cache: "no-store" }));
       const json = await res.json();
+      if (sequence !== catalogSequence.current) return false;
       if (!res.ok || !json.ok) throw new Error(json.error || "Não foi possível carregar a Secretaria Digital.");
       setDocs(json.documentos ?? []);
       setDadosPagamento(json.dados_pagamento ?? null);
       return true;
     } catch (err) {
+      if (sequence !== catalogSequence.current) return false;
       if (!quiet) setDocs([]);
       setCatalogError(err instanceof Error ? err.message : "Não foi possível carregar os serviços.");
       return false;
     } finally {
-      if (!quiet) setFetching(false);
+      if (sequence === catalogSequence.current) setFetching(false);
     }
-  }, [query]);
+  }, [query, read]);
 
   useEffect(() => {
     setDocs([]);
     setSelectedDoc(null);
     setShowDrawer(false);
-    void fetchCatalogo();
+    void fetchCatalogo(false, false);
+    return () => { catalogSequence.current += 1; };
   }, [fetchCatalogo]);
 
   const hasPending = docs.some((item) => item.status === "pending");
