@@ -4,7 +4,7 @@ import { flushSync } from "react-dom";
 import { ArrowLeft,Plus,Trash2,MoveLeft,MoveRight,Undo2,Redo2,SlidersHorizontal,ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { mathMarkup } from "@/lib/provas/math";
-import { AST_LIMITS,attachMathScript,editableMathToken,editableValueNode,groupMathRange,ungroupMathRange,mathAt,mathNodeLabel,mathSlots,mathSymbols,mathTreeValid,modelMathTree,replaceMathAt,serializeMath,tokenNode,validMathExpression,validMathToken,type MathNode,type MathPath } from "@/lib/provas/formulaAst";
+import { AST_LIMITS,attachMathScript,mathInsertionIndex,editableMathToken,editableValueNode,groupMathRange,ungroupMathRange,mathAt,mathNodeLabel,mathSlots,mathSymbols,mathTreeValid,modelMathTree,replaceMathAt,serializeMath,tokenNode,validMathExpression,validMathToken,type MathNode,type MathPath } from "@/lib/provas/formulaAst";
 import { formulaModels,formulaCategories,type FormulaCategory } from "@/lib/provas/formulaModels";
 
 const fieldStyle="min-h-11 w-full min-w-0 rounded-xl border border-border bg-background px-2 text-base focus:outline-none focus:ring-4 focus:ring-klasse-gold/20";
@@ -63,7 +63,7 @@ export default function RecursiveFormulaEditor({initial,onInsert,onBack,disabled
  }
  function add(nodes:MathNode[]){
   if(disabled||!nodes.length)return;
-  const index=position==="end"||selection===null?list.length:position==="before"||position==="replace"?selection:selection+1;
+  const index=mathInsertionIndex(list,selection,position);
   const remove=position==="replace"&&selection!==null?1:0;
   const next=[...list];const insert=picker==="numbers"&&nodes.length===1&&nodes[0].kind==="token"?[editableValueNode(nodes[0].value,list.slice(0,index),list.slice(index+remove),remove?list[index]:undefined)]:nodes;next.splice(index,remove,...insert);change(next,index);
  }
