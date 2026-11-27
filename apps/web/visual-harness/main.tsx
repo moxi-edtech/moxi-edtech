@@ -6,6 +6,8 @@ import { PortalDrawerNavigator } from "../src/components/portal/ui/PortalDrawerN
 import { AcademicoWorkspace } from "../src/components/aluno/academico/AcademicoWorkspace";
 import { RematriculaBanner } from "../src/components/aluno/home/RematriculaBanner";
 import { ProfessorExamList } from "../src/components/professor/ProfessorExamList";
+import { ProfessorStudentGrades } from "../src/components/professor/ProfessorStudentGrades";
+import { StudentAppyPayButton } from "../src/components/financeiro/AppyPayReferenceButton";
 import { ProfessorFrequenciasWorkspace } from "../src/components/professor/ProfessorFrequenciasWorkspace";
 import { PortalSheet } from "../src/components/portal/ui/PortalSheet";
 import { ModalShell } from "../src/components/ui/ModalShell";
@@ -419,6 +421,8 @@ function DrawerDataFixture() {
   const content = flow === "academic" ? <AcademicoWorkspace embedded />
     : flow === "exams" ? <ProfessorExamList school="fixture" yearId="year-a" editor="/professor/provas" />
     : flow === "enrollment" ? <RematriculaBanner embedded />
+    : flow === "individual-grades" ? <ProfessorStudentGrades turmaId="fixture-class" academicYearId="year-a" studentId="fixture-student" matriculaId="fixture-enrollment" subjects={[{id:"disc",nome:"Matemática"},{id:"disc-2",nome:"Português"}]} />
+    : flow === "appypay" ? <StudentAppyPayButton targetId="fixture-month" kind="monthly" studentId="fixture-student" descricao="Propina sintética" />
     : <ProfessorFrequenciasWorkspace embedded urlTurmaId="fixture-class" urlDisciplinaId="disc" />;
   return <FeedbackProvider>
     <button onClick={() => setOpen(true)}>Abrir portal</button>
