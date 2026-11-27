@@ -5,6 +5,7 @@ import useSWR from 'swr';
 import { useRouter } from 'next/navigation';
 import { Copy, Loader2, ReceiptText, RefreshCw } from 'lucide-react';
 import { usePortalDrawerGuard, usePortalDrawerNavigation } from '@/components/portal/ui/PortalDrawerNavigator';
+import { PortalSheet } from '@/components/portal/ui/PortalSheet';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 type Reference = { id: string; entity: string; reference: string; amount: number; currency: string; expires_at: string; status: string };
@@ -91,12 +92,7 @@ function ReferenceDialog({ escolaId, mensalidadeId, alunoNome, descricao, onPaid
       setNotice('Dados copiados.');
     } catch { setError('Não foi possível copiar. Selecione os dados da referência para os copiar.'); }
   }
-  return <Dialog open onOpenChange={open => { if (!open && busy !== 'create' && busy !== 'check') onClose(); }}>
-    <DialogContent onCloseAutoFocus={event => { event.preventDefault(); restoreFocus(); }} className="max-h-[90vh] overflow-y-auto bg-card text-foreground" closeButton={busy !== 'create' && busy !== 'check'}>
-      <DialogHeader>
-        <DialogTitle>Pagamento por referência</DialogTitle>
-        <DialogDescription>{alunoNome} · {descricao}</DialogDescription>
-      </DialogHeader>
+  const controls = <>
       <div aria-busy={Boolean(busy)}>
         {busy === 'load' ? <p role="status" className="flex items-center gap-2 text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />A consultar a mensalidade…</p> : null}
         {preview && !issued ? <div className="space-y-3">
@@ -124,6 +120,15 @@ function ReferenceDialog({ escolaId, mensalidadeId, alunoNome, descricao, onPaid
         </> : preview?.canIssue && !uncertain ? <button type="button" className={`${button} border-amber-500 bg-amber-500 text-amber-950 hover:bg-amber-400`} onClick={create} disabled={Boolean(busy)}>{busy === 'create' ? 'A emitir…' : `Gerar referência de ${money(preview.amount)}`}</button>
           : <button type="button" className={button} onClick={() => load()} disabled={Boolean(busy)}>Consultar estado</button>}
       </div>
+  </>;
+  if (navigation) return <PortalSheet inline open title="Pagamento por referência" description={`${alunoNome} · ${descricao}`} busy={busy === 'create' || busy === 'check'} onClose={onClose}>{controls}</PortalSheet>;
+  return <Dialog open onOpenChange={open => { if (!open && busy !== 'create' && busy !== 'check') onClose(); }}>
+    <DialogContent onCloseAutoFocus={event => { event.preventDefault(); restoreFocus(); }} className="max-h-[90vh] overflow-y-auto bg-card text-foreground" closeButton={busy !== 'create' && busy !== 'check'}>
+      <DialogHeader>
+        <DialogTitle>Pagamento por referência</DialogTitle>
+        <DialogDescription>{alunoNome} · {descricao}</DialogDescription>
+      </DialogHeader>
+      {controls}
     </DialogContent>
   </Dialog>;
 }
