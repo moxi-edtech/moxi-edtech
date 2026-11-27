@@ -7,6 +7,9 @@ import { resolveEscolaIdForUser } from '@/lib/tenant/resolveEscolaIdForUser'
 const UUID = z.string().uuid()
 const Body = z.discriminatedUnion('regime', [
   z.object({ turma_id: UUID, regime: z.literal('pluridocencia') }).strict(),
+  z.object({ turma_id: UUID, regime: z.literal('trocar_disciplinas'), professor_id: UUID,
+    scope: z.enum(['all','some']), expected: z.array(z.object({ matriz_id: UUID, professor_id: UUID.nullable() }).strict()).min(1).max(100),
+  }).strict(),
   z.object({ turma_id: UUID, regime: z.literal('trocar_titular'), professor_anterior_id: UUID, professor_novo_id: UUID }).strict(),
   z.object({ turma_id: UUID, regime: z.literal('monodocencia'), professor_id: UUID }).strict(),
   z.object({ turma_id: UUID, regime: z.literal('misto'), professor_id: UUID, matriz_ids: z.array(UUID).min(1).max(100) }).strict(),
@@ -26,6 +29,23 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     if (resolved !== escolaId || !permission.allowed)
       return NextResponse.json({ ok: false, error: 'Sem permissão.' }, { status: 403 })
     const body = parsed.data
+    if (body.regime === 'trocar_disciplinas') {
+      const { data, error } = await supabase.rpc('replace_teacher_subjects_atomic', {
+        p_escola_id: escolaId, p_turma_id: body.turma_id, p_professor_novo_id: body.professor_id,
+        p_scope: body.scope, p_expected: body.expected,
+      })
+      if (error) {
+        const msg = error.message || ''
+        const message = /WORKLOAD_EXCEEDED|CARGA_EXCEEDED/.test(msg)
+          ? 'O limite lectivo do professor seria ultrapassado. Nenhuma disciplina foi alterada.'
+          : /PREVIOUS_MISMATCH|ALREADY_ASSIGNED|CONFLICTING_LINKS|OFFERING_NOT_PUBLISHED/.test(msg)
+            ? 'Os vínculos da turma mudaram. Actualize e reveja a substituição.'
+            : /DURATION_UNCONFIGURED/.test(msg) ? 'Não foi possível confirmar a carga lectiva. Reveja o horário da turma.'
+            : 'Não foi possível substituir o professor. Nenhuma disciplina foi alterada.'
+        return NextResponse.json({ ok: false, error: message }, { status: /FORBIDDEN/.test(msg) ? 403 : 409 })
+      }
+      return NextResponse.json({ ok: true, processadas: data })
+    }
     if (body.regime === 'trocar_titular') {
       const { data, error } = await supabase.rpc('replace_teacher_titular_atomic', {
         p_escola_id: escolaId, p_turma_id: body.turma_id,
