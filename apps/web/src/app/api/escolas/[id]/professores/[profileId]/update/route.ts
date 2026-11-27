@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
+import { isTeacherBiValid, normalizeTeacherBi } from '@/lib/escola/teacher-bi'
 import { createRouteClient } from '@/lib/supabase/route-client'
 import { resolveEscolaIdForUser } from '@/lib/tenant/resolveEscolaIdForUser'
 import { authorizeTeacherManage } from '@/lib/escola/disciplinas'
@@ -13,8 +14,7 @@ const BodySchema = z.object({
   nome_completo: z.string().trim().min(3, 'Informe o nome completo').max(160),
   genero: z.enum(['M', 'F']),
   data_nascimento: z.string().trim().nullable().optional(),
-  numero_bi: z.preprocess((value) => value === "" ? null : value, z.string().trim()
-    .regex(/^[A-Za-z0-9]{14}$/, 'BI deve ter 14 caracteres alfanuméricos').nullable().optional()),
+  numero_bi: z.string().nullish().refine(isTeacherBiValid, 'Informe um BI válido de 14 caracteres ou deixe em branco').transform(normalizeTeacherBi),
   telefone_principal: z.string().trim().max(40).nullable().optional(),
   habilitacoes: z.enum(['Ensino Médio', 'Bacharelato', 'Licenciatura', 'Mestrado', 'Doutoramento']),
   area_formacao: z.string().trim().max(200).nullable().optional(),
@@ -75,6 +75,14 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
       }
     }
 
+    if (body.numero_bi) {
+      const { data: duplicate, error: biError } = await supabase.from('teachers')
+        .select('id').eq('escola_id', escolaId).eq('numero_bi', body.numero_bi)
+        .neq('profile_id', profileId).limit(1)
+      if (biError) return NextResponse.json({ ok: false, error: 'Não foi possível validar o BI.' }, { status: 503 })
+      if (duplicate?.length) return NextResponse.json({ ok: false, code: 'BI_ALREADY_REGISTERED', error: 'Já existe um professor com este BI nesta escola.' }, { status: 409 })
+    }
+
     // E-mail de acesso pertence ao Auth, não à tabela operacional.
     // Atualizar Auth + espelho do perfil antes da RPC, com compensação em caso de falha.
     const newEmail = body.email?.toLowerCase()
@@ -131,9 +139,9 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
         ok: false,
         error: msg.includes('INVALID_SKILLS')
           ? 'Uma das disciplinas selecionadas já não pertence à escola.'
-          : msg.includes('TEACHER_LOAD_BELOW_ASSIGNED') ? 'O limite é inferior à carga lectiva já atribuída.'
-          : msg.includes('TEACHER_LOAD_DURATION_UNCONFIGURED') ? 'Não foi possível determinar a carga das turmas atribuídas. Reveja os horários.'
-          : msg.includes('TEACHER_LOAD_INVALID') ? 'Informe uma carga lectiva válida.' : msg,
+          : error.code === '23505' && msg.includes('teachers_escola_numero_bi_uidx')
+            ? 'Já existe um professor com este BI nesta escola.'
+            : msg,
       }, { status })
     }
 
