@@ -30,26 +30,30 @@ const CATEGORIAS = [
 export function NoticePanel({
   items,
   showHeader = true,
+  availableFiltersOnly = false,
   title = "Avisos Gerais",
   onAction,
   onSnooze,
 }: {
   items: NoticeItemData[];
   showHeader?: boolean;
+  availableFiltersOnly?: boolean;
   title?: string;
   onAction?: (item: NoticeItemData) => void;
   onSnooze?: () => void;
 }) {
   const [filtro, setFiltro] = useState('all');
+  const categorias = availableFiltersOnly ? CATEGORIAS.filter(cat => cat.id === 'all' || items.some(item => item.type === cat.id)) : CATEGORIAS;
+  const filtroAtivo = categorias.some(cat => cat.id === filtro) ? filtro : 'all';
 
   const itemsFiltrados = useMemo(() => {
     let list = items;
-    if (filtro !== 'all') {
-      list = list.filter(i => i.type === filtro);
+    if (filtroAtivo !== 'all') {
+      list = list.filter(i => i.type === filtroAtivo);
     }
     // Sempre prioriza os marcados pelo Admin no topo da lista filtrada
     return [...list].sort((a, b) => (a.is_priority === b.is_priority ? 0 : a.is_priority ? -1 : 1));
-  }, [items, filtro]);
+  }, [items, filtroAtivo]);
 
   return (
     <div className="rounded-xl border border-border bg-card flex flex-col h-[500px]">
@@ -65,15 +69,15 @@ export function NoticePanel({
       )}
 
       {/* Barra de Filtros */}
-      <div className="px-2 py-2 border-b border-border flex gap-1 overflow-x-auto shrink-0 scrollbar-hide">
-         {CATEGORIAS.map(cat => (
+      {(!availableFiltersOnly || categorias.length > 1) && <div className="px-2 py-2 border-b border-border flex gap-1 overflow-x-auto shrink-0 scrollbar-hide">
+         {categorias.map(cat => (
            <button
              key={cat.id}
              type="button"
-             aria-pressed={filtro === cat.id}
+             aria-pressed={filtroAtivo === cat.id}
              onClick={() => setFiltro(cat.id)}
              className={`min-h-11 px-3 py-2 rounded-xl text-[10px] font-bold uppercase tracking-wider whitespace-nowrap transition-colors focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-klasse-gold/20 ${
-               filtro === cat.id
+               filtroAtivo === cat.id
                  ? 'bg-klasse-gold/10 text-foreground ring-1 ring-klasse-gold/25'
                  : 'text-muted-foreground hover:bg-muted'
              }`}
@@ -81,7 +85,7 @@ export function NoticePanel({
              {cat.label}
            </button>
          ))}
-      </div>
+      </div>}
 
       <div className="flex-1 overflow-y-auto divide-y divide-border scrollbar-thin scrollbar-thumb-slate-200 scrollbar-track-transparent">
         {itemsFiltrados.length === 0 ? (
