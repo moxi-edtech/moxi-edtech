@@ -546,7 +546,7 @@ export function Dashboard({
           O meu caixa hoje
         </h2>
         {escolaId && showOperationalPanels ? (
-          <ResumoCaixaSecretaria escolaId={escolaId} refreshKey={refreshKey} showPartialPayments={false} />
+          <ResumoCaixaSecretaria escolaId={escolaId} refreshKey={refreshKey} />
         ) : (
           <div className="grid min-w-0 gap-4 @min-[520px]:grid-cols-2">
             {[0, 1].map((key) => (
@@ -571,7 +571,7 @@ export function Dashboard({
             Ano lectivo {anoLetivoLabel}
           </p>
         </div>
-        <div className="operations-daily-grid grid">
+        <div className="operations-kpi-grid grid">
           {metrics.map((metric) => (
             <OperationalMetricCard
               key={metric.key}
@@ -586,6 +586,7 @@ export function Dashboard({
               dialogOpen={metricKey === metric.key}
             />
           ))}
+          {escolaId && <OperacoesPainelHub escolaId={escolaId} onlyReopen inlineReopen key={escolaId} />}
         </div>
       </section>
 
@@ -752,7 +753,6 @@ export function Dashboard({
               className="h-40 rounded-xl bg-muted motion-safe:animate-pulse"
             />
           )}
-          {escolaId && <OperacoesPainelHub escolaId={escolaId} onlyReopen />}
         </section>
         <section
           aria-labelledby="secretaria-avisos-title"
@@ -786,21 +786,9 @@ export function Dashboard({
         <div className="operations-actions-grid grid">
           <AcaoRapidaCard
             dashboardCompact
-            icon={<Users className="h-5 w-5" />}
-            label="Alunos"
-            href={buildPortalHref(escolaParam, "/secretaria/alunos")}
-          />
-          <AcaoRapidaCard
-            dashboardCompact
             icon={<UserCheck className="h-5 w-5" />}
             label="Professores"
             href={buildPortalHref(escolaParam, "/secretaria/professores")}
-          />
-          <AcaoRapidaCard
-            dashboardCompact
-            icon={<UsersRound className="h-5 w-5" />}
-            label="Turmas"
-            href={buildPortalHref(escolaParam, "/secretaria/turmas")}
           />
           <AcaoRapidaCard
             dashboardCompact
