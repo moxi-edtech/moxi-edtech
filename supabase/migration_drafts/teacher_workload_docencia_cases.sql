@@ -124,6 +124,32 @@ BEGIN
   PERFORM public.replace_teacher_titular_atomic(s,t,p,'40000000-0000-0000-0000-000000000002');
   RAISE EXCEPTION 'EXPECTED_STALE_TITULAR_REJECTION';
  EXCEPTION WHEN OTHERS THEN IF SQLERRM NOT LIKE 'TEACHER_REGIME_TITULAR_CONFLICT%' THEN RAISE; END IF; END;
+ -- Whole-class replacement must roll back the first successful subject when
+ -- the second exceeds the limit. Both subjects and the titular remain intact.
+ BEGIN
+  PERFORM public.replace_teacher_subjects_atomic(s,t,p,'all',jsonb_build_array(
+   jsonb_build_object('matriz_id',m,'professor_id','40000000-0000-0000-0000-000000000002'),
+   jsonb_build_object('matriz_id','a0000000-0000-0000-0000-000000000019','professor_id','40000000-0000-0000-0000-000000000002')));
+  RAISE EXCEPTION 'EXPECTED_BATCH_WORKLOAD_REJECTION';
+ EXCEPTION WHEN OTHERS THEN IF SQLERRM NOT LIKE 'TEACHER_REPLACE_WORKLOAD_EXCEEDED%' AND SQLERRM NOT LIKE 'ASSIGN_PROF_CARGA_EXCEEDED%' THEN RAISE; END IF; END;
+ IF (SELECT count(*) FROM public.turma_disciplinas WHERE turma_id=t AND professor_id='40000000-0000-0000-0000-000000000002')<>2
+ OR NOT EXISTS(SELECT 1 FROM public.turmas WHERE id=t AND professor_titular_id='40000000-0000-0000-0000-000000000002' AND regime_docencia='misto') THEN RAISE EXCEPTION 'BATCH_REPLACEMENT_PARTIAL_WRITE'; END IF;
+ PERFORM public.configure_teacher_workload_atomic(s,p,'minutos',1200,1200);
+ SELECT public.replace_teacher_subjects_atomic(s,t,p,'all',jsonb_build_array(
+   jsonb_build_object('matriz_id',m,'professor_id','40000000-0000-0000-0000-000000000002'),
+   jsonb_build_object('matriz_id','a0000000-0000-0000-0000-000000000019','professor_id','40000000-0000-0000-0000-000000000002'))) INTO n;
+ IF n<>2 OR (SELECT count(*) FROM public.turma_disciplinas WHERE turma_id=t AND professor_id=p)<>2
+ OR NOT EXISTS(SELECT 1 FROM public.turmas WHERE id=t AND professor_titular_id=p AND regime_docencia='monodocencia') THEN RAISE EXCEPTION 'BATCH_REPLACEMENT_FAILED'; END IF;
+ BEGIN
+  PERFORM public.replace_teacher_subjects_atomic(s,t,'40000000-0000-0000-0000-000000000002','some',jsonb_build_array(jsonb_build_object('matriz_id',m,'professor_id',NULL)));
+  RAISE EXCEPTION 'EXPECTED_STALE_BATCH_REJECTION';
+ EXCEPTION WHEN OTHERS THEN IF SQLERRM NOT LIKE 'TEACHER_REPLACE_PREVIOUS_MISMATCH%' THEN RAISE; END IF; END;
+ -- Two explicit individual changes: first creates a mixed regime, then the
+ -- last titular subject moves the titular without requiring manual support.
+ PERFORM public.replace_teacher_subjects_atomic(s,t,'40000000-0000-0000-0000-000000000002','some',jsonb_build_array(jsonb_build_object('matriz_id',m,'professor_id',p)));
+ IF NOT EXISTS(SELECT 1 FROM public.turmas WHERE id=t AND professor_titular_id=p AND regime_docencia='misto') THEN RAISE EXCEPTION 'PARTIAL_REPLACEMENT_CHANGED_TITULAR'; END IF;
+ PERFORM public.replace_teacher_subjects_atomic(s,t,'40000000-0000-0000-0000-000000000002','some',jsonb_build_array(jsonb_build_object('matriz_id','a0000000-0000-0000-0000-000000000019','professor_id',p)));
+ IF NOT EXISTS(SELECT 1 FROM public.turmas WHERE id=t AND professor_titular_id='40000000-0000-0000-0000-000000000002') THEN RAISE EXCEPTION 'LAST_SUBJECT_REPLACEMENT_FAILED'; END IF;
  -- Missing duration is fail-closed for minute limits, not legacy periods.
  UPDATE public.turmas SET tempo_lectivo_minutos=NULL WHERE id=t;
  BEGIN
