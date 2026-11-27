@@ -34,6 +34,7 @@ import { GlobalSearch } from "@/components/GlobalSearch";
 import { BuscaBalcaoRapido } from "@/components/secretaria/BuscaBalcaoRapido";
 import { ModalShell } from "@/components/ui/ModalShell";
 import { DashboardHeader, NoticePanel } from "@/components/dashboard";
+import type { NoticeItemData } from "@/components/dashboard/NoticePanel";
 import OperacoesPainelHub from "@/components/layout/operacoes/OperacoesPainelHub";
 import {
   OperationalMetricCard,
@@ -402,7 +403,7 @@ export function Dashboard({
       id: buildNoticeId("base", item, `base-${index}`),
     }));
 
-    const deduped = new Map<string, (typeof base)[number]>();
+    const deduped = new Map<string, NoticeItemData>();
     for (const item of [
       ...(extras as typeof base),
       ...prodAlerts,
@@ -419,8 +420,8 @@ export function Dashboard({
     produtividadeAlerts,
     escolaParam,
   ]);
-  const fichaAvisos = useMemo(() => Array.from(new Map(avisos.filter((item: any) => item.type === "FICHA_RAPIDA").map((item: any) => [item.aluno_id ?? item.id, item])).values()), [avisos]);
-  const generalAvisos = useMemo(() => avisos.filter((item: any) => item.type !== "FICHA_RAPIDA"), [avisos]);
+  const fichaAvisos = useMemo(() => Array.from(new Map<string, NoticeItemData>(avisos.filter(item => item.type === "FICHA_RAPIDA").map(item => [item.aluno_id ?? item.id, item])).values()), [avisos]);
+  const generalAvisos = useMemo(() => avisos.filter(item => item.type !== "FICHA_RAPIDA"), [avisos]);
   const publicLandingUrl = useMemo(() => {
     if (!escolaSlug || escolaId !== contextEscolaId) return null;
     return `https://klasse.ao/admissoes/${escolaSlug}`;
@@ -622,7 +623,7 @@ export function Dashboard({
             label="Avisos gerais"
             icon={Megaphone}
             value={currentProductivity && !currentProductivity.error ? generalAvisos.length : null}
-            needsAttention={generalAvisos.some((item: any) => item.is_priority)}
+            needsAttention={generalAvisos.some(item => item.is_priority)}
             onClick={() => setNoticeView("general")}
             dialogOpen={noticeView === "general"}
           />
@@ -877,6 +878,7 @@ export function Dashboard({
           </div>
         )}
         <NoticePanel
+          key={noticeView ?? "closed"}
           items={noticeView === "fichas" ? fichaAvisos : generalAvisos}
           showHeader={false}
           availableFiltersOnly
