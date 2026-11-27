@@ -70,12 +70,12 @@ export function ProfessorMateriaisWorkspace({ embedded = false, requestedTurmaId
     setDirty(false);
     setForm(current => ({ ...current, titulo: "", descricao: "", conteudo: "", arquivo_url: "" }));
   };
-  const loadData = async () => {
+  const loadData = async (fresh = false) => {
     try {
       setLoading(true);
       setLoadError(null);
       const [mRes, agendaItems] = await Promise.all([
-        fetch("/api/professor/materiais-pedagogicos", { cache: "no-store" }),
+        (navigation ? navigation.read("/api/professor/materiais-pedagogicos", { fresh }) : fetch("/api/professor/materiais-pedagogicos", { cache: "no-store" })),
         loadAgendaAssignments(initialAgenda),
       ]);
 
@@ -151,7 +151,7 @@ export function ProfessorMateriaisWorkspace({ embedded = false, requestedTurmaId
       setShowModal(false);
       setDirty(false);
       setForm({ titulo: "", descricao: "", conteudo: "", arquivo_url: "", turma_id: "", disciplina_id: "" });
-      loadData();
+      loadData(true);
     } catch (err) {
       toastError("Não foi possível guardar o material", err instanceof Error ? err.message : String(err));
     } finally {
@@ -173,7 +173,7 @@ export function ProfessorMateriaisWorkspace({ embedded = false, requestedTurmaId
 
       navigation?.notifyChanged();
       success(newStatus === "publicado" ? "Material publicado" : "Material despublicado");
-      loadData();
+      loadData(true);
     } catch (err) {
       toastError("Não foi possível alterar a publicação", err instanceof Error ? err.message : String(err));
     } finally {
@@ -226,7 +226,7 @@ export function ProfessorMateriaisWorkspace({ embedded = false, requestedTurmaId
           <ProfessorResourceErrorState
             title="Não foi possível carregar os materiais."
             description={loadError}
-            onRetry={() => void loadData()}
+            onRetry={() => void loadData(true)}
           />
         ) : loading ? (
           <ProfessorResourceGridSkeleton label="A carregar materiais pedagógicos" />
