@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Clock, Calendar, FileCheck } from "lucide-react";
 import { useSearchParams } from "next/navigation";
+import { usePortalDrawerNavigation } from "@/components/portal/ui/PortalDrawerNavigator";
 import AcaoRapidaCard from "@/components/shared/AcaoRapidaCard";
 import { TableSkeleton } from "@/components/feedback/FeedbackSystem";
 
@@ -65,6 +66,7 @@ export function TabHorario({ dailyOnly = false, snapshot, children }: {
   snapshot?: TimetableSnapshot;
   children?: (snapshot?: TimetableSnapshot) => ReactNode;
 } = {}) {
+  const read = usePortalDrawerNavigation()?.read;
   const searchParams = useSearchParams();
   const studentId = searchParams?.get("aluno") ?? null;
   const academicYearId = searchParams?.get("ano_letivo_id") ?? null;
@@ -146,9 +148,8 @@ export function TabHorario({ dailyOnly = false, snapshot, children }: {
     setAgendaLoading(true);
     void (async () => {
       try {
-        const response = await fetch(`/api/aluno/home/academic-events${query ? `?${query}` : ""}`, {
-          cache: "no-store", signal: ctrl.signal,
-        });
+        const url = `/api/aluno/home/academic-events${query ? `?${query}` : ""}`;
+        const response = await (read ? read(url, { signal: ctrl.signal, fresh: agendaRetry > 0 }) : fetch(url, { cache: "no-store", signal: ctrl.signal }));
         const json = await response.json().catch(() => null);
         if (!response.ok || json?.ok !== true || !Array.isArray(json.items)) {
           throw new Error("Não foi possível consultar os próximos eventos.");
@@ -169,7 +170,7 @@ export function TabHorario({ dailyOnly = false, snapshot, children }: {
       }
     })();
     return () => ctrl.abort();
-  }, [studentId, academicYearId, agendaRequested, agendaRetry]);
+  }, [studentId, academicYearId, agendaRequested, agendaRetry, read]);
 
   return (
     <div className="min-w-0 space-y-6">
