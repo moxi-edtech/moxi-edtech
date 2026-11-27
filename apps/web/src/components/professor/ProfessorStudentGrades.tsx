@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { usePortalDrawerNavigation } from "@/components/portal/ui/PortalDrawerNavigator";
 import { currentGradePeriod, type GradePeriodRow } from "@/lib/academico/grade-period-context";
 
 type Subject = { id: string; nome: string | null };
@@ -9,6 +10,7 @@ type Grade = { aluno_id: string; matricula_id: string; mac?: number | null; npp?
 export function ProfessorStudentGrades({ turmaId, academicYearId, studentId, matriculaId, subjects }: {
   turmaId: string; academicYearId?: string; studentId: string; matriculaId: string; subjects: Subject[];
 }) {
+  const read = usePortalDrawerNavigation()?.read;
   const [subject, setSubject] = useState(subjects[0]?.id ?? "");
   const [period, setPeriod] = useState<number | null>(null);
   const [periods, setPeriods] = useState<number[]>([]);
@@ -26,7 +28,7 @@ export function ProfessorStudentGrades({ turmaId, academicYearId, studentId, mat
     if (academicYearId) params.set("ano_letivo_id", academicYearId);
     void (async () => {
       try {
-        const response = await fetch(`/api/professor/periodos?${params}`, { cache: "no-store", signal: ctrl.signal });
+        const response = await (read ? read(`/api/professor/periodos?${params}`, { signal: ctrl.signal, fresh: retry > 0 }) : fetch(`/api/professor/periodos?${params}`, { cache: "no-store", signal: ctrl.signal }));
         const body = await response.json();
         if (!response.ok || !body?.ok || !Array.isArray(body.items)) throw new Error("Períodos indisponíveis.");
         if (ctrl.signal.aborted) return;
@@ -39,7 +41,7 @@ export function ProfessorStudentGrades({ turmaId, academicYearId, studentId, mat
       } catch { if (!ctrl.signal.aborted) setPeriodError(true); }
     })();
     return () => ctrl.abort();
-  }, [turmaId, academicYearId, retry]);
+  }, [turmaId, academicYearId, retry, read]);
   useEffect(() => {
     setResult(null); setError(null);
     if (!periodReady || period === null || !subject || !selectedSubject) return;
