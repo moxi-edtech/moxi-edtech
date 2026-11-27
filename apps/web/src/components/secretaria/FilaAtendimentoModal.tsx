@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { X, Loader2, CheckCircle2, XCircle, Search } from "lucide-react";
+import { Loader2, CheckCircle2, XCircle, Search } from "lucide-react";
+import { ModalShell } from "@/components/ui/ModalShell";
 import { useDebounce } from "@/hooks/useDebounce";
 
 type Atendimento = {
@@ -162,26 +163,12 @@ export function FilaAtendimentoModal({
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 py-10">
-      <div className="w-full max-w-3xl rounded-2xl bg-card shadow-xl">
-        <div className="flex items-start justify-between border-b border-border px-6 py-4">
-          <div>
-            <h2 className="text-lg font-semibold text-foreground">Fila de Atendimento</h2>
-            <p className="text-xs text-muted-foreground">{totalAbertos} atendimentos em aberto</p>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-lg p-2 text-muted-foreground hover:bg-muted"
-          >
-            <X className="h-4 w-4" />
-          </button>
-        </div>
-
-        <div className="grid gap-6 px-6 py-5 lg:grid-cols-[1.2fr_1fr]">
+    <ModalShell open={open} onClose={() => { if (!creating && !savingFinal) onClose(); }}
+      title="Fila de Atendimento" description={`${totalAbertos} atendimentos em aberto`}>
+      <div className="grid min-w-0 gap-6 lg:grid-cols-[1.2fr_1fr]">
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
                 {["aberto", "em_atendimento", "fechado"].map((item) => (
                   <button
                     key={item}
@@ -358,8 +345,7 @@ export function FilaAtendimentoModal({
               </div>
             </div>
           </div>
-        </div>
       </div>
-    </div>
+    </ModalShell>
   );
 }
