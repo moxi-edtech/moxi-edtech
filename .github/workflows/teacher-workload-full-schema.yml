@@ -1,43 +1,49 @@
-name: Teacher workload — full Supabase schema
+name: Teacher workload — incremental migration
 on:
   pull_request:
     paths:
-      - 'supabase/migration_drafts/teacher_workload*.sql'
-      - 'supabase/migrations/**'
+      - 'supabase/migrations/20271204034000_teacher_workload_docencia.sql'
+      - 'supabase/tests/teacher_assignment_disposable_*.sql'
+      - 'supabase/migration_drafts/teacher_workload_full_schema_checks.sql'
       - '.github/workflows/teacher-workload-full-schema.yml'
 permissions:
   contents: read
 jobs:
-  full-schema:
+  incremental-schema:
+    name: Incremental migration and security contracts (PostgreSQL 17)
     runs-on: ubuntu-24.04
-    timeout-minutes: 35
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: klasse_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d klasse_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      PGHOST: 127.0.0.1
+      PGPORT: '5432'
+      PGUSER: postgres
+      PGPASSWORD: postgres
+      PGDATABASE: klasse_test
     steps:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
-      - uses: supabase/setup-cli@v3
-        with:
-          version: 2.84.2
-      - name: Prepare isolated project with complete versioned history
+      - name: Prepare only the academic dependency fixture
         run: |
-          set -euo pipefail
-          supabase --version
-          mkdir -p "$RUNNER_TEMP/klasse-workload"
-          cd "$RUNNER_TEMP/klasse-workload"
-          supabase init
-          mkdir -p supabase/migrations
-          sed -i -E 's/^major_version = [0-9]+/major_version = 17/' supabase/config.toml
-          cp "$GITHUB_WORKSPACE"/supabase/migrations/*.sql supabase/migrations/
-          test -s supabase/migrations/20271204034000_teacher_workload_docencia.sql
-      - name: Replay complete migration history locally (no seed, no linked project)
-        working-directory: ${{ runner.temp }}/klasse-workload
-        run: |
-          set -euo pipefail
-          supabase start
-          supabase db reset --local --no-seed
-          psql 'postgresql://postgres:postgres@127.0.0.1:54322/postgres' -v ON_ERROR_STOP=1 \
-            -f "$GITHUB_WORKSPACE/supabase/migration_drafts/teacher_workload_full_schema_checks.sql"
-      - name: Stop isolated stack
-        if: always()
-        working-directory: ${{ runner.temp }}/klasse-workload
-        run: supabase stop --no-backup
+          psql -X -v ON_ERROR_STOP=1 -f supabase/tests/teacher_assignment_disposable_schema.sql
+          psql -X -v ON_ERROR_STOP=1 -f supabase/migrations/20271117110000_assign_professor_multiplas_turmas.sql
+          psql -X -v ON_ERROR_STOP=1 -f supabase/migrations/20271117111500_professor_assignment_roster_academic_year.sql
+          psql -X -v ON_ERROR_STOP=1 -f supabase/migrations/20271117172000_trocar_professor_turma_disciplina_atomic.sql
+      - name: Apply only the additional migration
+        run: psql -X -v ON_ERROR_STOP=1 --single-transaction -f supabase/migrations/20271204034000_teacher_workload_docencia.sql
+      - name: Verify tenant isolation, constraints and RPC permissions
+        run: psql -X -v ON_ERROR_STOP=1 -f supabase/migration_drafts/teacher_workload_full_schema_checks.sql
