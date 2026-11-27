@@ -177,3 +177,24 @@ describe('Troca explícita de docente: segurança e UI', () => {
     assert.match(replaceMigration, /REVOKE ALL ON FUNCTION public\.trocar_professor_turma_disciplina_atomic/)
   })
 })
+
+describe('Carga lectiva: edição contextual sem perder atribuição', () => {
+  const editor = readFileSync(new URL('../../src/components/professores/TeacherWorkloadEditor.tsx', import.meta.url), 'utf8')
+  const page = readFileSync(new URL('../../src/app/escola/[id]/(portal)/professores/page.tsx', import.meta.url), 'utf8')
+  const workloadRoute = readFileSync(new URL('../../src/app/api/escolas/[id]/professores/[profileId]/carga-lectiva/route.ts', import.meta.url), 'utf8')
+  it('reutiliza o mesmo editor no perfil e na atribuição', () => {
+    assert.match(page, /<TeacherWorkloadEditor/)
+    assert.match(modal, /<TeacherWorkloadEditor/)
+    assert.match(editor, /Editar carga lectiva/)
+    assert.match(editor, /\/carga-lectiva/)
+    assert.match(editor, /Math\.round\(parsed \* 60\)/)
+    assert.match(workloadRoute, /configure_teacher_workload_atomic/)
+    assert.match(workloadRoute, /authorizeTeacherManage/)
+  })
+  it('mantém professor e disciplina seleccionados após bloqueio e só repete por acção explícita', () => {
+    assert.match(modal, /setSingleRetry\(\{ matrizId: disc\.curso_matriz_id, userId: professor\.user_id/)
+    assert.match(modal, /Tentar atribuir novamente/)
+    assert.match(modal, /handleAssign\(disc, p\)/)
+    assert.match(modal, /onSaved=\{\(\) => \{ setClassError\(null\); setClassReviewed\(false\); \}\}/)
+  })
+})
