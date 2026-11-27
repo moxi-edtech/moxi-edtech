@@ -16,7 +16,7 @@ test("separadores académicos são internos, com histórico e sem router.refresh
   assert.match(workspace, /visited\.includes\("documentos"\)/);
   assert.match(workspace, /visited\.includes\("disciplinas"\)/);
   assert.match(workspace, /<TabNotas embedded onOpenDocuments=/);
-  assert.match(workspace, /<TabDocumentos embedded focusServiceCode=/);
+  assert.match(workspace, /<TabDocumentos embedded active=\{activeTab === "documentos"\} focusServiceCode=/);
   assert.doesNotMatch(workspace, /router\.refresh|router\.push|router\.replace|window\.location\.assign/);
 });
 
