@@ -106,6 +106,7 @@ export default function MobileFormulaInput({initial,onInsert,onCancel,disabled=f
  if(recursive)return <RecursiveFormulaEditor initial={recursive} onInsert={onInsert} onBack={()=>{if(recursiveOrigin==="existing")onCancel();else setRecursive(null);}} disabled={disabled} label={insertLabel}/>;
  return <section aria-label="Editor matemático" className="min-w-0 space-y-3">
   <div><h3 className="text-base font-semibold text-klasse-green dark:text-foreground">Expressão matemática</h3><p className="text-xs text-muted-foreground">Escolha um modelo ou combine termos e operadores.</p></div>
+  {!initial&&!parts.length&&!chosen&&parameterSource===null&&<Button type="button" tone="gold" className="w-full" disabled={disabled} onClick={()=>{setRecursiveOrigin("model");setRecursive([]);setError("");}}><Plus/> Criar expressão livre</Button>}
   {picking?(parameterSource!==null?<div className="space-y-3">
    <p className="text-sm font-medium">Editar valores da fórmula</p>
    <div aria-label="Pré-visualização dos valores" className="flex min-h-24 items-center justify-center overflow-x-auto rounded-xl border border-border bg-card p-3 text-2xl"><Formula value={parameterSlots.length?parameterDraft:parameterSource}/></div>
