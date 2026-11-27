@@ -22,9 +22,25 @@ const BodySchema = z.object({
   area_formacao: z.string().trim().nullable().optional(),
   vinculo_contratual: z.enum(['Efetivo', 'Colaborador', 'Eventual']),
   carga_horaria_maxima: z.number().int().positive(),
+  carga_lectiva_unidade: z.enum(['tempos', 'minutos']).optional(),
+  carga_lectiva_limite: z.number().int().positive().max(10080).optional(),
+  carga_contratual_minutos: z.number().int().positive().max(10080).nullable().optional(),
   turnos_disponiveis: z.array(TurnosSchema).default([]),
   disciplinas_habilitadas: z.array(z.string().uuid()).default([]),
   is_diretor_turma: z.boolean().default(false),
+}).superRefine((body, ctx) => {
+  const unit = body.carga_lectiva_unidade
+  const limit = body.carga_lectiva_limite
+  const contract = body.carga_contratual_minutos
+  if ((unit === undefined) !== (limit === undefined) || (unit === undefined && contract != null)) {
+    ctx.addIssue({ code: 'custom', path: ['carga_lectiva_limite'], message: 'Informe a unidade e o limite lectivo.' })
+  }
+  if (unit === 'tempos' && limit !== undefined && limit > 100) {
+    ctx.addIssue({ code: 'custom', path: ['carga_lectiva_limite'], message: 'Limite máximo de 100 tempos.' })
+  }
+  if (unit === 'minutos' && limit !== undefined && contract != null && limit > contract) {
+    ctx.addIssue({ code: 'custom', path: ['carga_lectiva_limite'], message: 'O limite lectivo não pode exceder a carga contratual.' })
+  }
 })
 
 const generateStrongPassword = (len = 12) => {
@@ -291,6 +307,11 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
           area_formacao: body.area_formacao || null,
           vinculo_contratual: body.vinculo_contratual,
           carga_horaria_maxima: body.carga_horaria_maxima,
+          ...(body.carga_lectiva_unidade !== undefined ? {
+            carga_lectiva_unidade: body.carga_lectiva_unidade,
+            carga_lectiva_limite: body.carga_lectiva_limite,
+            carga_contratual_minutos: body.carga_contratual_minutos ?? null,
+          } : {}),
           turnos_disponiveis: body.turnos_disponiveis,
           is_diretor_turma: body.is_diretor_turma,
         },

@@ -28,23 +28,25 @@ LANGUAGE sql STABLE AS $$
   )
 $$;
 
-CREATE TABLE public.profiles (user_id uuid PRIMARY KEY, nome text, telefone text);
+CREATE TYPE public.user_role AS ENUM ('professor','admin');
+CREATE TABLE public.profiles (user_id uuid PRIMARY KEY, nome text, telefone text, email text, role public.user_role, escola_id uuid, current_escola_id uuid);
 CREATE TABLE public.professores (
-  id uuid PRIMARY KEY, escola_id uuid NOT NULL, profile_id uuid NOT NULL
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(), escola_id uuid NOT NULL, profile_id uuid NOT NULL, created_at timestamptz DEFAULT now()
 );
 CREATE TABLE public.teachers (
-  id uuid PRIMARY KEY, escola_id uuid NOT NULL, profile_id uuid NOT NULL,
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(), escola_id uuid NOT NULL, profile_id uuid NOT NULL,
   nome_completo text, genero text, data_nascimento date, numero_bi text,
   telefone_principal text, habilitacoes text, area_formacao text,
   vinculo_contratual text, carga_horaria_maxima integer,
-  turnos_disponiveis text[], is_diretor_turma boolean
+  turnos_disponiveis text[], is_diretor_turma boolean, updated_at timestamptz, updated_by uuid,
+  UNIQUE(escola_id, profile_id)
 );
 CREATE TABLE public.disciplinas_catalogo (
   id uuid PRIMARY KEY, escola_id uuid NOT NULL, nome text
 );
 CREATE TABLE public.teacher_skills (
   escola_id uuid NOT NULL, teacher_id uuid NOT NULL, disciplina_id uuid NOT NULL,
-  UNIQUE (escola_id, teacher_id, disciplina_id)
+  UNIQUE (escola_id, teacher_id, disciplina_id), UNIQUE(teacher_id, disciplina_id)
 );
 CREATE TABLE public.anos_letivos (
   id uuid PRIMARY KEY, escola_id uuid NOT NULL, ano integer, ativo boolean,
@@ -52,7 +54,7 @@ CREATE TABLE public.anos_letivos (
 );
 CREATE TABLE public.turmas (
   id uuid PRIMARY KEY, escola_id uuid NOT NULL, session_id uuid,
-  curso_id uuid, classe_id uuid, nome text, status_fecho text
+  curso_id uuid, classe_id uuid, nome text, status_fecho text, turno text
 );
 CREATE TABLE public.curso_curriculos (
   id uuid PRIMARY KEY, escola_id uuid NOT NULL, ano_letivo_id uuid NOT NULL,
@@ -81,7 +83,7 @@ CREATE TABLE public.horario_versoes (
 );
 CREATE TABLE public.horario_slots (
   id uuid PRIMARY KEY, escola_id uuid NOT NULL,
-  dia_semana integer, inicio time, fim time, is_intervalo boolean
+  dia_semana integer, inicio time, fim time, is_intervalo boolean, turno_id text
 );
 CREATE TABLE public.quadro_horarios (
   id uuid PRIMARY KEY, escola_id uuid NOT NULL, turma_id uuid NOT NULL,

@@ -3,12 +3,13 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { X, UserCheck, UserX, BookOpen, AlertCircle, Loader2, Check, Plus, ChevronDown } from "lucide-react";
 import { useToast } from "@/components/feedback/FeedbackSystem";
+import TeacherWorkloadEditor from "@/components/professores/TeacherWorkloadEditor";
 import { planTurmaModalBatch, selectedProfessorForLegacyId } from "@/lib/professores/turma-modal-assignment";
 import type { AssignmentCandidate } from "@/lib/professores/assignment-candidates";
-import type { TurmaItem } from "~/types/turmas";
 
 interface TurmaAtribuirProfessoresModalProps {
-  turma: TurmaItem;
+  turma: { id: string; nome?: string | null; turno?: string | null; ano_letivo?: number | string | null; curso_nome?: string | null; classe_nome?: string | null; turma_codigo?: string | null };
+  initialDisciplinaId?: string | null;
   escolaId: string;
   isOpen: boolean;
   onClose: () => void;
@@ -57,15 +58,17 @@ async function fetchProfessores(escolaId: string): Promise<ProfessorOption[]> {
 }
 
 export default function TurmaAtribuirProfessoresModal({
-  turma, escolaId, isOpen, onClose, onUpdated,
+  turma, escolaId, isOpen, onClose, onUpdated, initialDisciplinaId,
 }: TurmaAtribuirProfessoresModalProps) {
   const { success, error: toastError } = useToast();
   const toastErrorRef = useRef(toastError);
+  const focusedRowRef = useRef<HTMLElement | null>(null);
   useEffect(() => { toastErrorRef.current = toastError; }, [toastError]);
 
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [savingId, setSavingId] = useState<string | null>(null);
+  const [singleRetry, setSingleRetry] = useState<{ matrizId: string; userId: string; error: string } | null>(null);
   const [replaceDisciplinaId, setReplaceDisciplinaId] = useState<string | null>(null);
   const [replaceProfessorUserId, setReplaceProfessorUserId] = useState("");
   const [replaceReviewed, setReplaceReviewed] = useState(false);
@@ -81,6 +84,17 @@ export default function TurmaAtribuirProfessoresModal({
   const [bulkLoading, setBulkLoading] = useState(false);
   const [bulkSaving, setBulkSaving] = useState(false);
   const [bulkError, setBulkError] = useState<string | null>(null);
+  const [classOpen, setClassOpen] = useState(false);
+  const [classProfessor, setClassProfessor] = useState("");
+  const [classScope, setClassScope] = useState<"all" | "some">("all");
+  const [classSelected, setClassSelected] = useState<string[]>([]);
+  const [classError, setClassError] = useState<string | null>(null);
+  const [classReviewed, setClassReviewed] = useState(false);
+  const classTeacher = professores.find((p) => p.user_id === classProfessor);
+  const published = disciplinas.filter((d) => d.curriculo_status === "published");
+  const classTargets = classScope === "all" ? published : published.filter((d) => classSelected.includes(d.curso_matriz_id));
+  const classConflicts = classTargets.filter((d) => d.professor?.id && d.professor.id !== classTeacher?.professor_id).length;
+  const classBusy = savingId === "class";
 
   const refreshDisciplinas = useCallback(async () => {
     const res = await fetch(`/api/secretaria/turmas/${turma.id}/disciplinas?escola_id=${escolaId}`, { cache: "no-store" });
@@ -100,6 +114,8 @@ export default function TurmaAtribuirProfessoresModal({
       const [items, options] = await Promise.all([refreshDisciplinas(), fetchProfessores(escolaId)]);
       setDisciplinas(items);
       setProfessores(options);
+      const focused = items.find((d) => d.curso_matriz_id === initialDisciplinaId && d.professor?.id && d.curriculo_status === "published");
+      if (focused) setReplaceDisciplinaId(focused.curso_matriz_id);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Erro ao carregar professores e disciplinas.";
       setLoadError(message);
@@ -107,11 +123,15 @@ export default function TurmaAtribuirProfessoresModal({
     } finally {
       setLoading(false);
     }
-  }, [isOpen, turma.id, escolaId, refreshDisciplinas]);
+  }, [isOpen, turma.id, escolaId, refreshDisciplinas, initialDisciplinaId]);
 
   useEffect(() => { void loadData(); }, [loadData]);
   useEffect(() => {
+    if (isOpen && !loading && initialDisciplinaId) focusedRowRef.current?.scrollIntoView({ block: "nearest" });
+  }, [isOpen, loading, initialDisciplinaId]);
+  useEffect(() => {
     if (!isOpen) {
+      setSingleRetry(null);
       setBulkDisciplinaId(null);
       setBulkCandidates([]);
       setBulkSelected([]);
@@ -120,8 +140,14 @@ export default function TurmaAtribuirProfessoresModal({
       setReplaceProfessorUserId("");
       setReplaceReviewed(false);
       setReplaceError(null);
+      setClassOpen(false);
+      setClassProfessor("");
+      setClassScope("all");
+      setClassSelected([]);
+      setClassError(null);
+      setClassReviewed(false);
     }
-  }, [isOpen]);
+  }, [isOpen, turma.id, escolaId]);
 
   const activeDisciplina = useMemo(
     () => disciplinas.find((disc) => disc.curso_matriz_id === bulkDisciplinaId) ?? null,
@@ -165,8 +191,54 @@ export default function TurmaAtribuirProfessoresModal({
     );
   }, [disciplinas, search]);
 
+  const handleClassAssign = async () => {
+    if (!classTeacher?.professor_id || savingId || bulkSaving || loading) return;
+    const selected = classTargets;
+    if (classScope === "all" && (published.length !== disciplinas.length || published.length === 0)) return;
+    if (classScope === "some" && (selected.length === 0 || selected.length !== classSelected.length)) return;
+    if (classConflicts > 0 && !classReviewed) { setClassReviewed(true); return; }
+    setSavingId("class");
+    setClassError(null);
+    try {
+      const response = await fetch(`/api/escolas/${escolaId}/professores/docencia-turma`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          turma_id: turma.id,
+          ...(classConflicts > 0 ? {
+            regime: "trocar_disciplinas",
+            professor_id: classTeacher.professor_id,
+            scope: classScope,
+            expected: selected.map((d) => ({ matriz_id: d.curso_matriz_id, professor_id: d.professor?.id ?? null })),
+          } : {
+            regime: classScope === "all" ? "monodocencia" : "misto",
+            professor_id: classTeacher.professor_id,
+            ...(classScope === "some" ? { matriz_ids: selected.map((d) => d.curso_matriz_id) } : {}),
+          }),
+        }),
+      });
+      const result = await response.json().catch(() => null);
+      if (!response.ok || !result?.ok) throw new Error(result?.error || "Não foi possível atribuir o professor.");
+      setClassOpen(false);
+      setClassProfessor("");
+      setClassSelected([]);
+      setClassReviewed(false);
+      success(classConflicts > 0 ? "Professor substituído" : "Professor atribuído", "As disciplinas seleccionadas foram guardadas. O histórico foi preservado.");
+      await refreshDisciplinas().catch(() => {
+        toastError("Actualizar disciplinas", "A atribuição foi guardada. Reabra a turma para ver os dados actualizados.");
+      });
+      onUpdated?.();
+    } catch (err) {
+      setClassReviewed(false);
+      setClassError(err instanceof Error ? err.message : "Não foi possível atribuir o professor.");
+      await refreshDisciplinas().catch(() => null);
+    } finally {
+      setSavingId(null);
+    }
+  };
+
   const toggleBulk = (disc: DisciplinaItem) => {
     if (savingId || bulkSaving) return;
+    setClassOpen(false);
     if (bulkDisciplinaId === disc.curso_matriz_id) {
       setBulkDisciplinaId(null);
       return;
@@ -183,6 +255,7 @@ export default function TurmaAtribuirProfessoresModal({
 
   const toggleReplace = (disc: DisciplinaItem) => {
     if (savingId || bulkSaving) return;
+    setClassOpen(false);
     if (replaceDisciplinaId === disc.curso_matriz_id) {
       setReplaceDisciplinaId(null);
     } else {
@@ -214,11 +287,11 @@ export default function TurmaAtribuirProfessoresModal({
       });
       const result = await res.json().catch(() => null);
       if (!res.ok || !result?.ok) throw new Error(result?.error || "Não foi possível trocar o professor.");
-      await refreshDisciplinas();
+      await refreshDisciplinas().catch(() => { toastError("Actualizar disciplinas", "A troca foi guardada. Reabra a turma para ver os dados actualizados."); });
       setReplaceDisciplinaId(null);
       setReplaceReviewed(false);
       setReplaceProfessorUserId("");
-      success("Professor substituído", "A atribuição e o horário foram atualizados. O histórico foi preservado.");
+      success("Professor substituído", "A atribuição académica foi actualizada. O histórico e os horários publicados foram preservados.");
       onUpdated?.();
     } catch (error) {
       setReplaceError(error instanceof Error ? error.message : "Falha ao trocar professor.");
@@ -245,11 +318,14 @@ export default function TurmaAtribuirProfessoresModal({
       });
       const json = await res.json().catch(() => null);
       if (!res.ok || !json?.ok) throw new Error(json?.error || "Falha ao atribuir professor.");
-      await refreshDisciplinas();
+      await refreshDisciplinas().catch(() => { toastError("Actualizar disciplinas", "A atribuição foi guardada. Reabra a turma para ver os dados actualizados."); });
+      setSingleRetry(null);
       success("Atribuição guardada", "O professor foi associado à turma.");
       onUpdated?.();
     } catch (err) {
-      toastError("Erro", err instanceof Error ? err.message : "Falha ao atribuir professor.");
+      const message = err instanceof Error ? err.message : "Falha ao atribuir professor.";
+      setSingleRetry({ matrizId: disc.curso_matriz_id, userId: professor.user_id, error: message });
+      toastError("Erro", message);
       // Refresh after a stale write, rather than displaying a professor who was not saved.
       await refreshDisciplinas().catch(() => null);
     } finally {
@@ -339,6 +415,90 @@ export default function TurmaAtribuirProfessoresModal({
         </div>
 
         <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-4 sm:p-6">
+          {!loading && !loadError && published.length > 0 && (
+            <section className="rounded-xl border border-border bg-card p-4">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <UserCheck size={20} className="shrink-0 text-klasse-green"/>
+                  <div>
+                    <h3 className="text-sm font-semibold text-foreground">Um professor para a turma</h3>
+                    <p className="text-xs text-muted-foreground">Atribua ou troque o professor de várias disciplinas de uma só vez.</p>
+                  </div>
+                </div>
+                <button type="button" aria-expanded={classOpen} disabled={Boolean(savingId) || bulkSaving}
+                  onClick={() => {
+                    setClassOpen(!classOpen);
+                    setBulkDisciplinaId(null);
+                    setReplaceDisciplinaId(null);
+                    setClassError(null);
+                    setClassReviewed(false);
+                  }}
+                  className="inline-flex items-center gap-2 rounded-xl border border-border px-3 py-2 text-sm font-semibold text-klasse-green disabled:opacity-50">
+                  {classOpen ? "Cancelar" : <><Plus size={16}/> Gerir professor</>}
+                </button>
+              </div>
+              {classOpen && (
+                <div className="mt-4 space-y-3 border-t border-border pt-3">
+                  <label className="block space-y-1">
+                    <span className="text-sm font-medium">Professor</span>
+                    <select className={inputClass} value={classProfessor} disabled={Boolean(savingId) || bulkSaving}
+                      onChange={(e) => { setClassProfessor(e.target.value); setClassSelected([]); setClassError(null); setClassReviewed(false); }}>
+                      <option value="">Seleccionar professor</option>
+                      {professores.filter((p) => p.professor_id).map((p) => <option key={p.user_id} value={p.user_id}>{p.nome}</option>)}
+                    </select>
+                  </label>
+                  {classTeacher?.professor_id && <TeacherWorkloadEditor key={classTeacher.user_id}
+                    escolaId={escolaId} profileId={classTeacher.user_id} name={classTeacher.nome}
+                    disabled={Boolean(savingId) || bulkSaving} onSaved={() => { setClassError(null); setClassReviewed(false); }}/>}
+                  <fieldset disabled={Boolean(savingId) || bulkSaving} className="space-y-2">
+                    <legend className="mb-1 text-sm font-medium">Disciplinas a atribuir</legend>
+                    <label className="flex items-center gap-2 text-sm">
+                      <input type="radio" name={`class-scope-${turma.id}`} checked={classScope === "all"}
+                        onChange={() => { setClassScope("all"); setClassError(null); setClassReviewed(false); }} className="accent-klasse-gold"/>
+                      Todas as disciplinas
+                    </label>
+                    <label className="flex items-center gap-2 text-sm">
+                      <input type="radio" name={`class-scope-${turma.id}`} checked={classScope === "some"}
+                        onChange={() => { setClassScope("some"); setClassError(null); setClassReviewed(false); }} className="accent-klasse-gold"/>
+                      Escolher disciplinas
+                    </label>
+                    {classScope === "some" && classTeacher && (
+                      <div className="max-h-52 divide-y divide-border overflow-y-auto rounded-xl border border-border">
+                        {published.map((d) => {
+                          const occupied = Boolean(d.professor?.id && d.professor.id !== classTeacher.professor_id);
+                          return <label key={d.curso_matriz_id} className="flex items-center gap-2 px-3 py-2 text-sm">
+                            <input type="checkbox" className="accent-klasse-gold"
+                              checked={classSelected.includes(d.curso_matriz_id)}
+                              onChange={(e) => { setClassReviewed(false); setClassSelected((prev) => e.target.checked
+                                ? [...prev.filter((id) => id !== d.curso_matriz_id), d.curso_matriz_id]
+                                : prev.filter((id) => id !== d.curso_matriz_id)); }}/>
+                            <span>{d.disciplina.nome}</span>
+                            {occupied && <span className="ml-auto text-xs text-muted-foreground">{d.professor?.nome || "Já atribuída"}</span>}
+                          </label>;
+                        })}
+                      </div>
+                    )}
+                  </fieldset>
+                  {classTeacher && classScope === "all" && published.length !== disciplinas.length && (
+                    <p role="status" className="text-xs text-amber-700">Existem disciplinas ainda não publicadas. Escolha as disciplinas disponíveis.</p>
+                  )}
+                  {classTeacher && classConflicts > 0 && (
+                    <p role="status" className="rounded-xl border border-border bg-muted p-3 text-sm">
+                      {classReviewed ? "Confirme a substituição de" : "Esta operação substituirá o professor de"} {classConflicts} disciplina(s) por <strong>{classTeacher.nome}</strong>. Notas, frequências e horários publicados serão preservados.
+                    </p>
+                  )}
+                  {classError && <p role="alert" className="text-sm text-red-600">{classError}</p>}
+                  <button type="button" onClick={() => void handleClassAssign()}
+                    disabled={!classTeacher?.professor_id || Boolean(savingId) || bulkSaving ||
+                      (classScope === "all" ? published.length !== disciplinas.length : classSelected.length === 0)}
+                    className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-klasse-gold px-4 py-2.5 text-sm font-semibold text-klasse-gold-900 disabled:opacity-50">
+                    {classBusy ? <Loader2 size={16} className="animate-spin"/> : <Check size={16}/>}
+                    {classConflicts > 0 ? (classReviewed ? "Confirmar troca" : "Rever troca") : classScope === "all" ? "Atribuir turma completa" : "Atribuir disciplinas"}
+                  </button>
+                </div>
+              )}
+            </section>
+          )}
           {loading ? (
             <div className="flex items-center justify-center gap-2 py-12 text-sm text-muted-foreground">
               <Loader2 size={18} className="animate-spin text-klasse-gold"/> A carregar disciplinas e professores…
@@ -367,7 +527,7 @@ export default function TurmaAtribuirProfessoresModal({
               ? bulkCandidates.filter((item) => bulkSelected.includes(item.turma_id))
               : [];
             return (
-              <section key={disc.curso_matriz_id} className="rounded-xl border border-border bg-card p-4">
+              <section key={disc.curso_matriz_id} ref={disc.curso_matriz_id === initialDisciplinaId ? focusedRowRef : undefined} className="rounded-xl border border-border bg-card p-4">
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div className="min-w-0">
                     <div className="flex items-center gap-2">
@@ -393,6 +553,19 @@ export default function TurmaAtribuirProfessoresModal({
                   )}
                   {isSaving && <Loader2 aria-label="A guardar" size={17} className="animate-spin text-klasse-gold"/>}
                 </div>
+                {!hasProf && isPublished && singleRetry?.matrizId === disc.curso_matriz_id && (
+                  <div className="mt-3 space-y-2 rounded-xl border border-border bg-muted p-3">
+                    <p role="alert" className="text-sm text-red-600">{singleRetry.error}</p>
+                    <TeacherWorkloadEditor key={singleRetry.userId} escolaId={escolaId} profileId={singleRetry.userId}
+                      name={professores.find(p => p.user_id === singleRetry.userId)?.nome} disabled={Boolean(savingId) || bulkSaving}/>
+                    <div className="flex flex-wrap gap-2">
+                      <button type="button" disabled={Boolean(savingId) || bulkSaving}
+                        onClick={() => { const p = professores.find(item => item.user_id === singleRetry.userId); if (p) void handleAssign(disc, p); }}
+                        className="rounded-xl bg-klasse-gold px-3 py-2 text-sm font-semibold text-klasse-gold-900 disabled:opacity-50">Tentar atribuir novamente</button>
+                      <button type="button" onClick={() => setSingleRetry(null)} className="rounded-xl border border-border bg-card px-3 py-2 text-sm">Cancelar</button>
+                    </div>
+                  </div>
+                )}
                 {!isPublished && <p className="mt-2 text-xs text-amber-700">Atribuição indisponível: a matriz desta disciplina ainda não está publicada.</p>}
                 {hasProf && isPublished && (
                   <button type="button" disabled={Boolean(savingId) || bulkSaving}
@@ -423,6 +596,9 @@ export default function TurmaAtribuirProfessoresModal({
                           .map((prof) => <option key={prof.user_id} value={prof.user_id}>{prof.nome}</option>)}
                       </select>
                     </label>
+                    {replaceProfessorUserId && <TeacherWorkloadEditor key={replaceProfessorUserId}
+                      escolaId={escolaId} profileId={replaceProfessorUserId} disabled={Boolean(savingId) || bulkSaving}
+                      onSaved={() => { setReplaceError(null); setReplaceReviewed(false); }}/>}
                     {replaceError && <p role="alert" className="text-xs text-red-600">{replaceError}</p>}
                     {replaceReviewed && replaceProfessorUserId && (
                       <p role="status" className="rounded-xl border border-border bg-card p-3 text-xs text-foreground">
@@ -465,6 +641,9 @@ export default function TurmaAtribuirProfessoresModal({
                         {professores.map((prof) => <option key={prof.user_id} value={prof.user_id}>{prof.nome}</option>)}
                       </select>
                     </label>
+                    {selectedBulkTeacher?.professor_id && <TeacherWorkloadEditor key={selectedBulkTeacher.user_id}
+                      escolaId={escolaId} profileId={selectedBulkTeacher.user_id} disabled={Boolean(savingId) || bulkSaving}
+                      onSaved={() => setBulkError(null)}/>}
                     {sourceAlreadyAssigned && !currentTeacher && (
                       <p role="alert" className="text-xs text-amber-700">Não foi possível identificar o professor atual. Recarregue os dados antes de distribuir a disciplina.</p>
                     )}

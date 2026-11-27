@@ -1,0 +1,49 @@
+name: Teacher workload — incremental migration
+on:
+  pull_request:
+    paths:
+      - 'supabase/migrations/20271204034000_teacher_workload_docencia.sql'
+      - 'supabase/tests/teacher_assignment_disposable_*.sql'
+      - 'supabase/migration_drafts/teacher_workload_full_schema_checks.sql'
+      - '.github/workflows/teacher-workload-full-schema.yml'
+permissions:
+  contents: read
+jobs:
+  incremental-schema:
+    name: Incremental migration and security contracts (PostgreSQL 17)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: klasse_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d klasse_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      PGHOST: 127.0.0.1
+      PGPORT: '5432'
+      PGUSER: postgres
+      PGPASSWORD: postgres
+      PGDATABASE: klasse_test
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Prepare only the academic dependency fixture
+        run: |
+          psql -X -v ON_ERROR_STOP=1 -f supabase/tests/teacher_assignment_disposable_schema.sql
+          psql -X -v ON_ERROR_STOP=1 -f supabase/migrations/20271117110000_assign_professor_multiplas_turmas.sql
+          psql -X -v ON_ERROR_STOP=1 -f supabase/migrations/20271117111500_professor_assignment_roster_academic_year.sql
+          psql -X -v ON_ERROR_STOP=1 -f supabase/migrations/20271117172000_trocar_professor_turma_disciplina_atomic.sql
+      - name: Apply only the additional migration
+        run: psql -X -v ON_ERROR_STOP=1 --single-transaction -f supabase/migrations/20271204034000_teacher_workload_docencia.sql
+      - name: Verify tenant isolation, constraints and RPC permissions
+        run: psql -X -v ON_ERROR_STOP=1 -f supabase/migration_drafts/teacher_workload_full_schema_checks.sql
