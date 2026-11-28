@@ -10,6 +10,7 @@ export const workspaceTitles = {
   "/super-admin/onboarding": "Onboarding",
   "/super-admin/cobrancas": "Cobranças",
   "/super-admin/usuarios": "Utilizadores",
+  "/super-admin/usuarios/activos": "Utilizadores activos",
   "/super-admin/usuarios/novo": "Novo utilizador",
   "/super-admin/health": "Saúde e alertas",
   "/super-admin/diagnostics": "Diagnósticos",

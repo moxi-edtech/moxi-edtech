@@ -885,6 +885,8 @@ export type DBWithRPC = Omit<Database, "public"> & {
       };
     };
     Functions: Database["public"]["Functions"] & {
+      klasse_touch_presence: { Args: Record<string, never>; Returns: undefined };
+      klasse_admin_active_users: { Args: { p_limit?: number; p_offset?: number; p_search?: string }; Returns: Json };
       command_center_class_roster_summary: {
         Args: {
           p_escola_id: string;

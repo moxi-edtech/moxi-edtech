@@ -2,7 +2,7 @@
 
 import { useCallback, useMemo, useRef, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
-import { Building2, ChevronRight, Clock3, Plus, Shield, Users, Wallet, ArrowLeft } from "lucide-react";
+import { Activity, Building2, ChevronRight, Clock3, Plus, Shield, Users, Wallet, ArrowLeft } from "lucide-react";
 import dynamic from "next/dynamic";
 import AcaoRapidaCard from "@/components/shared/AcaoRapidaCard";
 import { ModalShell } from "@/components/ui/ModalShell";
@@ -32,6 +32,7 @@ const Centers = dynamic(() => import("./centros-formacao/CentrosFormacaoTableCli
 const NewCenter = dynamic(() => import("@/app/super-admin/centros-formacao/novo/page"), opts);
 const Communication = dynamic(() => import("@/app/super-admin/comunicacao/page"), opts);
 const EmailPreview = dynamic(() => import("@/app/super-admin/debug/email-preview/page"), opts);
+const ActiveUsers = dynamic(() => import("./ActiveUsersWorkspace"), opts);
 const SchoolMonitor = dynamic(() => import("./escola-monitor/SchoolMonitorWorkspace"), opts);
 
 function WorkspaceBody({ route }: { route: WorkspaceRoute }) {
@@ -41,6 +42,7 @@ function WorkspaceBody({ route }: { route: WorkspaceRoute }) {
     case "/super-admin/escolas/nova": return <NewSchool />;
     case "/super-admin/onboarding": return <Onboarding />;
     case "/super-admin/cobrancas": return <Tabs defaultValue="assinaturas" className="min-w-0"><TabsList><TabsTrigger value="assinaturas">Subscrições</TabsTrigger><TabsTrigger value="historico">Histórico de receitas</TabsTrigger></TabsList><TabsContent value="assinaturas"><Billing /></TabsContent><TabsContent value="historico"><BillingHistory /></TabsContent></Tabs>;
+    case "/super-admin/usuarios/activos": return <ActiveUsers />;
     case "/super-admin/usuarios": return <><AuditPageView portal="super_admin" acao="PAGE_VIEW" entity="usuarios_list" /><UsersList /></>;
     case "/super-admin/usuarios/novo": return <NewUser />;
     case "/super-admin/health": return <Health />;
@@ -59,7 +61,7 @@ function WorkspaceBody({ route }: { route: WorkspaceRoute }) {
   }
 }
 
-export default function CommandCenterWorkspace({ children, afterActions, date, networkStatus, pending, risk }: { children: ReactNode; afterActions: ReactNode; date: string; networkStatus: string; pending?: number; risk?: number }) {
+export default function CommandCenterWorkspace({ children, afterActions, date, networkStatus, pending, risk, activeUsers }: { children: ReactNode; afterActions: ReactNode; date: string; networkStatus: string; pending?: number; risk?: number; activeUsers: number | null }) {
   const router = useRouter();
   const [stack, setStack] = useState<WorkspaceRoute[]>([]);
   const [revision, setRevision] = useState(0);
@@ -115,7 +117,13 @@ export default function CommandCenterWorkspace({ children, afterActions, date, n
       </div>
       <PortalSignature />
     </section>
-    {children}
+    <div className="grid gap-3 lg:grid-cols-[minmax(0,4fr)_minmax(0,1fr)]">
+      {children}
+      <button type="button" aria-haspopup="dialog" aria-expanded={current?.path === "/super-admin/usuarios/activos"} onClick={() => open("/super-admin/usuarios/activos")} className="group min-w-0 rounded-xl border border-border bg-card p-3 text-left hover:border-ring focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:p-4">
+        <span className="flex items-center justify-between gap-2"><span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-emerald/10 text-emerald dark:text-emerald-300"><Activity className="h-4 w-4" aria-hidden /></span><ChevronRight className="h-4 w-4 text-muted-foreground" aria-hidden /></span>
+        <span className="mt-3 block text-xs text-muted-foreground">Utilizadores activos</span><span className="mt-1 block text-xl font-semibold tabular-nums text-foreground">{activeUsers == null ? "—" : format(activeUsers)}</span><span className="mt-1 block text-xs text-muted-foreground">{activeUsers == null ? "Indisponível" : "Últimos 5 minutos"}</span>
+      </button>
+    </div>
     <section aria-labelledby="super-admin-actions-title" className="space-y-3">
       <h2 id="super-admin-actions-title" className="text-base font-semibold text-foreground">Ações rápidas</h2>
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{actions.map(({ href, label, icon: Icon, count, suffix, indicator }) => <AcaoRapidaCard key={href} dashboardCompact icon={<Icon />} label={label} sublabel={indicator ? count == null ? "Dados indisponíveis" : format(count) + suffix : undefined} unavailable={indicator && count == null} needsAttention={indicator && count != null && count > 0} onClick={() => open(href)} dialogOpen={current?.path === href} />)}</div>

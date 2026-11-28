@@ -7,7 +7,8 @@ import ChartsSection from "@/components/super-admin/ChartsSection";
 import SchoolsSection from "@/components/super-admin/SchoolsSection";
 import { calcularSaudeEscola } from "@/lib/super-admin/escola-saude-utils";
 import { isSuperAdminRole } from "@/lib/auth/requireSuperAdminAccess";
-import { supabaseServer } from "@/lib/supabaseServer";
+import { supabaseServerTyped } from "@/lib/supabaseServer";
+import type { DBWithRPC } from "@/types/supabase-augment";
 import type { ChartsData } from "@/lib/charts";
 
 export const dynamic = "force-dynamic";
@@ -30,7 +31,7 @@ function fulfilled<T>(result: PromiseSettledResult<T>): T | undefined {
 }
 
 export default async function SuperAdminDashboard() {
-  const supabase = await supabaseServer();
+  const supabase = await supabaseServerTyped<DBWithRPC>();
   const { data: auth, error: authError } = await supabase.auth.getUser();
   if (authError || !auth.user) redirect("/redirect");
   const { data: profile, error: profileError } = await supabase
@@ -47,6 +48,7 @@ export default async function SuperAdminDashboard() {
     (supabase.from("vw_pagamentos_status") as any).select("status, total", { count: "exact" }),
     supabase.from("audit_logs").select("id, created_at, action, entity, escola_id, escolas(nome)")
       .neq("action", "PAGE_VIEW").order("created_at", { ascending: false }).limit(8),
+    supabase.rpc("klasse_admin_active_users", { p_limit: 0, p_offset: 0, p_search: "" }),
   ] as const);
 
   const active = fulfilled(results[0]);
@@ -55,6 +57,9 @@ export default async function SuperAdminDashboard() {
   const health = fulfilled(results[3]);
   const payments = fulfilled(results[4]);
   const logs = fulfilled(results[5]);
+  const presence = fulfilled(results[6]);
+  const presenceData = presence?.data;
+  const activeUsers = !presence?.error && presenceData && typeof presenceData === "object" && !Array.isArray(presenceData) && typeof presenceData.total === "number" && Number.isSafeInteger(presenceData.total) && presenceData.total >= 0 ? presenceData.total : null;
 
   const schools = health && !health.error && Array.isArray(health.data) ? health.data as unknown as School[] : undefined;
   const now = Date.now();
@@ -93,7 +98,7 @@ export default async function SuperAdminDashboard() {
   return (
     <div data-testid="super-admin-command-center" className="min-w-0 space-y-6 pb-12">
       <DashboardHeader title="Visão geral" description="Gestão da plataforma KLASSE" largeDesktopTitle />
-      <CommandCenterWorkspace date={date} pending={pending} risk={risk} networkStatus={risk == null ? "Estado da rede indisponível" : schools?.length === 0 ? "Sem escolas para avaliar" : risk > 0 ? format(risk) + " escolas sem acesso recente" : "Nenhuma escola sem acesso recente"} afterActions={<>
+      <CommandCenterWorkspace date={date} pending={pending} risk={risk} activeUsers={activeUsers} networkStatus={risk == null ? "Estado da rede indisponível" : schools?.length === 0 ? "Sem escolas para avaliar" : risk > 0 ? format(risk) + " escolas sem acesso recente" : "Nenhuma escola sem acesso recente"} afterActions={<>
       <section aria-labelledby="super-admin-activity-title" className="min-w-0 space-y-3 rounded-xl border border-border bg-card p-4">
         <h2 id="super-admin-activity-title" className="text-base font-semibold text-foreground">Atividade recente</h2>
         {!logs || logs.error || !logs.data ? <p className="text-sm text-muted-foreground">Não foi possível carregar a atividade.</p> :
