@@ -1,5 +1,6 @@
 "use client"
 
+import { useSuperAdminWorkspace, useWorkspaceGuard } from "@/components/super-admin/workspace-navigation";
 import { useState } from "react"
 import { Button } from "@/components/ui/Button"
 import { useToast } from "@/components/feedback/FeedbackSystem"
@@ -16,9 +17,11 @@ export default function ConfirmActionModal({ action, escolaId, escolaNome, onClo
   const [reason, setReason] = useState('')
   const [busy, setBusy] = useState(false)
   const { success, error } = useToast()
+  const workspace = useSuperAdminWorkspace()
+  useWorkspaceGuard("school-confirm", busy, Boolean(reason))
 
   return (
-    <div role="dialog" aria-modal="true" aria-label="Confirmar ação" className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/50 p-4">
+    <div role={workspace ? "region" : "dialog"} aria-modal={workspace ? undefined : true} aria-label="Confirmar ação" className={workspace ? "flex justify-center py-4" : "fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/50 p-4"}>
       <div className="max-h-[calc(100dvh-2rem)] w-full max-w-md overflow-y-auto rounded-xl border border-border bg-card p-4 text-card-foreground shadow-xl sm:p-5">
         <h3 className="text-lg font-semibold text-foreground mb-2">Confirmar ação</h3>
         <p className="text-sm text-foreground/80">
@@ -49,7 +52,7 @@ export default function ConfirmActionModal({ action, escolaId, escolaNome, onClo
           </div>
         )}
         <div className="mt-5 flex items-center justify-end gap-2">
-          <Button onClick={onClose} variant="outline" tone="gray" size="sm">Cancelar</Button>
+          <Button disabled={busy} onClick={onClose} variant="outline" tone="gray" size="sm">Cancelar</Button>
           <Button
             disabled={busy}
             onClick={async () => {

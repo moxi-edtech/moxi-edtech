@@ -1,5 +1,7 @@
 "use client";
 
+import { useSuperAdminWorkspace, useWorkspaceGuard } from "@/components/super-admin/workspace-navigation";
+import { type ReactNode } from "react";
 import { useEffect, useState, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { 
@@ -33,10 +35,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Dialog,
   DialogContent,
-  DialogHeader,
   DialogTitle,
   DialogDescription,
-  DialogFooter,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
@@ -197,6 +197,7 @@ const fmtKz = (v: number) => {
 };
 
 export default function SuperAdminOnboardingPage() {
+  const workspace = useSuperAdminWorkspace();
   const [requests, setRequests] = useState<OnboardingRequest[]>([]);
   const [mLeads, setMLeads] = useState<MarketingLead[]>([]);
   const [uploads, setUploads] = useState<OnboardingUpload[]>([]);
@@ -217,6 +218,7 @@ export default function SuperAdminOnboardingPage() {
   // Provision modal states
   const [provisionModalOpen, setProvisionModalOpen] = useState(false);
   const [provisioning, setProvisioning] = useState(false);
+  useWorkspaceGuard("onboarding-provision", provisioning, provisionModalOpen);
   const [provisionTab, setProvisionTab] = useState<'existente' | 'nova'>('existente');
   const [existingSchools, setExistingSchools] = useState<ExistingSchoolOption[]>([]);
   const [loadingSchools, setLoadingSchools] = useState(false);
@@ -439,6 +441,7 @@ export default function SuperAdminOnboardingPage() {
 
       toast.success("Escola provisionada com sucesso!");
       setProvisionModalOpen(false);
+      workspace?.markChanged();
       loadData();
     } catch (err: any) {
       toast.error(err.message);
@@ -486,6 +489,7 @@ export default function SuperAdminOnboardingPage() {
 
       toast.success("Escola criada e provisionada com sucesso!");
       setProvisionModalOpen(false);
+      workspace?.markChanged();
       loadData();
     } catch (err: any) {
       toast.error(err.message);
@@ -604,7 +608,7 @@ export default function SuperAdminOnboardingPage() {
 
   return (
     <div className="min-w-0">
-      <div className="min-w-0 space-y-6">
+      <div hidden={Boolean(workspace && provisionModalOpen)} className="min-w-0 space-y-6">
         
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -1323,17 +1327,17 @@ export default function SuperAdminOnboardingPage() {
         </Tabs>
       </div>
 
-      <Dialog open={provisionModalOpen} onOpenChange={setProvisionModalOpen}>
-        <DialogContent className="sm:max-w-[550px] rounded-3xl border-border bg-card shadow-2xl p-6">
-          <DialogHeader className="space-y-1.5">
-            <DialogTitle className="text-xl font-black text-foreground tracking-tight flex items-center gap-2">
+      <ProvisionSurface embedded={Boolean(workspace)} open={provisionModalOpen} onOpenChange={(open) => { if (!provisioning) setProvisionModalOpen(open); }}>
+        <ProvisionContent embedded={Boolean(workspace)}>
+          <div className="space-y-1.5">
+            <ProvisionTitle embedded={Boolean(workspace)}>
               <Database className="w-5 h-5 text-emerald" />
               Provisionar Escola
-            </DialogTitle>
-            <DialogDescription className="text-xs font-medium text-muted-foreground">
+            </ProvisionTitle>
+            <ProvisionDescription embedded={Boolean(workspace)}>
               Vincule esta candidatura de onboarding a uma escola existente ou crie uma nova escola.
-            </DialogDescription>
-          </DialogHeader>
+            </ProvisionDescription>
+          </div>
 
           {/* Tab selectors */}
           <div className="flex bg-muted p-1 rounded-xl my-4">
@@ -1488,7 +1492,7 @@ export default function SuperAdminOnboardingPage() {
             </div>
           )}
 
-          <DialogFooter className="border-t border-border pt-4 mt-6">
+          <div className="flex flex-wrap justify-end gap-2 border-t border-border pt-4 mt-6">
             <Button
               variant="outline"
               onClick={() => setProvisionModalOpen(false)}
@@ -1516,9 +1520,25 @@ export default function SuperAdminOnboardingPage() {
                 Criar e Provisionar
               </Button>
             )}
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          </div>
+        </ProvisionContent>
+      </ProvisionSurface>
     </div>
   );
+}
+
+function ProvisionSurface({ embedded, open, onOpenChange, children }: { embedded: boolean; open: boolean; onOpenChange: (open: boolean) => void; children: ReactNode }) {
+  return embedded ? (open ? <>{children}</> : null) : <Dialog open={open} onOpenChange={onOpenChange}>{children}</Dialog>;
+}
+function ProvisionContent({ embedded, children }: { embedded: boolean; children: ReactNode }) {
+  const className = "space-y-4 rounded-xl border border-border bg-card p-6";
+  return embedded ? <section className={className}>{children}</section> : <DialogContent className={"sm:max-w-[550px] " + className}>{children}</DialogContent>;
+}
+function ProvisionTitle({ embedded, children }: { embedded: boolean; children: ReactNode }) {
+  const className = "text-xl font-semibold text-foreground flex items-center gap-2";
+  return embedded ? <h2 className={className}>{children}</h2> : <DialogTitle className={className}>{children}</DialogTitle>;
+}
+function ProvisionDescription({ embedded, children }: { embedded: boolean; children: ReactNode }) {
+  const className = "text-xs text-muted-foreground";
+  return embedded ? <p className={className}>{children}</p> : <DialogDescription className={className}>{children}</DialogDescription>;
 }

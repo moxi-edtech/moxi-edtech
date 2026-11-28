@@ -34,7 +34,7 @@ export function resolveWorkspaceRoute(href: string): WorkspaceRoute | null {
   if (Object.prototype.hasOwnProperty.call(workspaceTitles, path)) {
     return { href: path + url.search, path, title: workspaceTitles[path as keyof typeof workspaceTitles] };
   }
-  const match = path.match(/^\/super-admin\/escolas\/([a-f0-9-]{36})(?:\/edit)?$/i);
+  const match = path.match(/^\/super-admin\/escolas\/([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})(?:\/edit)?$/i);
   if (match) return { href: path + url.search, path, title: "Gerir escola", schoolId: match[1] };
   return null;
 }
@@ -54,11 +54,12 @@ export const useSuperAdminWorkspace = () => useContext(SuperAdminWorkspaceContex
 export function useWorkspaceGuard(key: string, busy: boolean, dirty = false) {
   const workspace = useSuperAdminWorkspace();
   const setGuard = workspace?.setGuard;
+  const scopedKey = (workspace?.route?.href ?? "dashboard") + ":" + key;
   useEffect(() => {
     if (!setGuard) return;
-    setGuard(key, busy ? "busy" : dirty ? "dirty" : null);
-    return () => setGuard(key, null);
-  }, [setGuard, key, busy, dirty]);
+    setGuard(scopedKey, busy ? "busy" : dirty ? "dirty" : null);
+    return () => setGuard(scopedKey, null);
+  }, [setGuard, scopedKey, busy, dirty]);
 }
 
 export function useWorkspaceNavigate() {

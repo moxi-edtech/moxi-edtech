@@ -1,5 +1,6 @@
 "use client";
 
+import { useSuperAdminWorkspace, useWorkspaceGuard } from "@/components/super-admin/workspace-navigation";
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabaseClient";
 import { toast } from "sonner";
@@ -15,6 +16,7 @@ interface Props {
 }
 
 export default function AssinaturaDetailsSlideover({ assinaturaId, onClose, onUpdated }: Props) {
+  const workspace = useSuperAdminWorkspace();
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -26,6 +28,7 @@ export default function AssinaturaDetailsSlideover({ assinaturaId, onClose, onUp
   const [valor, setValor] = useState(0);
   const [notas, setNotas] = useState("");
 
+  useWorkspaceGuard("subscription-detail", saving || sendingEmail, Boolean(data && (plano !== data.plano || ciclo !== data.ciclo || valor !== data.valor_kz || notas !== (data.notas_internas || ""))));
   const supabase = createClient();
 
   useEffect(() => {
@@ -113,8 +116,8 @@ export default function AssinaturaDetailsSlideover({ assinaturaId, onClose, onUp
   };
 
   if (loading) return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-end">
-      <div className="w-full max-w-md h-full bg-card shadow-2xl flex items-center justify-center">
+    <div className={workspace ? "flex min-h-40 items-center justify-center" : "fixed inset-0 z-[60] flex items-center justify-end"}>
+      <div className={workspace ? "p-6" : "w-full max-w-md h-full bg-card shadow-2xl flex items-center justify-center"}>
         <Spinner size={32} />
       </div>
     </div>
@@ -123,10 +126,10 @@ export default function AssinaturaDetailsSlideover({ assinaturaId, onClose, onUp
   return (
     <>
       {/* Backdrop */}
-      <div className="fixed inset-0 bg-black/40 z-[50] backdrop-blur-sm" onClick={onClose} />
+      {!workspace && <div className="fixed inset-0 bg-black/40 z-[50] backdrop-blur-sm" onClick={onClose} />}
       
       {/* Slideover */}
-      <div className="fixed inset-y-0 right-0 z-[60] w-full max-w-md bg-card shadow-2xl animate-in slide-in-from-right duration-300">
+      <div className={workspace ? "w-full rounded-xl border border-border bg-card" : "fixed inset-y-0 right-0 z-[60] w-full max-w-md bg-card shadow-2xl animate-in slide-in-from-right duration-300"}>
         <div className="h-full flex flex-col">
           
           {/* Header */}
@@ -135,7 +138,7 @@ export default function AssinaturaDetailsSlideover({ assinaturaId, onClose, onUp
               <h2 className="text-lg font-bold text-foreground">{data.escolas?.nome}</h2>
               <p className="text-[10px] text-muted-foreground font-mono uppercase tracking-widest">ID: {assinaturaId.slice(0, 13)}...</p>
             </div>
-            <button onClick={onClose} className="p-2 hover:bg-muted rounded-lg transition-colors">
+            <button disabled={saving || sendingEmail} onClick={onClose} className="p-2 hover:bg-muted rounded-lg transition-colors">
               <X className="h-5 w-5 text-muted-foreground" />
             </button>
           </div>
@@ -245,7 +248,7 @@ export default function AssinaturaDetailsSlideover({ assinaturaId, onClose, onUp
 
           {/* Footer */}
           <div className="p-6 border-t border-border bg-muted/50 flex gap-3">
-            <Button variant="outline" fullWidth onClick={onClose}>Cancelar</Button>
+            <Button variant="outline" fullWidth disabled={saving || sendingEmail} onClick={onClose}>Cancelar</Button>
             <Button 
               fullWidth 
               loading={saving} 

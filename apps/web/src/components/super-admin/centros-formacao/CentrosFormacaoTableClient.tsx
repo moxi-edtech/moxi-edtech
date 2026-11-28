@@ -1,5 +1,6 @@
 "use client";
 
+import { useSuperAdminWorkspace } from "@/components/super-admin/workspace-navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { WorkspaceLink as Link } from "@/components/super-admin/workspace-navigation";
 import { Button } from "@/components/ui/Button";
@@ -92,6 +93,7 @@ function getSubscriptionBadge(item: CentroItem) {
 }
 
 export default function CentrosFormacaoTableClient() {
+  const revision = useSuperAdminWorkspace()?.revision ?? 0;
   const [items, setItems] = useState<CentroItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -134,7 +136,7 @@ export default function CentrosFormacaoTableClient() {
 
   useEffect(() => {
     load();
-  }, [load]);
+  }, [load, revision]);
 
   const loadTeam = useCallback(async (escolaId: string, centroNome: string) => {
     try {

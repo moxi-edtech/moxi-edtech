@@ -176,7 +176,7 @@ function ListaUsuarios() {
   const [resetError,        setResetError]        = useState<string | null>(null);
   const [resetLoading,      setResetLoading]      = useState(false);
 
-  useWorkspaceGuard("users-reset", resetLoading, Boolean(resetUser && resetPassword));
+  useWorkspaceGuard("users-reset", resetLoading || Boolean(saving), Boolean((resetUser && resetPassword) || editingId));
 
   // ── Fetch ──────────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -333,6 +333,7 @@ function ListaUsuarios() {
   return (
     <div className="min-h-full bg-background text-foreground font-sora selection:bg-amber/20">
 
+      <div hidden={Boolean(workspace && resetUser)}>
       {/* ── Top Bar ── */}
       <header className="sticky top-0 z-20 border-b border-border bg-card/80 backdrop-blur-md">
         <div className="min-w-0 flex flex-wrap items-center justify-between gap-3 py-3">
@@ -541,9 +542,10 @@ function ListaUsuarios() {
         </div>
       </div>
 
+      </div>
       {/* ── Modal Reset Senha (Isolado e Crítico) ── */}
       {resetUser && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+        <div className={workspace ? "flex justify-center py-4" : "fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4"}>
           <div className="w-full max-w-sm bg-card border border-border rounded-2xl shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
             
             <div className="p-5 border-b border-border flex justify-between items-center bg-muted/50">
@@ -554,7 +556,7 @@ function ListaUsuarios() {
                 </h3>
                 <p className="text-[10px] text-muted-foreground mt-1">{resetUser.email}</p>
               </div>
-              <button onClick={() => setResetUser(null)} className="text-muted-foreground hover:text-foreground/80 transition-colors">
+              <button disabled={resetLoading} onClick={() => setResetUser(null)} className="text-muted-foreground hover:text-foreground/80 transition-colors">
                 <X className="w-5 h-5" />
               </button>
             </div>

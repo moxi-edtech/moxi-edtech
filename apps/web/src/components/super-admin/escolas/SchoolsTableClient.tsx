@@ -224,6 +224,10 @@ export default function SchoolsTableClient({
     [filteredSchools.length]
   );
 
+  const revision = workspace?.revision ?? 0;
+  const observedRevision = useRef(revision);
+  useEffect(() => { if (observedRevision.current !== revision) { observedRevision.current = revision; void reload(); } }, [revision, reload]);
+
   // Keep currentPage in range if filters shrink
   useEffect(() => {
     setCurrentPage((p) => clamp(p, 1, totalPages));
@@ -386,6 +390,7 @@ export default function SchoolsTableClient({
 
   return (
     <div className="min-w-0 rounded-xl bg-background">
+      <div hidden={embedded && (billingOpen || confirm.open)}>
       <ConfigHealthBanner />
 
       <div className="w-full min-w-0">
@@ -442,6 +447,7 @@ export default function SchoolsTableClient({
         </div>
       </div>
 
+      </div>
       {/* Billing modal */}
       {billingOpen && billingSchoolId ? (
         <BillingModal

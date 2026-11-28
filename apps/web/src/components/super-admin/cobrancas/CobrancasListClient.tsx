@@ -205,6 +205,8 @@ export default function CobrancasListClient() {
     [items],
   );
 
+  if (workspace && selectedId) return <AssinaturaDetailsSlideover assinaturaId={selectedId} onClose={() => setSelectedId(null)} onUpdated={() => { workspace.markChanged(); void loadData(); }} />;
+
   return (
     <div className="text-foreground">
       

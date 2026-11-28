@@ -74,10 +74,13 @@ export default function CommandCenterWorkspace({ children, afterActions, date, n
   const open = useCallback((href: string) => {
     const route = resolveWorkspaceRoute(href);
     if (!route) return false;
-    if ([...guards.current.values()].includes("busy")) { setWarning("busy"); return true; }
+    const states = [...guards.current.values()];
+    if (states.length) { setWarning(states.includes("busy") ? "busy" : "dirty"); return true; }
+    if (!document.querySelector("[data-workspace-path]")) trigger.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    setWarning(null);
     setStack(previous => {
       if (previous.at(-1)?.href === route.href) return previous;
-      if (!previous.length) trigger.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+
       const existing = previous.findIndex(item => item.href === route.href);
       return existing >= 0 ? previous.slice(0, existing + 1) : [...previous, route];
     });
