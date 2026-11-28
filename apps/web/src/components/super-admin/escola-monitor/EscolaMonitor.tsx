@@ -72,10 +72,10 @@ const fmtHora = (ts: string) => {
 const TIPO_CONFIG: Record<string, { icon: LucideIcon, colorClass: string, bgClass: string, label: string }> = {
   pagamento: { icon: CreditCard,    colorClass: "text-emerald", bgClass: "bg-emerald/10", label: "Pagamento"  },
   matricula: { icon: UserPlus,      colorClass: "text-amber",  bgClass: "bg-amber/10",  label: "Matrícula"  },
-  nota:      { icon: GraduationCap, colorClass: "text-slate-600",    bgClass: "bg-slate-100",       label: "Notas"      },
-  presenca:  { icon: Presentation,  colorClass: "text-slate-600",    bgClass: "bg-slate-100",       label: "Presença"   },
-  config:    { icon: Settings,      colorClass: "text-slate-600",    bgClass: "bg-slate-50",        label: "Config"     },
-  outro:     { icon: Activity,      colorClass: "text-slate-600",    bgClass: "bg-slate-50",        label: "Outro"      },
+  nota:      { icon: GraduationCap, colorClass: "text-muted-foreground",    bgClass: "bg-muted",       label: "Notas"      },
+  presenca:  { icon: Presentation,  colorClass: "text-muted-foreground",    bgClass: "bg-muted",       label: "Presença"   },
+  config:    { icon: Settings,      colorClass: "text-muted-foreground",    bgClass: "bg-muted",        label: "Config"     },
+  outro:     { icon: Activity,      colorClass: "text-muted-foreground",    bgClass: "bg-muted",        label: "Outro"      },
 };
 
 // ─── Subcomponentes ───────────────────────────────────────────────────────────
@@ -83,15 +83,15 @@ const TIPO_CONFIG: Record<string, { icon: LucideIcon, colorClass: string, bgClas
 function SaudeRing({ valor }: { valor: number }) {
   const [v, setV] = useState(0);
   useEffect(() => { const t = setTimeout(() => setV(valor), 400); return () => clearTimeout(t); }, [valor]);
-  const barColor = v >= 80 ? "bg-emerald" : v >= 60 ? "bg-amber" : "bg-slate-400";
+  const barColor = v >= 80 ? "bg-emerald" : v >= 60 ? "bg-amber" : "bg-muted";
 
   return (
     <div className="min-w-[140px]">
-      <div className="flex items-center justify-between text-[10px] font-semibold text-slate-500 uppercase tracking-widest">
+      <div className="flex items-center justify-between text-[10px] font-semibold text-muted-foreground uppercase tracking-widest">
         <span>Saúde</span>
-        <span className="text-slate-700">{v}%</span>
+        <span className="text-foreground">{v}%</span>
       </div>
-      <div className="mt-2 h-2 w-full rounded-full bg-slate-100 overflow-hidden">
+      <div className="mt-2 h-2 w-full rounded-full bg-muted overflow-hidden">
         <div
           className={`h-full ${barColor} transition-all duration-700 ease-out`}
           style={{ width: `${v}%` }}
@@ -107,13 +107,13 @@ function SaudeRing({ valor }: { valor: number }) {
 
 function MetricCard({ icon: Icon, label, main, sub, variant = "default", delay = 0 }: { icon: LucideIcon, label: string, main: ReactNode, sub: string, variant?: "default" | "green" | "gold", delay?: number }) {
   const variants = {
-    default: "border-slate-200 bg-white",
+    default: "border-border bg-card",
     green: "border-emerald/20 bg-emerald/5",
     gold: "border-amber/20 bg-amber/5",
   };
 
   const accents = {
-    default: "bg-slate-100 text-slate-600",
+    default: "bg-muted text-muted-foreground",
     green: "bg-emerald/10 text-emerald",
     gold: "bg-amber/10 text-amber",
   };
@@ -125,12 +125,12 @@ function MetricCard({ icon: Icon, label, main, sub, variant = "default", delay =
           <div className={`p-2 rounded-lg ${accents[variant]}`}>
             <Icon size={16} />
           </div>
-          <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">{label}</span>
+          <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">{label}</span>
         </div>
-        <div className="text-2xl font-bold text-slate-900 tracking-tight mb-1">
+        <div className="text-2xl font-bold text-foreground tracking-tight mb-1">
           {main}
         </div>
-        <div className="text-xs text-slate-500 font-medium">{sub}</div>
+        <div className="text-xs text-muted-foreground font-medium">{sub}</div>
       </CardContent>
     </Card>
   );
@@ -141,24 +141,24 @@ function ActivityRow({ item, i }: { item: AtividadeRecente, i: number }) {
   const Icon = cfg.icon;
   return (
     <div
-      className="flex items-center gap-4 p-4 hover:bg-slate-50 transition-colors border-b border-slate-100 last:border-0 animate-klasse-fade-in"
+      className="flex items-center gap-4 p-4 hover:bg-muted transition-colors border-b border-border last:border-0 animate-klasse-fade-in"
       style={{ animationDelay: `${i * 50}ms` }}
     >
       <div className={`w-10 h-10 rounded-xl ${cfg.bgClass} flex items-center justify-center shrink-0`}>
         <Icon size={18} className={cfg.colorClass} />
       </div>
       <div className="flex-1 min-w-0">
-        <div className="text-sm font-semibold text-slate-900 truncate">
+        <div className="text-sm font-semibold text-foreground truncate">
           {item.descricao}
         </div>
         <div className="flex items-center gap-2 mt-0.5">
-          <span className="text-xs text-slate-500 font-medium">{item.usuario}</span>
-          <span className="text-[10px] text-slate-300">•</span>
-          <span className="text-[10px] text-slate-400 font-mono uppercase">{cfg.label}</span>
+          <span className="text-xs text-muted-foreground font-medium">{item.usuario}</span>
+          <span className="text-[10px] text-muted-foreground">•</span>
+          <span className="text-[10px] text-muted-foreground font-mono uppercase">{cfg.label}</span>
         </div>
       </div>
       <div className="text-right shrink-0">
-        <span className="text-[10px] font-bold text-slate-400 flex items-center gap-1 uppercase">
+        <span className="text-[10px] font-bold text-muted-foreground flex items-center gap-1 uppercase">
           <Clock size={10} />
           {fmtHora(item.timestamp)}
         </span>
@@ -208,12 +208,12 @@ function NotasInternas({ escolaId }: { escolaId: string }) {
   return (
     <div className="space-y-3">
       <div className="flex justify-between items-center">
-        <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2">
+        <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2">
           <StickyNote size={14} className="text-amber" />
           Notas Internas
         </h3>
         {loading ? (
-          <RefreshCw size={12} className="animate-spin text-slate-300" />
+          <RefreshCw size={12} className="animate-spin text-muted-foreground" />
         ) : (
           <span className={`text-[10px] font-bold uppercase ${saved ? "text-emerald" : "text-amber"}`}>
             {saved ? "✓ sincronizado" : "a guardar…"}
@@ -225,9 +225,9 @@ function NotasInternas({ escolaId }: { escolaId: string }) {
         onChange={e => handleChange(e.target.value)}
         disabled={loading}
         placeholder="Apontamentos privados sobre esta escola..."
-        className="w-full min-h-[120px] bg-slate-50 border border-slate-200 rounded-2xl p-4 text-sm text-slate-600 placeholder:text-slate-400 focus:bg-white focus:ring-4 focus:ring-emerald/5 focus:border-emerald/30 transition-all outline-none resize-none leading-relaxed"
+        className="w-full min-h-[120px] bg-muted border border-border rounded-2xl p-4 text-sm text-muted-foreground placeholder:text-muted-foreground focus:bg-card focus:ring-4 focus:ring-emerald/5 focus:border-emerald/30 transition-all outline-none resize-none leading-relaxed"
       />
-      <p className="text-[10px] text-slate-400 leading-tight">
+      <p className="text-[10px] text-muted-foreground leading-tight">
         * Estas notas são visíveis apenas para a equipa do Super Admin.
       </p>
     </div>
@@ -458,20 +458,20 @@ export default function EscolaMonitor({
   const alunosTotal = metricas?.alunos_total ?? 0;
 
   return (
-    <div className="min-w-0 space-y-6 font-sans text-slate-900">
+    <div className="min-w-0 space-y-6 font-sans text-foreground">
 
       {/* ── HEADER SUPERIOR ── */}
       <div className="min-w-0">
         <div className="min-w-0">
-          <div className="bg-white p-8 rounded-[2.5rem] border border-slate-200/60 shadow-[0_8px_30px_rgba(0,0,0,0.04)] space-y-6">
+          <div className="bg-card p-8 rounded-[2.5rem] border border-border/60 shadow-[0_8px_30px_rgba(0,0,0,0.04)] space-y-6">
 
             {/* Breadcrumb */}
-            <nav className="flex items-center gap-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+            <nav className="flex items-center gap-2 text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
               <span>Super Admin</span>
               <ChevronRight size={10} />
-              <span className="text-slate-300">Escolas</span>
+              <span className="text-muted-foreground">Escolas</span>
               <ChevronRight size={10} />
-              <span className="text-slate-500">{escola.nome}</span>
+              <span className="text-muted-foreground">{escola.nome}</span>
             </nav>
 
             <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
@@ -480,17 +480,17 @@ export default function EscolaMonitor({
               <div className="flex items-start gap-6">
                 <div className="space-y-3">
                   <div>
-                    <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight font-sans">
+                    <h1 className="text-3xl font-extrabold text-foreground tracking-tight font-sans">
                       {escola.nome}
                     </h1>
-                    <p className="text-sm text-slate-500 font-medium">Escola ID: <span className="font-mono text-[11px] text-slate-400">{escola.id}</span></p>
+                    <p className="text-sm text-muted-foreground font-medium">Escola ID: <span className="font-mono text-[11px] text-muted-foreground">{escola.id}</span></p>
                   </div>
 
                   <div className="flex flex-wrap gap-2">
                     <Badge variant="outline" className="bg-emerald/5 text-emerald border-emerald/20 font-semibold uppercase text-[9px] px-2.5 py-0.5 rounded-full">
                       Plano {escola.plano_atual}
                     </Badge>
-                    <Badge className={`${escola.status === 'ativa' ? 'bg-emerald/10 text-emerald border-emerald/20' : 'bg-slate-100 text-slate-600 border-slate-200'} font-semibold uppercase text-[9px] px-2.5 py-0.5 rounded-full border`}>
+                    <Badge className={`${escola.status === 'ativa' ? 'bg-emerald/10 text-emerald border-emerald/20' : 'bg-muted text-muted-foreground border-border'} font-semibold uppercase text-[9px] px-2.5 py-0.5 rounded-full border`}>
                       {escola.status}
                     </Badge>
                     {escola.aluno_portal_enabled && (
@@ -514,7 +514,7 @@ export default function EscolaMonitor({
                     disabled={refreshing}
                     variant="outline"
                     size="sm"
-                    className="rounded-xl font-semibold text-xs gap-2 border-slate-200"
+                    className="rounded-xl font-semibold text-xs gap-2 border-border"
                   >
                     <RefreshCw size={14} className={refreshing ? "animate-spin" : ""} />
                     Actualizar Dados
@@ -533,17 +533,17 @@ export default function EscolaMonitor({
             </div>
 
             {/* Contactos */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-4 border-t border-slate-100">
-              <div className="flex items-center gap-3 text-slate-500">
-                <div className="p-2 rounded-lg bg-slate-50"><Mail size={14} /></div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-4 border-t border-border">
+              <div className="flex items-center gap-3 text-muted-foreground">
+                <div className="p-2 rounded-lg bg-muted"><Mail size={14} /></div>
                 <span className="text-sm font-medium">{escola.email || "Sem email registado"}</span>
               </div>
-              <div className="flex items-center gap-3 text-slate-500">
-                <div className="p-2 rounded-lg bg-slate-50"><Phone size={14} /></div>
+              <div className="flex items-center gap-3 text-muted-foreground">
+                <div className="p-2 rounded-lg bg-muted"><Phone size={14} /></div>
                 <span className="text-sm font-medium">{escola.telefone || "Sem telefone registado"}</span>
               </div>
-              <div className="flex items-center gap-3 text-slate-500">
-                <div className="p-2 rounded-lg bg-slate-50"><Calendar size={14} /></div>
+              <div className="flex items-center gap-3 text-muted-foreground">
+                <div className="p-2 rounded-lg bg-muted"><Calendar size={14} /></div>
                 <span className="text-sm font-medium tracking-tight">Membro desde {new Date(escola.created_at).toLocaleDateString("pt-AO", { month: 'long', year: 'numeric' })}</span>
               </div>
             </div>
@@ -588,18 +588,18 @@ export default function EscolaMonitor({
           <div className="lg:col-span-2 space-y-6">
             <Tabs defaultValue="overview" className="w-full" onValueChange={setActiveTab}>
               <div className="flex items-center justify-between mb-4">
-                <TabsList className="bg-slate-200/50 p-1 rounded-2xl border-0">
-                  <TabsTrigger value="overview" className="rounded-xl data-[state=active]:bg-white data-[state=active]:shadow-sm font-bold text-xs uppercase tracking-wider px-6">Geral</TabsTrigger>
-                  <TabsTrigger value="atividades" className="rounded-xl data-[state=active]:bg-white data-[state=active]:shadow-sm font-bold text-xs uppercase tracking-wider px-6">Actividade</TabsTrigger>
-                  <TabsTrigger value="comunicacao" className="rounded-xl data-[state=active]:bg-white data-[state=active]:shadow-sm font-bold text-xs uppercase tracking-wider px-6">Comunicação</TabsTrigger>
-                  <TabsTrigger value="config" className="rounded-xl data-[state=active]:bg-white data-[state=active]:shadow-sm font-bold text-xs uppercase tracking-wider px-6">Config</TabsTrigger>
-                  <TabsTrigger value="klasse-ai" className="rounded-xl data-[state=active]:bg-white data-[state=active]:shadow-sm font-bold text-xs uppercase tracking-wider px-6">KLASSE AI</TabsTrigger>
+                <TabsList className="bg-muted/50 p-1 rounded-2xl border-0">
+                  <TabsTrigger value="overview" className="rounded-xl data-[state=active]:bg-card data-[state=active]:shadow-sm font-bold text-xs uppercase tracking-wider px-6">Geral</TabsTrigger>
+                  <TabsTrigger value="atividades" className="rounded-xl data-[state=active]:bg-card data-[state=active]:shadow-sm font-bold text-xs uppercase tracking-wider px-6">Actividade</TabsTrigger>
+                  <TabsTrigger value="comunicacao" className="rounded-xl data-[state=active]:bg-card data-[state=active]:shadow-sm font-bold text-xs uppercase tracking-wider px-6">Comunicação</TabsTrigger>
+                  <TabsTrigger value="config" className="rounded-xl data-[state=active]:bg-card data-[state=active]:shadow-sm font-bold text-xs uppercase tracking-wider px-6">Config</TabsTrigger>
+                  <TabsTrigger value="klasse-ai" className="rounded-xl data-[state=active]:bg-card data-[state=active]:shadow-sm font-bold text-xs uppercase tracking-wider px-6">KLASSE AI</TabsTrigger>
                 </TabsList>
               </div>
 
               <TabsContent value="overview" className="mt-0 focus-visible:ring-0">
-                <Card className="border-slate-200 rounded-3xl overflow-hidden shadow-sm">
-                  <CardHeader className="bg-slate-50/50 border-b border-slate-100 p-6">
+                <Card className="border-border rounded-3xl overflow-hidden shadow-sm">
+                  <CardHeader className="bg-muted/50 border-b border-border p-6">
                     <div className="flex justify-between items-center">
                       <div>
                         <CardTitle className="text-lg">Diagnóstico do Sistema</CardTitle>
@@ -611,27 +611,27 @@ export default function EscolaMonitor({
                     </div>
                   </CardHeader>
                   <CardContent className="p-0">
-                    <div className="grid grid-cols-2 border-b border-slate-100">
-                      <div className="p-6 border-r border-slate-100 space-y-1">
-                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Sincronização</p>
-                        <div className="text-xl font-bold text-slate-900 flex items-center gap-2">
+                    <div className="grid grid-cols-2 border-b border-border">
+                      <div className="p-6 border-r border-border space-y-1">
+                        <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Sincronização</p>
+                        <div className="text-xl font-bold text-foreground flex items-center gap-2">
                           <div className={`w-2 h-2 rounded-full ${performance.sync_status === 'error' ? 'bg-amber' : 'bg-emerald animate-pulse'}`} />
                           {performance.sync_status?.toUpperCase() || "OK"}
                         </div>
-                        <p className="text-[10px] text-slate-400 font-medium">Última: {new Date(performance.sync_updated_at).toLocaleString()}</p>
+                        <p className="text-[10px] text-muted-foreground font-medium">Última: {new Date(performance.sync_updated_at).toLocaleString()}</p>
                       </div>
                       <div className="p-6 space-y-1">
-                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Uptime Médio</p>
-                        <p className="text-xl font-bold text-slate-900">99.98%</p>
+                        <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Uptime Médio</p>
+                        <p className="text-xl font-bold text-foreground">99.98%</p>
                         <p className="text-[10px] text-emerald font-bold uppercase tracking-tight">SLA Profissional</p>
                       </div>
                     </div>
                     <div className="p-6">
-                      <h4 className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-4">Uso de Recursos (MB)</h4>
-                      <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
+                      <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-4">Uso de Recursos (MB)</h4>
+                      <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
                         <div className="h-full bg-emerald w-[42%] rounded-full" />
                       </div>
-                      <div className="flex justify-between mt-2 text-[10px] font-bold text-slate-400">
+                      <div className="flex justify-between mt-2 text-[10px] font-bold text-muted-foreground">
                         <span>STORAGE: 1.2 GB USADO</span>
                         <span>LIMITE: 5.0 GB</span>
                       </div>
@@ -639,14 +639,14 @@ export default function EscolaMonitor({
                   </CardContent>
                 </Card>
 
-                <Card className="border-slate-200 rounded-3xl overflow-hidden shadow-sm mt-6">
-                  <CardHeader className="bg-slate-50/60 border-b border-slate-100 p-6">
+                <Card className="border-border rounded-3xl overflow-hidden shadow-sm mt-6">
+                  <CardHeader className="bg-muted/60 border-b border-border p-6">
                     <div className="flex items-center justify-between">
                       <div>
                         <CardTitle className="text-lg">Limite de alunos por plano</CardTitle>
                         <CardDescription>Uso actual e margem para upgrade</CardDescription>
                       </div>
-                      <Badge className="bg-slate-800 text-white hover:bg-slate-800 border-0 uppercase font-bold text-[10px]">
+                      <Badge className="bg-primary text-primary-foreground hover:bg-primary/90 border-0 uppercase font-bold text-[10px]">
                         {alunosTotal} alunos activos
                       </Badge>
                     </div>
@@ -659,19 +659,19 @@ export default function EscolaMonitor({
                         const remaining = max === null ? null : Math.max(0, max - alunosTotal);
                         const isCurrent = escola.plano_atual === tier;
                         return (
-                          <div key={tier} className={`flex flex-col gap-2 rounded-2xl border ${isCurrent ? 'border-emerald/40 bg-emerald/5' : 'border-slate-200 bg-white'} p-4`}>
+                          <div key={tier} className={`flex flex-col gap-2 rounded-2xl border ${isCurrent ? 'border-emerald/40 bg-emerald/5' : 'border-border bg-card'} p-4`}>
                             <div className="flex items-center justify-between">
                               <div className="flex items-center gap-2">
-                                <span className="text-xs font-bold uppercase tracking-widest text-slate-500">{tier}</span>
+                                <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground">{tier}</span>
                                 {isCurrent && (
                                   <Badge className="bg-emerald text-white border-0 text-[9px] font-bold uppercase">Plano actual</Badge>
                                 )}
                               </div>
-                              <span className="text-xs font-semibold text-slate-700">
+                              <span className="text-xs font-semibold text-foreground">
                                 {max === null ? "Ilimitado" : `Limite ${max}`}
                               </span>
                             </div>
-                            <div className="flex items-center justify-between text-sm text-slate-700">
+                            <div className="flex items-center justify-between text-sm text-foreground">
                               <span>Alunos actuais: <strong>{alunosTotal}</strong></span>
                               <span>
                                 {remaining === null ? "Sem limite" : `Faltam ${remaining}`}
@@ -686,20 +686,20 @@ export default function EscolaMonitor({
               </TabsContent>
 
               <TabsContent value="atividades" className="mt-0 focus-visible:ring-0">
-                <Card className="border-slate-200 rounded-3xl overflow-hidden shadow-sm">
-                  <div className="divide-y divide-slate-100">
+                <Card className="border-border rounded-3xl overflow-hidden shadow-sm">
+                  <div className="divide-y divide-border">
                     {atividades.length > 0 ? (
                       atividades.map((a, i) => <ActivityRow key={a.id} item={a} i={i} />)
                     ) : (
                       <div className="p-12 text-center space-y-3">
-                        <Activity size={40} className="mx-auto text-slate-200" />
-                        <p className="text-sm text-slate-400 font-medium">Nenhuma actividade recente para mostrar.</p>
+                        <Activity size={40} className="mx-auto text-muted-foreground" />
+                        <p className="text-sm text-muted-foreground font-medium">Nenhuma actividade recente para mostrar.</p>
                       </div>
                     )}
                   </div>
                   {atividades.length > 0 && (
-                    <div className="bg-slate-50/50 p-4 border-t border-slate-100 text-center">
-                      <Button variant="ghost" size="sm" className="text-xs font-bold text-slate-500 hover:text-emerald">
+                    <div className="bg-muted/50 p-4 border-t border-border text-center">
+                      <Button variant="ghost" size="sm" className="text-xs font-bold text-muted-foreground hover:text-emerald">
                         Carregar mais actividades
                         <ArrowRight size={14} className="ml-2" />
                       </Button>
@@ -709,22 +709,22 @@ export default function EscolaMonitor({
               </TabsContent>
 
               <TabsContent value="comunicacao" className="mt-0 focus-visible:ring-0">
-                <Card className="border-slate-200 rounded-3xl overflow-hidden shadow-sm">
-                  <CardHeader className="bg-slate-50/50 border-b border-slate-100 p-6">
+                <Card className="border-border rounded-3xl overflow-hidden shadow-sm">
+                  <CardHeader className="bg-muted/50 border-b border-border p-6">
                     <CardTitle className="text-lg font-bold">Canais de Comunicação</CardTitle>
                     <CardDescription>Configuração centralizada dos provedores de notificação da escola</CardDescription>
                   </CardHeader>
                   <CardContent className="p-6 space-y-6">
                     {/* WhatsApp WAHA Card */}
-                    <div className="border border-slate-200 rounded-2xl p-5 bg-white space-y-4">
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-4 border-b border-slate-100">
+                    <div className="border border-border rounded-2xl p-5 bg-card space-y-4">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-4 border-b border-border">
                         <div className="flex items-center gap-3">
                           <div className="p-2 rounded-xl bg-emerald/10 text-emerald shrink-0">
                             <Zap size={20} />
                           </div>
                           <div>
-                            <h4 className="text-sm font-bold text-slate-900">WhatsApp WAHA (Automático)</h4>
-                            <p className="text-xs text-slate-500 font-medium">Integração experimental para envios programados sem intervenção manual</p>
+                            <h4 className="text-sm font-bold text-foreground">WhatsApp WAHA (Automático)</h4>
+                            <p className="text-xs text-muted-foreground font-medium">Integração experimental para envios programados sem intervenção manual</p>
                           </div>
                         </div>
                         <Badge className={`${
@@ -734,7 +734,7 @@ export default function EscolaMonitor({
                               ? "bg-amber/10 text-amber border-amber/20 animate-pulse"
                               : wahaStatus === "error" || wahaStatus === "disconnected"
                                 ? "bg-red-50 text-red-600 border-red-100"
-                                : "bg-slate-100 text-slate-600 border-slate-200"
+                                : "bg-muted text-muted-foreground border-border"
                         } font-semibold uppercase text-[9px] px-2.5 py-0.5 rounded-full border shrink-0`}>
                           {wahaStatus}
                         </Badge>
@@ -742,18 +742,18 @@ export default function EscolaMonitor({
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="space-y-1">
-                          <Label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Nome de Exibição</Label>
+                          <Label className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Nome de Exibição</Label>
                           <input
                             type="text"
                             value={wahaDisplayName}
                             onChange={(e) => setWahaDisplayName(e.target.value)}
-                            className="w-full text-sm text-slate-950 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 outline-none focus:bg-white focus:border-emerald/30 focus:ring-4 focus:ring-emerald/5 transition-all"
+                            className="w-full text-sm text-foreground bg-muted border border-border rounded-xl px-3 py-2 outline-none focus:bg-card focus:border-emerald/30 focus:ring-4 focus:ring-emerald/5 transition-all"
                             placeholder="WAHA Experimental"
                           />
                         </div>
 
                         <div className="space-y-1">
-                          <Label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Estado da Sessão</Label>
+                          <Label className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Estado da Sessão</Label>
                           <select
                             value={wahaStatus}
                             onChange={(e) => {
@@ -761,7 +761,7 @@ export default function EscolaMonitor({
                                 setWahaStatus(e.target.value);
                               }
                             }}
-                            className="w-full text-sm text-slate-950 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 outline-none focus:bg-white focus:border-emerald/30 focus:ring-4 focus:ring-emerald/5 transition-all"
+                            className="w-full text-sm text-foreground bg-muted border border-border rounded-xl px-3 py-2 outline-none focus:bg-card focus:border-emerald/30 focus:ring-4 focus:ring-emerald/5 transition-all"
                           >
                             <option value="disabled">Desativado (disabled)</option>
                             <option value="pending_qr">Aguardando QR Code (pending_qr)</option>
@@ -772,51 +772,51 @@ export default function EscolaMonitor({
                         </div>
 
                         <div className="space-y-1">
-                          <Label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Limite Diário</Label>
+                          <Label className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Limite Diário</Label>
                           <input
                             type="number"
                             min="0"
                             value={wahaDailyLimit}
                             onChange={(e) => setWahaDailyLimit(Number(e.target.value))}
-                            className="w-full text-sm text-slate-950 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 outline-none focus:bg-white focus:border-emerald/30 focus:ring-4 focus:ring-emerald/5 transition-all"
+                            className="w-full text-sm text-foreground bg-muted border border-border rounded-xl px-3 py-2 outline-none focus:bg-card focus:border-emerald/30 focus:ring-4 focus:ring-emerald/5 transition-all"
                           />
                         </div>
 
                         <div className="space-y-1">
-                          <Label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Limite Mensal</Label>
+                          <Label className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Limite Mensal</Label>
                           <input
                             type="number"
                             min="0"
                             value={wahaMonthlyLimit}
                             onChange={(e) => setWahaMonthlyLimit(Number(e.target.value))}
-                            className="w-full text-sm text-slate-950 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 outline-none focus:bg-white focus:border-emerald/30 focus:ring-4 focus:ring-emerald/5 transition-all"
+                            className="w-full text-sm text-foreground bg-muted border border-border rounded-xl px-3 py-2 outline-none focus:bg-card focus:border-emerald/30 focus:ring-4 focus:ring-emerald/5 transition-all"
                           />
                         </div>
 
                         <div className="space-y-1 md:col-span-2">
-                          <Label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Identificador da Sessão (Session Name)</Label>
+                          <Label className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Identificador da Sessão (Session Name)</Label>
                           <input
                             type="text"
                             value={wahaSessionName}
                             onChange={(e) => setWahaSessionName(e.target.value)}
-                            className="w-full font-mono text-xs text-slate-650 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 outline-none focus:bg-white focus:border-emerald/30 focus:ring-4 focus:ring-emerald/5 transition-all"
+                            className="w-full font-mono text-xs text-foreground bg-muted border border-border rounded-xl px-3 py-2 outline-none focus:bg-card focus:border-emerald/30 focus:ring-4 focus:ring-emerald/5 transition-all"
                             placeholder="klasse_school_..."
                           />
-                          <p className="text-[10px] text-slate-400">
+                          <p className="text-[10px] text-muted-foreground">
                             * Deve manter a padronização recomendada de nomenclatura para evitar conflitos de sessões entre escolas no cluster WAHA.
                           </p>
                         </div>
 
                         <div className="space-y-1 md:col-span-2">
-                          <Label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Telefone de Fallback (Opcional)</Label>
+                          <Label className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Telefone de Fallback (Opcional)</Label>
                           <input
                             type="text"
                             value={wahaFallbackPhone}
                             onChange={(e) => setWahaFallbackPhone(e.target.value)}
-                            className="w-full text-sm text-slate-950 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 outline-none focus:bg-white focus:border-emerald/30 focus:ring-4 focus:ring-emerald/5 transition-all"
+                            className="w-full text-sm text-foreground bg-muted border border-border rounded-xl px-3 py-2 outline-none focus:bg-card focus:border-emerald/30 focus:ring-4 focus:ring-emerald/5 transition-all"
                             placeholder="+244..."
                           />
-                          <p className="text-[10px] text-slate-400">
+                          <p className="text-[10px] text-muted-foreground">
                             * Número de telefone para receber alertas ou servir de redirecionamento caso o gateway automático falhe.
                           </p>
                         </div>
@@ -837,34 +837,34 @@ export default function EscolaMonitor({
                     {(() => {
                       const manualProvider = providers?.find(p => p.provider_type === "whatsapp_manual");
                       return (
-                        <div className="border border-slate-200 rounded-2xl p-5 bg-slate-50/50 space-y-4 opacity-80">
-                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-4 border-b border-slate-100">
+                        <div className="border border-border rounded-2xl p-5 bg-muted/50 space-y-4 opacity-80">
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-4 border-b border-border">
                             <div className="flex items-center gap-3">
-                              <div className="p-2 rounded-xl bg-slate-100 text-slate-600 shrink-0">
+                              <div className="p-2 rounded-xl bg-muted text-muted-foreground shrink-0">
                                 <Phone size={20} />
                               </div>
                               <div>
-                                <h4 className="text-sm font-bold text-slate-900">WhatsApp Manual (Fallback)</h4>
-                                <p className="text-xs text-slate-500 font-medium">Envios mediados pela interface do utilizador com links wa.me</p>
+                                <h4 className="text-sm font-bold text-foreground">WhatsApp Manual (Fallback)</h4>
+                                <p className="text-xs text-muted-foreground font-medium">Envios mediados pela interface do utilizador com links wa.me</p>
                               </div>
                             </div>
-                            <Badge className="bg-slate-100 text-slate-600 border-slate-200 font-semibold uppercase text-[9px] px-2.5 py-0.5 rounded-full border shrink-0">
+                            <Badge className="bg-muted text-muted-foreground border-border font-semibold uppercase text-[9px] px-2.5 py-0.5 rounded-full border shrink-0">
                               {manualProvider?.status || "connected"}
                             </Badge>
                           </div>
 
-                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs text-slate-600">
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs text-muted-foreground">
                             <div>
-                              <span className="font-semibold block text-slate-400 uppercase tracking-widest text-[9px]">Nome de Exibição</span>
-                              <span className="font-medium text-slate-900">{manualProvider?.display_name || "WhatsApp Manual"}</span>
+                              <span className="font-semibold block text-muted-foreground uppercase tracking-widest text-[9px]">Nome de Exibição</span>
+                              <span className="font-medium text-foreground">{manualProvider?.display_name || "WhatsApp Manual"}</span>
                             </div>
                             <div>
-                              <span className="font-semibold block text-slate-400 uppercase tracking-widest text-[9px]">Limite Diário</span>
-                              <span className="font-medium text-slate-900">{manualProvider?.daily_limit ?? 200} mensagens</span>
+                              <span className="font-semibold block text-muted-foreground uppercase tracking-widest text-[9px]">Limite Diário</span>
+                              <span className="font-medium text-foreground">{manualProvider?.daily_limit ?? 200} mensagens</span>
                             </div>
                             <div>
-                              <span className="font-semibold block text-slate-400 uppercase tracking-widest text-[9px]">Limite Mensal</span>
-                              <span className="font-medium text-slate-900">{manualProvider?.monthly_limit ?? 2000} mensagens</span>
+                              <span className="font-semibold block text-muted-foreground uppercase tracking-widest text-[9px]">Limite Mensal</span>
+                              <span className="font-medium text-foreground">{manualProvider?.monthly_limit ?? 2000} mensagens</span>
                             </div>
                           </div>
                         </div>
@@ -875,16 +875,16 @@ export default function EscolaMonitor({
               </TabsContent>
 
               <TabsContent value="config" className="mt-0 focus-visible:ring-0">
-                <Card className="border-slate-200 rounded-3xl overflow-hidden shadow-sm">
-                  <CardHeader className="bg-slate-50/50 border-b border-slate-100 p-6">
+                <Card className="border-border rounded-3xl overflow-hidden shadow-sm">
+                  <CardHeader className="bg-muted/50 border-b border-border p-6">
                     <CardTitle className="text-lg font-bold">Gestão de Funções</CardTitle>
                     <CardDescription>Activar ou desactivar módulos centrais da escola</CardDescription>
                   </CardHeader>
                   <CardContent className="p-6 space-y-6">
-                    <div className="flex items-center justify-between p-5 bg-white border border-slate-200 rounded-2xl hover:border-emerald/30 transition-colors">
+                    <div className="flex items-center justify-between p-5 bg-card border border-border rounded-2xl hover:border-emerald/30 transition-colors">
                       <div className="space-y-1">
-                        <Label className="text-sm font-bold text-slate-900">Portal do Aluno</Label>
-                        <p className="text-xs text-slate-500 font-medium">Permite que alunos consultem notas e paguem propinas online.</p>
+                        <Label className="text-sm font-bold text-foreground">Portal do Aluno</Label>
+                        <p className="text-xs text-muted-foreground font-medium">Permite que alunos consultem notas e paguem propinas online.</p>
                       </div>
                       <Switch
                         checked={escola.aluno_portal_enabled}
@@ -893,20 +893,20 @@ export default function EscolaMonitor({
                       />
                     </div>
 
-                    <div className="flex items-center justify-between p-5 bg-white border border-slate-200 rounded-2xl opacity-60 grayscale cursor-not-allowed">
+                    <div className="flex items-center justify-between p-5 bg-card border border-border rounded-2xl opacity-60 grayscale cursor-not-allowed">
                       <div className="space-y-1">
-                        <Label className="text-sm font-bold text-slate-900">Módulo de Mensagens SMS</Label>
-                        <p className="text-xs text-slate-500 font-medium text-amber font-bold uppercase tracking-tighter">Upgrade Necessário</p>
+                        <Label className="text-sm font-bold text-foreground">Módulo de Mensagens SMS</Label>
+                        <p className="text-xs text-muted-foreground font-medium text-amber font-bold uppercase tracking-tighter">Upgrade Necessário</p>
                       </div>
                       <Switch disabled checked={false} />
                     </div>
 
-                    <div className="pt-6 border-t border-slate-100">
+                    <div className="pt-6 border-t border-border">
                       <h4 className="text-[10px] font-bold text-amber uppercase tracking-[0.2em] mb-4">Zona de Perigo</h4>
                       <div className="p-5 bg-amber/10 border border-amber/20 rounded-2xl flex items-center justify-between">
                         <div className="space-y-1">
-                          <p className="text-sm font-bold text-slate-900">Resetar Escola</p>
-                          <p className="text-xs text-slate-600 font-medium">Esta acção apaga todos os dados e não pode ser desfeita.</p>
+                          <p className="text-sm font-bold text-foreground">Resetar Escola</p>
+                          <p className="text-xs text-muted-foreground font-medium">Esta acção apaga todos os dados e não pode ser desfeita.</p>
                         </div>
                         <Button variant="destructive" size="sm" className="rounded-xl font-bold text-xs" onClick={() => toastError("Acção bloqueada", "Protegido por MFA de Supervisor")}>
                           Resetar Dados
@@ -918,8 +918,8 @@ export default function EscolaMonitor({
               </TabsContent>
 
               <TabsContent value="klasse-ai" className="mt-0 focus-visible:ring-0">
-                <Card className="border-slate-200 rounded-3xl overflow-hidden shadow-sm">
-                  <CardHeader className="bg-slate-50/50 border-b border-slate-100 p-6">
+                <Card className="border-border rounded-3xl overflow-hidden shadow-sm">
+                  <CardHeader className="bg-muted/50 border-b border-border p-6">
                     <CardTitle className="text-lg font-bold">Monitoramento do KLASSE AI</CardTitle>
                     <CardDescription>Gerenciar limites de uso e acompanhar consumo de IA da escola</CardDescription>
                   </CardHeader>
@@ -927,15 +927,15 @@ export default function EscolaMonitor({
                     {loadingAi ? (
                       <div className="text-center py-10 space-y-2">
                         <Loader2 className="w-8 h-8 animate-spin text-emerald mx-auto" />
-                        <p className="text-xs text-slate-500 font-medium">A carregar estatísticas de IA...</p>
+                        <p className="text-xs text-muted-foreground font-medium">A carregar estatísticas de IA...</p>
                       </div>
                     ) : (
                       <>
                         {/* AI Active Toggle */}
-                        <div className="flex items-center justify-between p-5 bg-white border border-slate-200 rounded-2xl hover:border-emerald/30 transition-colors">
+                        <div className="flex items-center justify-between p-5 bg-card border border-border rounded-2xl hover:border-emerald/30 transition-colors">
                           <div className="space-y-1">
-                            <Label className="text-sm font-bold text-slate-900">Estado do KLASSE AI</Label>
-                            <p className="text-xs text-slate-500 font-medium">Ativa ou desativa completamente o assistente de produtividade por IA nesta escola.</p>
+                            <Label className="text-sm font-bold text-foreground">Estado do KLASSE AI</Label>
+                            <p className="text-xs text-muted-foreground font-medium">Ativa ou desativa completamente o assistente de produtividade por IA nesta escola.</p>
                           </div>
                           <Switch
                             checked={aiSettings?.enabled || false}
@@ -949,11 +949,11 @@ export default function EscolaMonitor({
                         </div>
 
                         {/* Limits Settings Form */}
-                        <div className="bg-white border border-slate-200 rounded-2xl p-5 space-y-4">
-                          <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider">Limites de Requisições</h4>
+                        <div className="bg-card border border-border rounded-2xl p-5 space-y-4">
+                          <h4 className="text-xs font-bold text-foreground uppercase tracking-wider">Limites de Requisições</h4>
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div className="space-y-1.5">
-                              <Label className="text-xs font-bold text-slate-500">Limite Diário</Label>
+                              <Label className="text-xs font-bold text-muted-foreground">Limite Diário</Label>
                               <input
                                 type="number"
                                 value={aiSettings?.daily_limit ?? 20}
@@ -961,11 +961,11 @@ export default function EscolaMonitor({
                                   const val = parseInt(e.target.value, 10) || 0;
                                   setAiSettings(prev => prev ? { ...prev, daily_limit: val } : { enabled: false, daily_limit: val, monthly_limit: 500 });
                                 }}
-                                className="w-full text-xs p-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-emerald transition-colors"
+                                className="w-full text-xs p-2.5 bg-muted border border-border rounded-xl focus:outline-none focus:border-emerald transition-colors"
                               />
                             </div>
                             <div className="space-y-1.5">
-                              <Label className="text-xs font-bold text-slate-500">Limite Mensal</Label>
+                              <Label className="text-xs font-bold text-muted-foreground">Limite Mensal</Label>
                               <input
                                 type="number"
                                 value={aiSettings?.monthly_limit ?? 500}
@@ -973,7 +973,7 @@ export default function EscolaMonitor({
                                   const val = parseInt(e.target.value, 10) || 0;
                                   setAiSettings(prev => prev ? { ...prev, monthly_limit: val } : { enabled: false, daily_limit: 20, monthly_limit: val });
                                 }}
-                                className="w-full text-xs p-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-emerald transition-colors"
+                                className="w-full text-xs p-2.5 bg-muted border border-border rounded-xl focus:outline-none focus:border-emerald transition-colors"
                               />
                             </div>
                           </div>
@@ -981,7 +981,7 @@ export default function EscolaMonitor({
                             <Button
                               onClick={() => handleSaveAiSettings(aiSettings?.enabled || false, aiSettings?.daily_limit ?? 20, aiSettings?.monthly_limit ?? 500)}
                               disabled={savingAiSettings}
-                              className="bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold px-4 py-2 rounded-xl"
+                              className="bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-bold px-4 py-2 rounded-xl"
                             >
                               {savingAiSettings ? "Salvando..." : "Salvar Limites"}
                             </Button>
@@ -991,26 +991,26 @@ export default function EscolaMonitor({
                         {/* Recent Usage Logs */}
                         <div className="space-y-3">
                           <div className="flex items-center justify-between">
-                            <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider">Histórico de Uso Recente</h4>
-                            <button onClick={fetchAiData} className="text-slate-400 hover:text-slate-600 cursor-pointer">
+                            <h4 className="text-xs font-bold text-foreground uppercase tracking-wider">Histórico de Uso Recente</h4>
+                            <button onClick={fetchAiData} className="text-muted-foreground hover:text-muted-foreground cursor-pointer">
                               <RefreshCw className="w-3.5 h-3.5" />
                             </button>
                           </div>
                           
                           {aiLogs.length === 0 ? (
-                            <div className="text-center p-6 bg-slate-50 border border-slate-100 rounded-2xl text-xs text-slate-400">
+                            <div className="text-center p-6 bg-muted border border-border rounded-2xl text-xs text-muted-foreground">
                               Nenhuma requisição de IA encontrada para esta escola nas últimas horas.
                             </div>
                           ) : (
-                            <div className="border border-slate-200 rounded-2xl overflow-hidden divide-y divide-slate-100 bg-white">
+                            <div className="border border-border rounded-2xl overflow-hidden divide-y divide-border bg-card">
                               {aiLogs.map((log) => {
                                 const isSuccess = log.status === "success";
                                 const isPending = log.status === "pending";
                                 return (
-                                  <div key={log.id} className="p-4 flex items-center justify-between text-xs hover:bg-slate-50 transition-colors">
+                                  <div key={log.id} className="p-4 flex items-center justify-between text-xs hover:bg-muted transition-colors">
                                     <div className="space-y-1">
-                                      <p className="font-bold text-slate-800 uppercase tracking-wider">{log.feature}</p>
-                                      <div className="flex items-center gap-2 text-[10px] text-slate-400">
+                                      <p className="font-bold text-foreground uppercase tracking-wider">{log.feature}</p>
+                                      <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
                                         <span>User: {log.user_id?.substring(0, 8)}...</span>
                                         <span>•</span>
                                         <span>{new Date(log.created_at).toLocaleString("pt-AO")}</span>
@@ -1018,7 +1018,7 @@ export default function EscolaMonitor({
                                     </div>
                                     <div className="flex items-center gap-3">
                                       <div className="text-right">
-                                        <p className="font-semibold text-slate-500 font-mono">
+                                        <p className="font-semibold text-muted-foreground font-mono">
                                           {log.tokens_input !== null ? `In: ${log.tokens_input}` : ""}
                                           {log.tokens_output !== null ? ` | Out: ${log.tokens_output}` : ""}
                                         </p>
@@ -1055,42 +1055,42 @@ export default function EscolaMonitor({
           </div>
 
           <div className="space-y-6">
-            <Card className="border-slate-200 rounded-3xl overflow-hidden shadow-sm">
+            <Card className="border-border rounded-3xl overflow-hidden shadow-sm">
               <CardHeader className="bg-amber/5 border-b border-amber/10 p-6">
-                <CardTitle className="text-lg font-bold text-slate-900">Gestão Interna</CardTitle>
+                <CardTitle className="text-lg font-bold text-foreground">Gestão Interna</CardTitle>
               </CardHeader>
               <CardContent className="p-6">
                 <NotasInternas escolaId={escola.id} />
               </CardContent>
             </Card>
 
-            <Card className="border-slate-200 rounded-3xl overflow-hidden shadow-sm bg-white p-6 space-y-4">
-              <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest">Painel de Acesso</h3>
+            <Card className="border-border rounded-3xl overflow-hidden shadow-sm bg-card p-6 space-y-4">
+              <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Painel de Acesso</h3>
               <div className="space-y-3">
                 <div className="flex justify-between items-center text-sm">
-                  <span className="text-slate-500 font-medium">Domínio</span>
-                  <span className={dominio ? "text-slate-900 font-bold tracking-tight" : "text-slate-400 font-semibold"}>
+                  <span className="text-muted-foreground font-medium">Domínio</span>
+                  <span className={dominio ? "text-foreground font-bold tracking-tight" : "text-muted-foreground font-semibold"}>
                     {dominio || "Não configurado"}
                   </span>
                 </div>
                 <div className="flex justify-between items-center text-sm">
-                  <span className="text-slate-500 font-medium">SSL Status</span>
+                  <span className="text-muted-foreground font-medium">SSL Status</span>
                   {sslStatus ? (
                     <span className="text-emerald font-bold flex items-center gap-1">
                       <ShieldCheck size={14} /> {sslStatus}
                     </span>
                   ) : (
-                    <span className="text-slate-400 font-semibold">Não informado</span>
+                    <span className="text-muted-foreground font-semibold">Não informado</span>
                   )}
                 </div>
                 <div className="flex justify-between items-center text-sm">
-                  <span className="text-slate-500 font-medium">DB Region</span>
-                  <span className={dbRegion ? "text-slate-900 font-bold" : "text-slate-400 font-semibold"}>
+                  <span className="text-muted-foreground font-medium">DB Region</span>
+                  <span className={dbRegion ? "text-foreground font-bold" : "text-muted-foreground font-semibold"}>
                     {dbRegion || "Não informado"}
                   </span>
                 </div>
               </div>
-              <Button variant="outline" fullWidth className="rounded-xl font-bold text-xs border-slate-200 hover:bg-slate-50">
+              <Button variant="outline" fullWidth className="rounded-xl font-bold text-xs border-border hover:bg-muted">
                 Ver Logs de Infraestrutura
               </Button>
             </Card>

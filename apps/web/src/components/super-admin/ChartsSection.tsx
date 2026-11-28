@@ -14,7 +14,7 @@ const STATUS_CONFIG: Record<string, { colorClass: string; label: string }> = {
   pago: { colorClass: "bg-emerald", label: "Pagos" },
   pendente: { colorClass: "bg-amber", label: "Pendentes" },
   em_atraso: { colorClass: "bg-red-600", label: "Em atraso" },
-  cancelado: { colorClass: "bg-slate-400", label: "Cancelados" },
+  cancelado: { colorClass: "bg-muted", label: "Cancelados" },
 };
 
 export default function ChartsSection({ escolaId, data }: Props) {
@@ -52,7 +52,7 @@ export default function ChartsSection({ escolaId, data }: Props) {
         <div className="space-y-5">
           {items.length > 0 ? (
             items.map((payment) => {
-              const config = STATUS_CONFIG[payment.label.toLowerCase()] ?? { colorClass: "bg-slate-400", label: payment.label };
+              const config = STATUS_CONFIG[payment.label.toLowerCase()] ?? { colorClass: "bg-muted", label: payment.label };
               const pct = total > 0 ? (payment.value / total) * 100 : 0;
 
               return (

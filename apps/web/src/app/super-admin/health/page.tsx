@@ -38,13 +38,13 @@ export default function AdminHealthDashboard() {
       <div className="min-w-0">
         <div className="w-full min-w-0">
           <div className="animate-pulse space-y-4">
-            <div className="h-8 bg-gray-200 rounded w-1/4"></div>
-            <div className="h-40 bg-gray-200 rounded"></div>
-            <div className="h-10 bg-gray-200 rounded w-full"></div>
+            <div className="h-8 bg-muted rounded w-1/4"></div>
+            <div className="h-40 bg-muted rounded"></div>
+            <div className="h-10 bg-muted rounded w-full"></div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="h-64 bg-gray-200 rounded"></div>
-              <div className="h-64 bg-gray-200 rounded"></div>
-              <div className="h-64 bg-gray-200 rounded"></div>
+              <div className="h-64 bg-muted rounded"></div>
+              <div className="h-64 bg-muted rounded"></div>
+              <div className="h-64 bg-muted rounded"></div>
             </div>
           </div>
         </div>
@@ -59,10 +59,10 @@ export default function AdminHealthDashboard() {
         {/* Header */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
           <div>
-            <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Dashboard de Saúde</h1>
-            <p className="text-gray-600 mt-1">
+            <h1 className="text-2xl md:text-3xl font-bold text-foreground">Dashboard de Saúde</h1>
+            <p className="text-muted-foreground mt-1">
               Monitoramento em tempo real do KLASSE • Angola
-              {lastUpdated && <span className="ml-2 text-sm text-gray-500">Atualizado: {lastUpdated}</span>}
+              {lastUpdated && <span className="ml-2 text-sm text-muted-foreground">Atualizado: {lastUpdated}</span>}
             </p>
           </div>
           
@@ -129,9 +129,9 @@ export default function AdminHealthDashboard() {
         </Tabs>
         
         {/* Footer Actions */}
-        <div className="mt-8 pt-6 border-t border-gray-200">
+        <div className="mt-8 pt-6 border-t border-border">
           <div className="flex flex-wrap justify-between items-center gap-4">
-            <div className="text-sm text-gray-600">
+            <div className="text-sm text-muted-foreground">
               <p>KLASSE Admin • Sistema de monitoramento para Angola</p>
               <p className="mt-1">Para suporte emergencial: +244 944 811 150 (WhatsApp)</p>
             </div>

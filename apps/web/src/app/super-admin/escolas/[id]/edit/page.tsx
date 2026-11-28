@@ -32,7 +32,7 @@ type EscolaHealth = {
 const StatusItem = ({ label, ok }: { label: string; ok: boolean }) => (
   <div className="flex items-center gap-2 text-sm">
     {ok ? <CheckCircleIcon className="w-5 h-5 text-emerald-500" /> : <XCircleIcon className="w-5 h-5 text-red-400" />}
-    <span className={ok ? "text-gray-700" : "text-red-600 font-medium"}>{label}</span>
+    <span className={ok ? "text-foreground" : "text-red-600 font-medium"}>{label}</span>
   </div>
 );
 
@@ -97,9 +97,9 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
   if (!escola) {
     return (
       <div className="p-10 text-center">
-        <h2 className="text-xl font-bold text-gray-700">Escola não encontrada</h2>
-        <p className="text-gray-500">Verifique o ID ou se a escola foi deletada.</p>
-        <Link href="/super-admin/escolas" className="text-slate-600 hover:underline mt-4 block">
+        <h2 className="text-xl font-bold text-foreground">Escola não encontrada</h2>
+        <p className="text-muted-foreground">Verifique o ID ou se a escola foi deletada.</p>
+        <Link href="/super-admin/escolas" className="text-muted-foreground hover:underline mt-4 block">
           Voltar para lista
         </Link>
       </div>
@@ -121,8 +121,8 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
   };
 
   const kpis = [
-    { title: "Alunos Ativos", value: stats.total_alunos ?? 0, icon: UsersIcon, color: "text-slate-600" },
-    { title: "Professores", value: stats.total_professores ?? 0, icon: UserGroupIcon, color: "text-slate-600" },
+    { title: "Alunos Ativos", value: stats.total_alunos ?? 0, icon: UsersIcon, color: "text-muted-foreground" },
+    { title: "Professores", value: stats.total_professores ?? 0, icon: UserGroupIcon, color: "text-muted-foreground" },
     { title: "Notas Lançadas", value: `${stats.percentual_notas ?? 0}%`, icon: AcademicCapIcon, color: "text-amber-600" },
     { title: "Adimplência", value: `${stats.adimplencia ?? 0}%`, icon: BanknotesIcon, color: "text-emerald-600" },
   ];
@@ -135,7 +135,7 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
 
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-2">
+          <h1 className="text-3xl font-bold text-foreground flex items-center gap-2">
             {escola.nome}
             <span
               className={`px-2.5 py-0.5 rounded-full text-xs font-bold uppercase border ${
@@ -143,16 +143,16 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
                   ? "bg-emerald-50 text-emerald-700 border-emerald-200"
                   : escola.status === "suspensa"
                   ? "bg-red-50 text-red-700 border-red-200"
-                  : "bg-gray-100 text-gray-600 border-gray-200"
+                  : "bg-muted text-muted-foreground border-border"
               }`}
             >
               {escola.status}
             </span>
           </h1>
-          <p className="text-gray-500 mt-1 flex items-center gap-2 text-sm">
+          <p className="text-muted-foreground mt-1 flex items-center gap-2 text-sm">
             <span>{escola.cidade || "Cidade não informada"} {escola.estado ? `- ${escola.estado}` : ""}</span>
             <span>•</span>
-            <span className="font-medium text-gray-700">Plano {PLAN_NAMES[plano]}</span>
+            <span className="font-medium text-foreground">Plano {PLAN_NAMES[plano]}</span>
           </p>
         </div>
 
@@ -160,7 +160,7 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
           <input type="hidden" name="escola_id" value={escola.id} />
           <button
             type="submit"
-            className="flex items-center gap-2 bg-gray-900 text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-gray-800 transition-colors shadow-sm"
+            className="flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2 rounded-lg text-sm font-bold hover:bg-primary/90 transition-colors shadow-sm"
           >
             <ShieldCheckIcon className="w-4 h-4" />
             Acessar Painel (Suporte)
@@ -179,7 +179,7 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
                 {brand.financeEmail && (
                   <a
                     href={`mailto:${brand.financeEmail}`}
-                    className="px-3 py-1.5 rounded-md bg-white border border-red-200 text-red-700 hover:bg-red-50 text-xs font-bold"
+                    className="px-3 py-1.5 rounded-md bg-card border border-red-200 text-red-700 hover:bg-red-50 text-xs font-bold"
                   >
                     Email Financeiro
                   </a>
@@ -200,8 +200,8 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
         </div>
       )}
 
-      <div className="bg-white border border-gray-200 rounded-xl p-5 shadow-sm">
-        <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-4 border-b border-gray-100 pb-2">
+      <div className="bg-card border border-border rounded-xl p-5 shadow-sm">
+        <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-wider mb-4 border-b border-border pb-2">
           Health Check (Configuração)
         </h3>
         {health ? (
@@ -212,7 +212,7 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
             <StatusItem label="Tabela de Preços" ok={health.tem_precos_definidos} />
           </div>
         ) : (
-          <p className="text-sm text-gray-400 italic">Dados de saúde indisponíveis (View não encontrada).</p>
+          <p className="text-sm text-muted-foreground italic">Dados de saúde indisponíveis (View não encontrada).</p>
         )}
       </div>
 
@@ -228,13 +228,13 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
         {kpis.map((kpi) => (
           <div
             key={kpi.title}
-            className="bg-white border border-gray-100 shadow-sm hover:shadow-md transition-shadow rounded-xl p-5 flex items-center justify-between"
+            className="bg-card border border-border shadow-sm hover:shadow-md transition-shadow rounded-xl p-5 flex items-center justify-between"
           >
             <div>
-              <p className="text-xs font-medium text-gray-500 uppercase">{kpi.title}</p>
-              <p className="text-2xl font-bold text-gray-900 mt-1">{kpi.value}</p>
+              <p className="text-xs font-medium text-muted-foreground uppercase">{kpi.title}</p>
+              <p className="text-2xl font-bold text-foreground mt-1">{kpi.value}</p>
             </div>
-            <div className={`p-3 rounded-lg bg-gray-50 ${kpi.color}`}>
+            <div className={`p-3 rounded-lg bg-muted ${kpi.color}`}>
               <kpi.icon className="w-6 h-6" />
             </div>
           </div>

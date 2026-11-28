@@ -226,7 +226,7 @@ export default function StudentReclassificationTool() {
         <section className="grid grid-cols-1 gap-6 xl:grid-cols-[1fr_380px]">
           <div className="rounded-xl border border-border bg-card p-5 shadow-sm">
             <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-950 text-white">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-primary-foreground">
                 <ArrowRightLeft className="h-5 w-5" />
               </div>
               <div>
@@ -301,7 +301,7 @@ export default function StudentReclassificationTool() {
               type="button"
               disabled={!canSubmit}
               onClick={submit}
-              className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-slate-950 px-5 py-4 text-sm font-black text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50 md:w-auto"
+              className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-5 py-4 text-sm font-black text-primary-foreground transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50 md:w-auto"
             >
               {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4" />}
               Executar reclassificação

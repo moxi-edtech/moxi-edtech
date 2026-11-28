@@ -133,8 +133,8 @@ const STATUS_META: Record<
   },
   cancelled: {
     label: "Cancelada",
-    badge: "bg-slate-100 text-slate-700 border-slate-200",
-    chip: "bg-slate-200 text-slate-700",
+    badge: "bg-muted text-foreground border-border",
+    chip: "bg-muted text-foreground",
   },
 };
 
@@ -161,8 +161,8 @@ const PAYOUT_STATUS_META: Record<PayoutItemStatus, { label: string; badge: strin
   },
   cancelled: {
     label: "Cancelado",
-    badge: "bg-slate-100 text-slate-700 border-slate-200",
-    chip: "bg-slate-200 text-slate-700",
+    badge: "bg-muted text-foreground border-border",
+    chip: "bg-muted text-foreground",
   },
 };
 
@@ -427,29 +427,29 @@ export default function PartnerCommissionsClient() {
   }
 
   return (
-    <section className="space-y-6 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+    <section className="space-y-6 rounded-xl border border-border bg-card p-6 shadow-sm">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <h2 className="text-xl font-bold text-slate-950">Cockpit de Faturamento de Parceiros</h2>
-          <p className="text-sm text-slate-500">
+          <h2 className="text-xl font-bold text-foreground">Cockpit de Faturamento de Parceiros</h2>
+          <p className="text-sm text-muted-foreground">
             Opera o ledger já gerado pelo backend: aprovação, bloqueio, pagamento e reabertura.
           </p>
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
           <div className="relative">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <input
               value={search}
               onChange={(event) => setSearch(event.target.value)}
               placeholder="Pesquisar escola, parceiro ou plano"
-              className="h-10 rounded-xl border border-slate-200 bg-white pl-9 pr-3 text-sm outline-none transition focus:border-slate-400"
+              className="h-10 rounded-xl border border-border bg-card pl-9 pr-3 text-sm outline-none transition focus:border-border"
             />
           </div>
           <select
             value={affiliateFilter}
             onChange={(event) => setAffiliateFilter(event.target.value)}
-            className="h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm outline-none transition focus:border-slate-400"
+            className="h-10 rounded-xl border border-border bg-card px-3 text-sm outline-none transition focus:border-border"
           >
             <option value="all">Todos os parceiros</option>
             {affiliateOptions.map((affiliate) => (
@@ -461,7 +461,7 @@ export default function PartnerCommissionsClient() {
           <select
             value={statusFilter}
             onChange={(event) => setStatusFilter(event.target.value as "all" | CommissionItem["status"])}
-            className="h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm outline-none transition focus:border-slate-400"
+            className="h-10 rounded-xl border border-border bg-card px-3 text-sm outline-none transition focus:border-border"
           >
             <option value="all">Todos os estados</option>
             {Object.entries(STATUS_META).map(([value, meta]) => (
@@ -478,29 +478,29 @@ export default function PartnerCommissionsClient() {
       </div>
 
       <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-5">
-        <article className="rounded-xl border border-slate-200 bg-slate-50 p-4">
-          <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Total filtrado</p>
-          <p className="mt-2 text-2xl font-black text-slate-950">{formatCurrency(summary.totalKz)}</p>
-          <p className="text-sm text-slate-500">{summary.totalCount} registos</p>
+        <article className="rounded-xl border border-border bg-muted p-4">
+          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Total filtrado</p>
+          <p className="mt-2 text-2xl font-black text-foreground">{formatCurrency(summary.totalKz)}</p>
+          <p className="text-sm text-muted-foreground">{summary.totalCount} registos</p>
         </article>
         {(["pending", "approved", "blocked", "paid"] as const).map((status) => (
-          <article key={status} className="rounded-xl border border-slate-200 bg-white p-4">
+          <article key={status} className="rounded-xl border border-border bg-card p-4">
             <div className="flex items-center justify-between">
-              <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">{STATUS_META[status].label}</p>
+              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{STATUS_META[status].label}</p>
               <span className={`rounded-full px-2 py-1 text-[11px] font-bold ${STATUS_META[status].chip}`}>
                 {summary[status].count}
               </span>
             </div>
-            <p className="mt-2 text-2xl font-black text-slate-950">{formatCurrency(summary[status].kz)}</p>
+            <p className="mt-2 text-2xl font-black text-foreground">{formatCurrency(summary[status].kz)}</p>
           </article>
         ))}
       </div>
 
-      <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+      <div className="rounded-2xl border border-border bg-muted p-4">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div>
-            <h3 className="text-base font-bold text-slate-950">Fila de payout com recibo</h3>
-            <p className="text-sm text-slate-500">
+            <h3 className="text-base font-bold text-foreground">Fila de payout com recibo</h3>
+            <p className="text-sm text-muted-foreground">
               Valida os pedidos enviados pelo parceiro antes de liquidar o faturamento.
             </p>
           </div>
@@ -515,7 +515,7 @@ export default function PartnerCommissionsClient() {
 
         <div className="mt-4 grid gap-3 xl:grid-cols-2">
           {filteredPayouts.length === 0 ? (
-            <div className="rounded-xl border border-dashed border-slate-200 bg-white p-6 text-sm text-slate-500">
+            <div className="rounded-xl border border-dashed border-border bg-card p-6 text-sm text-muted-foreground">
               Nenhum pedido de payout encontrado para os filtros atuais.
             </div>
           ) : (
@@ -523,37 +523,37 @@ export default function PartnerCommissionsClient() {
               const meta = PAYOUT_STATUS_META[payout.status];
               const isBusy = busyPayoutId === payout.id;
               return (
-                <article key={payout.id} className="rounded-xl border border-slate-200 bg-white p-4">
+                <article key={payout.id} className="rounded-xl border border-border bg-card p-4">
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                     <div>
                       <div className="flex flex-wrap items-center gap-2">
-                        <p className="font-bold text-slate-950">{payout.afiliado_nome}</p>
+                        <p className="font-bold text-foreground">{payout.afiliado_nome}</p>
                         <span className={`inline-flex rounded-full border px-2.5 py-1 text-[11px] font-bold ${meta.badge}`}>
                           {meta.label}
                         </span>
                       </div>
-                      <p className="mt-1 text-xs text-slate-500">
+                      <p className="mt-1 text-xs text-muted-foreground">
                         {payout.afiliado_codigo} · {payout.commission_count} faturamento(s) · solicitado em {formatDate(payout.requested_at)}
                       </p>
                       {payout.requested_by_nome ? (
-                        <p className="text-xs text-slate-500">Operador: {payout.requested_by_nome}</p>
+                        <p className="text-xs text-muted-foreground">Operador: {payout.requested_by_nome}</p>
                       ) : null}
                     </div>
                     <div className="text-left sm:text-right">
-                      <p className="text-lg font-black text-slate-950">{formatCurrency(payout.total_kz)}</p>
-                      <p className="text-xs text-slate-500">{payoutSummary.totalCount} pedido(s) filtrado(s)</p>
+                      <p className="text-lg font-black text-foreground">{formatCurrency(payout.total_kz)}</p>
+                      <p className="text-xs text-muted-foreground">{payoutSummary.totalCount} pedido(s) filtrado(s)</p>
                     </div>
                   </div>
 
-                  <div className="mt-3 rounded-xl bg-slate-50 p-3">
-                    <div className="flex flex-wrap items-center gap-2 text-xs text-slate-600">
-                      <FileText className="h-4 w-4 text-slate-400" />
+                  <div className="mt-3 rounded-xl bg-muted p-3">
+                    <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                      <FileText className="h-4 w-4 text-muted-foreground" />
                       {payout.receipt_signed_url ? (
                         <a
                           href={payout.receipt_signed_url}
                           target="_blank"
                           rel="noreferrer"
-                          className="font-semibold text-slate-800 underline-offset-2 hover:underline"
+                          className="font-semibold text-foreground underline-offset-2 hover:underline"
                         >
                           {payout.receipt_file_name}
                         </a>
@@ -563,12 +563,12 @@ export default function PartnerCommissionsClient() {
                     </div>
                     <div className="mt-2 flex flex-wrap gap-2">
                       {payout.items.slice(0, 3).map((item) => (
-                        <span key={item.commission_id} className="rounded-full bg-white px-2 py-1 text-[11px] font-semibold text-slate-600">
+                        <span key={item.commission_id} className="rounded-full bg-card px-2 py-1 text-[11px] font-semibold text-muted-foreground">
                           {item.commission?.escola_nome ?? "Escola sem nome"} · {formatCurrency(item.valor_kz)}
                         </span>
                       ))}
                       {payout.items.length > 3 ? (
-                        <span className="rounded-full bg-white px-2 py-1 text-[11px] font-semibold text-slate-500">
+                        <span className="rounded-full bg-card px-2 py-1 text-[11px] font-semibold text-muted-foreground">
                           +{payout.items.length - 3}
                         </span>
                       ) : null}
@@ -611,7 +611,7 @@ export default function PartnerCommissionsClient() {
                       </span>
                     ) : null}
                     {payout.status === "rejected" || payout.status === "cancelled" ? (
-                      <span className="inline-flex items-center gap-2 rounded-xl bg-slate-100 px-3 py-2 text-xs font-semibold text-slate-600">
+                      <span className="inline-flex items-center gap-2 rounded-xl bg-muted px-3 py-2 text-xs font-semibold text-muted-foreground">
                         <Clock3 className="h-4 w-4" />
                         Encerrado
                       </span>
@@ -625,20 +625,20 @@ export default function PartnerCommissionsClient() {
       </div>
 
       {loading ? (
-        <div className="flex min-h-[260px] items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-slate-50">
-          <Loader2 className="h-6 w-6 animate-spin text-slate-400" />
+        <div className="flex min-h-[260px] items-center justify-center rounded-2xl border border-dashed border-border bg-muted">
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
         </div>
       ) : filteredItems.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-10 text-center">
-          <AlertCircle className="mx-auto h-8 w-8 text-slate-300" />
-          <p className="mt-3 text-sm font-semibold text-slate-700">Nenhum faturamento encontrado.</p>
-          <p className="text-sm text-slate-500">Ajuste os filtros ou aguarde nova geração a partir dos pagamentos confirmados.</p>
+        <div className="rounded-2xl border border-dashed border-border bg-muted p-10 text-center">
+          <AlertCircle className="mx-auto h-8 w-8 text-muted-foreground" />
+          <p className="mt-3 text-sm font-semibold text-foreground">Nenhum faturamento encontrado.</p>
+          <p className="text-sm text-muted-foreground">Ajuste os filtros ou aguarde nova geração a partir dos pagamentos confirmados.</p>
         </div>
       ) : (
         <div className="overflow-x-auto">
           <table className="min-w-full border-separate border-spacing-y-2">
             <thead>
-              <tr className="text-left text-xs uppercase tracking-wider text-slate-400">
+              <tr className="text-left text-xs uppercase tracking-wider text-muted-foreground">
                 <th className="px-3 py-2">Parceiro / Escola</th>
                 <th className="px-3 py-2">Tipo</th>
                 <th className="px-3 py-2">Estado</th>
@@ -653,23 +653,23 @@ export default function PartnerCommissionsClient() {
               {filteredItems.map((item) => {
                 const isBusy = busyId === item.id;
                 return (
-                  <tr key={item.id} className="rounded-2xl bg-slate-50 text-sm text-slate-700">
+                  <tr key={item.id} className="rounded-2xl bg-muted text-sm text-foreground">
                     <td className="rounded-l-2xl px-3 py-3 align-top">
                       <div className="space-y-1">
-                        <p className="font-bold text-slate-950">{item.escola_nome}</p>
-                        <p className="text-xs text-slate-500">
+                        <p className="font-bold text-foreground">{item.escola_nome}</p>
+                        <p className="text-xs text-muted-foreground">
                           {item.afiliado_codigo} · {item.afiliado_nome}
                         </p>
-                        {item.membro_nome ? <p className="text-xs text-slate-500">Operador: {item.membro_nome}</p> : null}
+                        {item.membro_nome ? <p className="text-xs text-muted-foreground">Operador: {item.membro_nome}</p> : null}
                       </div>
                     </td>
                     <td className="px-3 py-3 align-top">
                       <div className="space-y-1">
-                        <span className="inline-flex rounded-full bg-slate-200 px-2 py-1 text-[11px] font-bold uppercase text-slate-700">
+                        <span className="inline-flex rounded-full bg-muted px-2 py-1 text-[11px] font-bold uppercase text-foreground">
                           {item.tipo}
                         </span>
                         {item.assinatura?.plano ? (
-                          <p className="text-xs text-slate-500">
+                          <p className="text-xs text-muted-foreground">
                             {item.assinatura.plano} · {item.assinatura.ciclo ?? "—"}
                           </p>
                         ) : null}
@@ -679,7 +679,7 @@ export default function PartnerCommissionsClient() {
                       <span className={`inline-flex rounded-full border px-2.5 py-1 text-[11px] font-bold ${STATUS_META[item.status].badge}`}>
                         {STATUS_META[item.status].label}
                       </span>
-                      <div className="mt-2 space-y-1 text-xs text-slate-500">
+                      <div className="mt-2 space-y-1 text-xs text-muted-foreground">
                         <p>Criada: {formatDate(item.created_at)}</p>
                         {item.approved_at ? <p>Aprovada: {formatDate(item.approved_at)}</p> : null}
                         {item.paid_at ? <p>Paga: {formatDate(item.paid_at)}</p> : null}
@@ -687,18 +687,18 @@ export default function PartnerCommissionsClient() {
                     </td>
                     <td className="px-3 py-3 align-top">
                       <div className="space-y-1">
-                        <p className="font-bold text-slate-950">{formatCurrency(item.valor_kz)}</p>
-                        <p className="text-xs text-slate-500">Base: {formatCurrency(item.base_valor_kz)}</p>
-                        <p className="text-xs text-slate-500">Percentual: {Math.round(item.percentual * 100)}%</p>
+                        <p className="font-bold text-foreground">{formatCurrency(item.valor_kz)}</p>
+                        <p className="text-xs text-muted-foreground">Base: {formatCurrency(item.base_valor_kz)}</p>
+                        <p className="text-xs text-muted-foreground">Percentual: {Math.round(item.percentual * 100)}%</p>
                       </div>
                     </td>
-                    <td className="px-3 py-3 align-top text-xs text-slate-500">
+                    <td className="px-3 py-3 align-top text-xs text-muted-foreground">
                       <p>{formatDate(item.competencia_inicio)}</p>
                       <p>{formatDate(item.competencia_fim)}</p>
                     </td>
-                    <td className="px-3 py-3 align-top text-xs text-slate-500">{formatDate(item.due_at)}</td>
+                    <td className="px-3 py-3 align-top text-xs text-muted-foreground">{formatDate(item.due_at)}</td>
                     <td className="px-3 py-3 align-top">
-                      <div className="space-y-1 text-xs text-slate-500">
+                      <div className="space-y-1 text-xs text-muted-foreground">
                         {item.pagamento?.status ? <p>Pagamento: {item.pagamento.status}</p> : <p>Pagamento: —</p>}
                         {item.pagamento?.valor_kz ? <p>Valor pago: {formatCurrency(item.pagamento.valor_kz)}</p> : null}
                         {item.pagamento?.confirmado_em ? <p>Confirmado: {formatDate(item.pagamento.confirmado_em)}</p> : null}

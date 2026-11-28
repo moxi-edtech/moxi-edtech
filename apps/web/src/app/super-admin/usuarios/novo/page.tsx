@@ -267,7 +267,7 @@ function CriarUsuarioForm() {
           <button
             type="button"
             onClick={() => router.push('/super-admin')}
-            className="inline-flex items-center gap-2 text-sm text-gray-600 hover:text-moxinexa-teal transition-colors mb-6"
+            className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-moxinexa-teal transition-colors mb-6"
           >
             <ArrowLeftIcon className="w-4 h-4" />
             Voltar ao Dashboard
@@ -297,7 +297,7 @@ function CriarUsuarioForm() {
                       ? "bg-moxinexa-teal text-white border-moxinexa-teal shadow-lg scale-110"
                       : number < currentStep
                       ? "bg-green-500 text-white border-green-500 shadow-md"
-                      : "bg-white text-gray-400 border-gray-300"
+                      : "bg-card text-muted-foreground border-border"
                   }`}
                 >
                   {number < currentStep ? (
@@ -308,7 +308,7 @@ function CriarUsuarioForm() {
                 </div>
                 <span
                   className={`text-xs mt-2 font-medium text-center ${
-                    number === currentStep ? "text-moxinexa-teal font-semibold" : "text-gray-500"
+                    number === currentStep ? "text-moxinexa-teal font-semibold" : "text-muted-foreground"
                   }`}
                 >
                   {title}
@@ -317,7 +317,7 @@ function CriarUsuarioForm() {
             ))}
           </div>
           <div className="relative max-w-md mx-auto -mt-7">
-            <div className="absolute top-1/2 left-0 right-0 h-1 bg-gray-200 -z-10 rounded-full">
+            <div className="absolute top-1/2 left-0 right-0 h-1 bg-muted -z-10 rounded-full">
               <div
                 className="h-full bg-moxinexa-teal transition-all duration-500 ease-out rounded-full"
                 style={{ width: `${((currentStep - 1) / (STEP_CONFIG.length - 1)) * 100}%` }}
@@ -328,7 +328,7 @@ function CriarUsuarioForm() {
 
         <form
           onSubmit={handleSubmit}
-          className="bg-white rounded-2xl shadow-xl p-8 space-y-8 border border-gray-100"
+          className="bg-card rounded-2xl shadow-xl p-8 space-y-8 border border-border"
         >
           {/* Step 1: Basic Information */}
           {currentStep === 1 && (
@@ -365,7 +365,7 @@ function CriarUsuarioForm() {
           )}
 
           {/* Navigation Buttons */}
-          <div className="flex justify-between pt-8 border-t border-gray-200">
+          <div className="flex justify-between pt-8 border-t border-border">
             <Button
               type="button"
               onClick={prevStep}
@@ -398,7 +398,7 @@ function CriarUsuarioForm() {
               >
                 {loading ? (
                   <>
-                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    <div className="w-4 h-4 border-2 border-background border-t-transparent rounded-full animate-spin" />
                     <span>Criando...</span>
                   </>
                 ) : (
@@ -505,7 +505,7 @@ function Step2({
             Escola *
           </label>
           <select
-            className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-moxinexa-teal focus:border-transparent transition-all disabled:bg-gray-50 disabled:cursor-not-allowed"
+            className="w-full border border-border rounded-lg p-3 focus:ring-2 focus:ring-moxinexa-teal focus:border-transparent transition-all disabled:bg-muted disabled:cursor-not-allowed"
             value={formData.escolaId}
             onChange={(e) => onInputChange('escolaId', e.target.value)}
             disabled={loading || escolasLoading}
@@ -550,7 +550,7 @@ function Step2({
             Papel *
           </label>
           <select
-            className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-moxinexa-teal focus:border-transparent transition-all disabled:bg-gray-50"
+            className="w-full border border-border rounded-lg p-3 focus:ring-2 focus:ring-moxinexa-teal focus:border-transparent transition-all disabled:bg-muted"
             value={formData.papel}
             onChange={(e) => onInputChange('papel', e.target.value)}
             disabled={loading}
@@ -564,12 +564,12 @@ function Step2({
         </div>
       </div>
 
-      <div className="bg-slate-50 border border-slate-200 rounded-lg p-4">
+      <div className="bg-muted border border-border rounded-lg p-4">
         <div className="flex items-center gap-2 mb-2">
-          <InformationCircleIcon className="w-5 h-5 text-slate-600" />
-          <span className="font-medium text-slate-900">Credenciais do Portal</span>
+          <InformationCircleIcon className="w-5 h-5 text-muted-foreground" />
+          <span className="font-medium text-foreground">Credenciais do Portal</span>
         </div>
-        <p className="text-slate-700 text-sm">
+        <p className="text-foreground text-sm">
           Para alunos, o login oficial é o número de processo com a sigla da escola e é
           gerado na matrícula. Para outros papéis, o acesso é feito com o e-mail informado.
         </p>
@@ -602,7 +602,7 @@ function Step3({
       />
 
       {/* Review Card */}
-      <div className="bg-gray-50 border border-gray-200 rounded-lg p-6">
+      <div className="bg-muted border border-border rounded-lg p-6">
         <h3 className="font-semibold text-moxinexa-dark mb-4 flex items-center gap-2">
           <CheckCircleIcon className="w-5 h-5 text-green-500" />
           Resumo do Usuário
@@ -627,7 +627,7 @@ function Step3({
           <button
             type="button"
             onClick={onTogglePassword}
-            className="text-gray-500 hover:text-moxinexa-teal transition-colors p-1"
+            className="text-muted-foreground hover:text-moxinexa-teal transition-colors p-1"
             disabled={loading}
           >
             {showPassword ? <EyeSlashIcon className="w-5 h-5" /> : <EyeIcon className="w-5 h-5" />}
@@ -642,7 +642,7 @@ function Step3({
           placeholder="Deixe em branco para gerar automaticamente"
         />
         
-        <div className="flex items-center gap-2 text-xs text-gray-500">
+        <div className="flex items-center gap-2 text-xs text-muted-foreground">
           <InformationCircleIcon className="w-4 h-4 flex-shrink-0" />
           <span>Mín. 8 caracteres, com maiúscula, minúscula, número e caractere especial</span>
         </div>
@@ -706,7 +706,7 @@ function FormField({
       )}
       <input
         type={type}
-        className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-moxinexa-teal focus:border-transparent transition-all disabled:bg-gray-50 disabled:cursor-not-allowed"
+        className="w-full border border-border rounded-lg p-3 focus:ring-2 focus:ring-moxinexa-teal focus:border-transparent transition-all disabled:bg-muted disabled:cursor-not-allowed"
         value={value}
         onChange={(e) => onChange(e.target.value)}
         disabled={disabled}
@@ -728,7 +728,7 @@ function ReviewItem({
 }) {
   return (
     <div>
-      <span className="text-gray-600 text-xs uppercase tracking-wide">{label}:</span>
+      <span className="text-muted-foreground text-xs uppercase tracking-wide">{label}:</span>
       <p className={`font-medium ${mono ? 'font-mono text-sm' : ''}`}>
         {value}
       </p>
@@ -757,12 +757,12 @@ function MessageAlert({ type, text }: Message) {
 
 function QuickTips() {
   return (
-    <div className="mt-8 bg-slate-50 border border-slate-200 rounded-2xl p-6">
-      <h3 className="font-semibold text-slate-900 mb-3 flex items-center gap-2">
+    <div className="mt-8 bg-muted border border-border rounded-2xl p-6">
+      <h3 className="font-semibold text-foreground mb-3 flex items-center gap-2">
         <InformationCircleIcon className="w-5 h-5" />
         Dicas Rápidas
       </h3>
-      <ul className="text-slate-800 text-sm space-y-2">
+      <ul className="text-foreground text-sm space-y-2">
         <li>• Alunos usam número de processo como login no portal</li>
         <li>• Se não definir senha, o sistema gerará uma automaticamente</li>
         <li>• O usuário receberá instruções de acesso por email</li>
@@ -804,10 +804,10 @@ function PasswordStrength({ password }: { password: string }) {
   const { label, color } = strengthConfig[score as keyof typeof strengthConfig] || strengthConfig[0];
 
   return (
-    <div className="bg-white border border-gray-200 rounded-lg p-4">
+    <div className="bg-card border border-border rounded-lg p-4">
       <div className="flex items-center justify-between text-sm mb-3">
-        <span className="text-gray-700 font-medium">Força da senha:</span>
-        <span className="font-semibold text-gray-800">{label}</span>
+        <span className="text-foreground font-medium">Força da senha:</span>
+        <span className="font-semibold text-foreground">{label}</span>
       </div>
       
       <div className="flex gap-1 mb-4" aria-hidden>
@@ -815,7 +815,7 @@ function PasswordStrength({ password }: { password: string }) {
           <div
             key={index}
             className={`h-2 flex-1 rounded-full transition-all duration-300 ${
-              index < score ? color : 'bg-gray-200'
+              index < score ? color : 'bg-muted'
             }`}
           />
         ))}
@@ -826,12 +826,12 @@ function PasswordStrength({ password }: { password: string }) {
           <li
             key={index}
             className={`flex items-center gap-2 ${
-              rule.ok ? 'text-green-600' : 'text-gray-500'
+              rule.ok ? 'text-green-600' : 'text-muted-foreground'
             }`}
           >
             <div
               className={`w-2 h-2 rounded-full transition-colors ${
-                rule.ok ? 'bg-green-500' : 'bg-gray-300'
+                rule.ok ? 'bg-green-500' : 'bg-muted'
               }`}
             />
             {rule.msg}

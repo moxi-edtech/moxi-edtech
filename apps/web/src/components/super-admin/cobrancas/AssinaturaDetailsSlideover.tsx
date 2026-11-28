@@ -114,7 +114,7 @@ export default function AssinaturaDetailsSlideover({ assinaturaId, onClose, onUp
 
   if (loading) return (
     <div className="fixed inset-0 z-[60] flex items-center justify-end">
-      <div className="w-full max-w-md h-full bg-white shadow-2xl flex items-center justify-center">
+      <div className="w-full max-w-md h-full bg-card shadow-2xl flex items-center justify-center">
         <Spinner size={32} />
       </div>
     </div>
@@ -126,17 +126,17 @@ export default function AssinaturaDetailsSlideover({ assinaturaId, onClose, onUp
       <div className="fixed inset-0 bg-black/40 z-[50] backdrop-blur-sm" onClick={onClose} />
       
       {/* Slideover */}
-      <div className="fixed inset-y-0 right-0 z-[60] w-full max-w-md bg-white shadow-2xl animate-in slide-in-from-right duration-300">
+      <div className="fixed inset-y-0 right-0 z-[60] w-full max-w-md bg-card shadow-2xl animate-in slide-in-from-right duration-300">
         <div className="h-full flex flex-col">
           
           {/* Header */}
-          <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+          <div className="p-6 border-b border-border flex items-center justify-between bg-muted/50">
             <div>
-              <h2 className="text-lg font-bold text-slate-900">{data.escolas?.nome}</h2>
-              <p className="text-[10px] text-slate-500 font-mono uppercase tracking-widest">ID: {assinaturaId.slice(0, 13)}...</p>
+              <h2 className="text-lg font-bold text-foreground">{data.escolas?.nome}</h2>
+              <p className="text-[10px] text-muted-foreground font-mono uppercase tracking-widest">ID: {assinaturaId.slice(0, 13)}...</p>
             </div>
-            <button onClick={onClose} className="p-2 hover:bg-slate-200 rounded-lg transition-colors">
-              <X className="h-5 w-5 text-slate-500" />
+            <button onClick={onClose} className="p-2 hover:bg-muted rounded-lg transition-colors">
+              <X className="h-5 w-5 text-muted-foreground" />
             </button>
           </div>
 
@@ -145,12 +145,12 @@ export default function AssinaturaDetailsSlideover({ assinaturaId, onClose, onUp
             
             {/* Secção 1: Comunicação */}
             <div className="space-y-3">
-              <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
+              <h3 className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2">
                 <Mail className="h-3 w-3" /> Canais de Comunicação
               </h3>
-              <div className="bg-slate-50 rounded-xl p-4 border border-slate-100 space-y-4">
+              <div className="bg-muted rounded-xl p-4 border border-border space-y-4">
                 <div className="flex items-center justify-between">
-                  <p className="text-xs text-slate-600">Reenviar dados de pagamento (NIB/Referência) ao director.</p>
+                  <p className="text-xs text-muted-foreground">Reenviar dados de pagamento (NIB/Referência) ao director.</p>
                   <Button 
                     size="sm" 
                     tone="gold" 
@@ -166,17 +166,17 @@ export default function AssinaturaDetailsSlideover({ assinaturaId, onClose, onUp
 
             {/* Secção 2: Contrato */}
             <div className="space-y-4">
-              <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
+              <h3 className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2">
                 <CreditCard className="h-3 w-3" /> Acções de Contrato
               </h3>
               
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1.5">
-                  <label className="text-[10px] font-bold text-slate-500 uppercase">Plano</label>
+                  <label className="text-[10px] font-bold text-muted-foreground uppercase">Plano</label>
                   <select 
                     value={plano} 
                     onChange={(e) => setPlano(e.target.value as any)}
-                    className="w-full text-xs rounded-lg border-slate-200 bg-white p-2 focus:ring-2 focus:ring-emerald/30 focus:border-emerald"
+                    className="w-full text-xs rounded-lg border-border bg-card p-2 focus:ring-2 focus:ring-emerald/30 focus:border-emerald"
                   >
                     <option value="essencial">Essencial</option>
                     <option value="profissional">Profissional</option>
@@ -184,11 +184,11 @@ export default function AssinaturaDetailsSlideover({ assinaturaId, onClose, onUp
                   </select>
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-[10px] font-bold text-slate-500 uppercase">Ciclo</label>
+                  <label className="text-[10px] font-bold text-muted-foreground uppercase">Ciclo</label>
                   <select 
                     value={ciclo} 
                     onChange={(e) => setCiclo(e.target.value as any)}
-                    className="w-full text-xs rounded-lg border-slate-200 bg-white p-2 focus:ring-2 focus:ring-emerald/30 focus:border-emerald"
+                    className="w-full text-xs rounded-lg border-border bg-card p-2 focus:ring-2 focus:ring-emerald/30 focus:border-emerald"
                   >
                     <option value="mensal">Mensal</option>
                     <option value="anual">Anual</option>
@@ -197,19 +197,19 @@ export default function AssinaturaDetailsSlideover({ assinaturaId, onClose, onUp
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-[10px] font-bold text-slate-500 uppercase">Valor Customizado (Kz)</label>
+                <label className="text-[10px] font-bold text-muted-foreground uppercase">Valor Customizado (Kz)</label>
                 <input 
                   type="number" 
                   value={valor} 
                   onChange={(e) => setValor(Number(e.target.value))}
-                  className="w-full text-sm font-mono font-bold rounded-lg border-slate-200 bg-white p-2 text-slate-700"
+                  className="w-full text-sm font-mono font-bold rounded-lg border-border bg-card p-2 text-foreground"
                 />
               </div>
             </div>
 
             {/* Secção 3: Status */}
             <div className="space-y-3">
-              <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
+              <h3 className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2">
                 <AlertTriangle className="h-3 w-3" /> Gestão de Status
               </h3>
               <div className="flex gap-2">
@@ -230,21 +230,21 @@ export default function AssinaturaDetailsSlideover({ assinaturaId, onClose, onUp
 
             {/* Secção 4: Notas */}
             <div className="space-y-3">
-              <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
+              <h3 className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2">
                 <FileText className="h-3 w-3" /> Auditoria & Notas Internas
               </h3>
               <textarea 
                 value={notas}
                 onChange={(e) => setNotas(e.target.value)}
                 placeholder="Acordos especiais, descontos manuais, historial de contacto..."
-                className="w-full h-32 text-xs rounded-xl border-slate-200 bg-slate-50 p-3 placeholder:text-slate-400 focus:bg-white transition-all"
+                className="w-full h-32 text-xs rounded-xl border-border bg-muted p-3 placeholder:text-muted-foreground focus:bg-card transition-all"
               />
             </div>
 
           </div>
 
           {/* Footer */}
-          <div className="p-6 border-t border-slate-100 bg-slate-50/50 flex gap-3">
+          <div className="p-6 border-t border-border bg-muted/50 flex gap-3">
             <Button variant="outline" fullWidth onClick={onClose}>Cancelar</Button>
             <Button 
               fullWidth 

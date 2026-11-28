@@ -14,17 +14,17 @@ type DebugPayload = {
 
 function Row({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex justify-between gap-4 py-1 border-b border-slate-100">
-      <div className="text-slate-500 text-sm">{label}</div>
-      <div className="font-mono text-sm text-slate-900">{value}</div>
+    <div className="flex justify-between gap-4 py-1 border-b border-border">
+      <div className="text-muted-foreground text-sm">{label}</div>
+      <div className="font-mono text-sm text-foreground">{value}</div>
     </div>
   );
 }
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="bg-white rounded-lg shadow p-4">
-      <h2 className="font-semibold text-slate-800 mb-3">{title}</h2>
+    <div className="bg-card rounded-lg shadow p-4">
+      <h2 className="font-semibold text-foreground mb-3">{title}</h2>
       {children}
     </div>
   );
@@ -65,11 +65,11 @@ function SessionDebug() {
           <a
             href="/api/health"
             target="_blank"
-            className="px-3 py-2 bg-slate-200 text-slate-800 rounded hover:bg-slate-300"
+            className="px-3 py-2 bg-muted text-foreground rounded hover:bg-muted"
           >
             /api/health
           </a>
-          <a href="/super-admin/debug/email-preview" className="px-3 py-2 bg-slate-600 text-white rounded hover:bg-slate-700">Preview de Email</a>
+          <a href="/super-admin/debug/email-preview" className="px-3 py-2 bg-primary text-primary-foreground rounded hover:bg-primary/90">Preview de Email</a>
         </div>
       </div>
 
@@ -83,7 +83,7 @@ function SessionDebug() {
             <Row label="hasAnonKey" value={String(data.env.hasAnonKey)} />
           </Section>
           <Section title="Cookies">
-            <div className="font-mono text-sm text-slate-900 break-words">
+            <div className="font-mono text-sm text-foreground break-words">
               {data.cookies.names.length ? data.cookies.names.join(", ") : "(nenhum)"}
             </div>
           </Section>
@@ -102,7 +102,7 @@ function SessionDebug() {
             <Row label="userError" value={String(data.errors.userError ?? "-")} />
           </Section>
           <Section title="Payload bruto">
-            <pre className="text-xs bg-slate-50 rounded p-3 overflow-auto max-h-96">{jsonStr}</pre>
+            <pre className="text-xs bg-muted rounded p-3 overflow-auto max-h-96">{jsonStr}</pre>
           </Section>
         </div>
       )}

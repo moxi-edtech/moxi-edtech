@@ -28,9 +28,9 @@ export function WorkersTab({ outboxMetrics, onRunWorker, onRecalcAggregates }: W
         <CardContent>
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
-              <div className="text-center p-4 bg-slate-50 rounded-lg">
-                <div className="text-2xl font-bold text-slate-700">{outboxMetrics.pending}</div>
-                <div className="text-sm text-slate-600">Pendentes</div>
+              <div className="text-center p-4 bg-muted rounded-lg">
+                <div className="text-2xl font-bold text-foreground">{outboxMetrics.pending}</div>
+                <div className="text-sm text-muted-foreground">Pendentes</div>
               </div>
               <div className="text-center p-4 bg-yellow-50 rounded-lg">
                 <div className="text-2xl font-bold text-yellow-700">{outboxMetrics.retry}</div>
@@ -46,7 +46,7 @@ export function WorkersTab({ outboxMetrics, onRunWorker, onRecalcAggregates }: W
               </div>
             </div>
             
-            <div className="text-sm text-gray-600">
+            <div className="text-sm text-muted-foreground">
               Evento mais antigo pendente: 
               <span className={`font-medium ml-1 ${
                 outboxMetrics.oldest_pending_minutes > 30 ? 'text-red-600' : 'text-green-600'
@@ -101,15 +101,15 @@ export function WorkersTab({ outboxMetrics, onRunWorker, onRecalcAggregates }: W
               <h4 className="font-medium mb-2">Configuração</h4>
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between">
-                  <span className="text-gray-600">Batch Size:</span>
+                  <span className="text-muted-foreground">Batch Size:</span>
                   <span className="font-mono">50 eventos</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-gray-600">Max Retries:</span>
+                  <span className="text-muted-foreground">Max Retries:</span>
                   <span className="font-mono">5 tentativas</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-gray-600">Auto-run:</span>
+                  <span className="text-muted-foreground">Auto-run:</span>
                   <span className="font-mono">A cada 10 segundos</span>
                 </div>
               </div>

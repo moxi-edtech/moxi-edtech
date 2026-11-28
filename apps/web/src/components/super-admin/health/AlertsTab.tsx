@@ -17,8 +17,8 @@ const getAlertColor = (nivel: string) => {
     case 'critico': return 'border-red-500 bg-red-50';
     case 'alto': return 'border-orange-500 bg-orange-50';
     case 'medio': return 'border-yellow-500 bg-yellow-50';
-    case 'baixo': return 'border-slate-500 bg-slate-50';
-    default: return 'border-gray-500 bg-gray-50';
+    case 'baixo': return 'border-border bg-muted';
+    default: return 'border-border bg-muted';
   }
 };
 
@@ -43,7 +43,7 @@ export function AlertsTab({ alertas }: AlertsTabProps) {
             <AlertTriangle className={`h-4 w-4 ${
               alerta.nivel === 'critico' ? 'text-red-600' :
               alerta.nivel === 'alto' ? 'text-orange-600' :
-              alerta.nivel === 'medio' ? 'text-yellow-600' : 'text-slate-600'
+              alerta.nivel === 'medio' ? 'text-yellow-600' : 'text-muted-foreground'
             }`} />
             <AlertTitle className="flex items-center justify-between">
               <span>{alerta.titulo}</span>
@@ -51,14 +51,14 @@ export function AlertsTab({ alertas }: AlertsTabProps) {
                 alerta.nivel === 'critico' ? 'border-red-600 text-red-600' :
                 alerta.nivel === 'alto' ? 'border-orange-600 text-orange-600' :
                 alerta.nivel === 'medio' ? 'border-yellow-600 text-yellow-600' : 
-                'border-slate-600 text-slate-600'
+                'border-border text-muted-foreground'
               }>
                 {alerta.nivel.toUpperCase()}
               </Badge>
             </AlertTitle>
             <AlertDescription className="flex justify-between items-center">
               <span>{alerta.descricao}</span>
-              <span className="text-sm text-gray-500">
+              <span className="text-sm text-muted-foreground">
                 {new Date(alerta.criado_em).toLocaleTimeString('pt-AO', { hour: '2-digit', minute: '2-digit' })}
               </span>
             </AlertDescription>

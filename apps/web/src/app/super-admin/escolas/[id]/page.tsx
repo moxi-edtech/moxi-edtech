@@ -32,7 +32,7 @@ export default function EscolaMonitoramentoPage() {
       <div className="min-h-[240px] flex items-center justify-center">
         <div className="text-center space-y-4">
           <Loader2 className="w-10 h-10 animate-spin text-emerald mx-auto" />
-          <p className="text-slate-500 font-medium animate-pulse">A carregar monitor central...</p>
+          <p className="text-muted-foreground font-medium animate-pulse">A carregar monitor central...</p>
         </div>
       </div>
     );

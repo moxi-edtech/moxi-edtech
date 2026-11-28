@@ -47,13 +47,13 @@ export function SchoolsTab({ escolas }: SchoolsTabProps) {
               className={`rounded-xl border p-4 text-left transition ${
                 isSelected
                   ? 'border-emerald bg-emerald/5 shadow-sm'
-                  : 'border-slate-200 bg-white hover:border-emerald/40'
+                  : 'border-border bg-card hover:border-emerald/40'
               }`}
             >
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <p className="text-sm font-semibold text-slate-900">{escola.nome}</p>
-                  <p className="text-xs text-slate-500">
+                  <p className="text-sm font-semibold text-foreground">{escola.nome}</p>
+                  <p className="text-xs text-muted-foreground">
                     {escola.provincia ?? 'Em construção'} · {escola.plano}
                   </p>
                 </div>
@@ -71,18 +71,18 @@ export function SchoolsTab({ escolas }: SchoolsTabProps) {
               </div>
 
               <div className="mt-3 flex items-center gap-3">
-                <div className="h-1 flex-1 rounded-full bg-slate-100">
+                <div className="h-1 flex-1 rounded-full bg-muted">
                   <div
                     className={`h-1 rounded-full ${healthColor(escola.saude)}`}
                     style={{ width: `${escola.saude}%` }}
                   />
                 </div>
-                <span className="text-xs font-semibold text-slate-700">{escola.saude}%</span>
-                <span className="text-xs text-slate-400">{formatRelative(escola.ultimo_acesso)}</span>
+                <span className="text-xs font-semibold text-foreground">{escola.saude}%</span>
+                <span className="text-xs text-muted-foreground">{formatRelative(escola.ultimo_acesso)}</span>
               </div>
 
-              <div className="mt-3 flex flex-wrap gap-2 text-xs text-slate-500">
-                <span><strong className="text-slate-700">{escola.alunos_ativos}</strong> alunos</span>
+              <div className="mt-3 flex flex-wrap gap-2 text-xs text-muted-foreground">
+                <span><strong className="text-foreground">{escola.alunos_ativos}</strong> alunos</span>
                 <span>·</span>
                 <span>{formatCurrency(escola.mrr)}/mês</span>
                 <span>·</span>
@@ -115,11 +115,11 @@ export function SchoolsTab({ escolas }: SchoolsTabProps) {
       </div>
 
       {selecionada && (
-        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
           <div className="flex items-start justify-between gap-3">
             <div>
-              <p className="text-sm font-semibold text-slate-900">{selecionada.nome}</p>
-              <p className="text-xs text-slate-500">
+              <p className="text-sm font-semibold text-foreground">{selecionada.nome}</p>
+              <p className="text-xs text-muted-foreground">
                 {selecionada.provincia ?? 'Em construção'} · {selecionada.plano}
               </p>
             </div>
@@ -128,44 +128,44 @@ export function SchoolsTab({ escolas }: SchoolsTabProps) {
             </Button>
           </div>
 
-          <div className="mt-4 grid gap-3 text-xs text-slate-500">
+          <div className="mt-4 grid gap-3 text-xs text-muted-foreground">
             <div className="flex items-center justify-between">
               <span>Saúde</span>
-              <span className="font-semibold text-slate-800">{selecionada.saude}%</span>
+              <span className="font-semibold text-foreground">{selecionada.saude}%</span>
             </div>
             <div className="flex items-center justify-between">
               <span>Onboarding</span>
-              <span className="font-semibold text-slate-800">
+              <span className="font-semibold text-foreground">
                 {selecionada.onboarding_pct === null ? 'Em construção' : `${selecionada.onboarding_pct}%`}
               </span>
             </div>
             <div className="flex items-center justify-between">
               <span>Alunos</span>
-              <span className="font-semibold text-slate-800">{selecionada.alunos_ativos}</span>
+              <span className="font-semibold text-foreground">{selecionada.alunos_ativos}</span>
             </div>
             <div className="flex items-center justify-between">
               <span>Professores</span>
-              <span className="font-semibold text-slate-800">{selecionada.professores}</span>
+              <span className="font-semibold text-foreground">{selecionada.professores}</span>
             </div>
             <div className="flex items-center justify-between">
               <span>Turmas</span>
-              <span className="font-semibold text-slate-800">{selecionada.turmas}</span>
+              <span className="font-semibold text-foreground">{selecionada.turmas}</span>
             </div>
             <div className="flex items-center justify-between">
               <span>MRR</span>
-              <span className="font-semibold text-slate-800">{formatCurrency(selecionada.mrr)}</span>
+              <span className="font-semibold text-foreground">{formatCurrency(selecionada.mrr)}</span>
             </div>
             <div className="flex items-center justify-between">
               <span>Renovação</span>
-              <span className="font-semibold text-slate-800">
+              <span className="font-semibold text-foreground">
                 {selecionada.dias_renovacao === null ? 'Em construção' : `${selecionada.dias_renovacao}d`}
               </span>
             </div>
           </div>
 
           <div className="mt-4">
-            <p className="text-xs font-semibold text-slate-700">Nota interna</p>
-            <p className="mt-1 text-xs text-slate-500">
+            <p className="text-xs font-semibold text-foreground">Nota interna</p>
+            <p className="mt-1 text-xs text-muted-foreground">
               {selecionada.nota_interna?.trim() || 'Sem nota interna ainda.'}
             </p>
           </div>

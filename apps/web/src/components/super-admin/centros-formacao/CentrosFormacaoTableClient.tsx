@@ -87,7 +87,7 @@ function getSubscriptionBadge(item: CentroItem) {
 
   return {
     label: status === "past_due" ? "Pagamento em atraso" : status,
-    className: "border-slate-200 bg-slate-50 text-slate-700",
+    className: "border-border bg-muted text-foreground",
   };
 }
 
@@ -255,7 +255,7 @@ export default function CentrosFormacaoTableClient() {
           value={search}
           onChange={(event) => setSearch(event.target.value)}
           placeholder="Pesquisar por nome, sigla, município ou email"
-          className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm outline-none focus:border-emerald sm:max-w-md"
+          className="w-full rounded-xl border border-border bg-card px-4 py-2.5 text-sm outline-none focus:border-emerald sm:max-w-md"
         />
         <div className="flex flex-wrap gap-2">
           <Button variant="secondary" onClick={load} disabled={loading}>
@@ -290,9 +290,9 @@ export default function CentrosFormacaoTableClient() {
         </div>
       ) : null}
 
-      <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white">
+      <div className="overflow-x-auto rounded-2xl border border-border bg-card">
         <table className="min-w-full text-sm">
-          <thead className="bg-slate-50 text-left text-slate-600">
+          <thead className="bg-muted text-left text-muted-foreground">
             <tr>
               <th className="px-4 py-3 font-semibold">Centro</th>
               <th className="px-4 py-3 font-semibold">Município</th>
@@ -306,13 +306,13 @@ export default function CentrosFormacaoTableClient() {
           <tbody>
             {loading ? (
               <tr>
-                <td className="px-4 py-4 text-slate-500" colSpan={7}>
+                <td className="px-4 py-4 text-muted-foreground" colSpan={7}>
                   A carregar centros...
                 </td>
               </tr>
             ) : filtered.length === 0 ? (
               <tr>
-                <td className="px-4 py-4 text-slate-500" colSpan={7}>
+                <td className="px-4 py-4 text-muted-foreground" colSpan={7}>
                   Nenhum centro encontrado.
                 </td>
               </tr>
@@ -320,29 +320,29 @@ export default function CentrosFormacaoTableClient() {
               filtered.map((item) => {
                 const updatedAt = item.updated_at ? new Date(item.updated_at).toLocaleDateString("pt-PT") : "-";
                 return (
-                  <tr key={item.id} className="border-t border-slate-100">
+                  <tr key={item.id} className="border-t border-border">
                     <td className="px-4 py-3">
-                      <p className="font-semibold text-slate-900">{item.nome}</p>
-                      <p className="text-xs text-slate-500">
+                      <p className="font-semibold text-foreground">{item.nome}</p>
+                      <p className="text-xs text-muted-foreground">
                         {item.abrev ? `${item.abrev} · ` : ""}
                         {item.email || "sem email"}
                       </p>
                     </td>
-                    <td className="px-4 py-3 text-slate-700">
+                    <td className="px-4 py-3 text-foreground">
                       {item.municipio || "-"}
                       {item.provincia ? `, ${item.provincia}` : ""}
                     </td>
                     <td className="px-4 py-3">
                       <div className="space-y-2">
-                        <span className="inline-flex rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-semibold text-slate-700">
+                        <span className="inline-flex rounded-full border border-border bg-muted px-2.5 py-1 text-xs font-semibold text-foreground">
                           {STATUS_LABEL[item.status] || item.status}
                         </span>
                         <SubscriptionBadge item={item} />
                       </div>
                     </td>
-                    <td className="px-4 py-3 text-slate-700">{PLAN_LABEL[item.plano] || item.plano}</td>
-                    <td className="px-4 py-3 text-slate-700">{item.capacidade_max ?? "-"}</td>
-                    <td className="px-4 py-3 text-slate-700">{updatedAt}</td>
+                    <td className="px-4 py-3 text-foreground">{PLAN_LABEL[item.plano] || item.plano}</td>
+                    <td className="px-4 py-3 text-foreground">{item.capacidade_max ?? "-"}</td>
+                    <td className="px-4 py-3 text-foreground">{updatedAt}</td>
                     <td className="px-4 py-3">
                       <div className="flex flex-wrap gap-2">
                         <Button
@@ -370,13 +370,13 @@ export default function CentrosFormacaoTableClient() {
       </div>
 
       {selectedEscolaId ? (
-        <div className="space-y-4 rounded-2xl border border-slate-200 bg-white p-4">
+        <div className="space-y-4 rounded-2xl border border-border bg-card p-4">
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="text-base font-semibold text-slate-900">
+              <h3 className="text-base font-semibold text-foreground">
                 Equipa do Centro {selectedCentroNome ? `· ${selectedCentroNome}` : ""}
               </h3>
-              <p className="text-xs text-slate-500">Centro ID: {selectedEscolaId}</p>
+              <p className="text-xs text-muted-foreground">Centro ID: {selectedEscolaId}</p>
             </div>
             <Button
               variant="secondary"
@@ -398,9 +398,9 @@ export default function CentrosFormacaoTableClient() {
             </div>
           ) : null}
 
-          <div className="overflow-x-auto rounded-xl border border-slate-200">
+          <div className="overflow-x-auto rounded-xl border border-border">
             <table className="min-w-full text-sm">
-              <thead className="bg-slate-50 text-left text-slate-600">
+              <thead className="bg-muted text-left text-muted-foreground">
                 <tr>
                   <th className="px-4 py-3 font-semibold">Nome</th>
                   <th className="px-4 py-3 font-semibold">Email</th>
@@ -412,13 +412,13 @@ export default function CentrosFormacaoTableClient() {
               <tbody>
                 {teamLoading ? (
                   <tr>
-                    <td className="px-4 py-4 text-slate-500" colSpan={5}>
+                    <td className="px-4 py-4 text-muted-foreground" colSpan={5}>
                       A carregar equipa...
                     </td>
                   </tr>
                 ) : teamItems.length === 0 ? (
                   <tr>
-                    <td className="px-4 py-4 text-slate-500" colSpan={5}>
+                    <td className="px-4 py-4 text-muted-foreground" colSpan={5}>
                       Nenhum utilizador vinculado ao centro.
                     </td>
                   </tr>
@@ -426,15 +426,15 @@ export default function CentrosFormacaoTableClient() {
                   teamItems.map((member) => {
                     const tempPassword = tempPasswordsByUserId[member.user_id] ?? null;
                     return (
-                      <tr key={member.user_id} className="border-t border-slate-100">
-                        <td className="px-4 py-3 text-slate-700">{member.nome || "-"}</td>
-                        <td className="px-4 py-3 text-slate-700">{member.email || "-"}</td>
-                        <td className="px-4 py-3 text-slate-700">{member.papel || "-"}</td>
-                        <td className="px-4 py-3 text-slate-700">
+                      <tr key={member.user_id} className="border-t border-border">
+                        <td className="px-4 py-3 text-foreground">{member.nome || "-"}</td>
+                        <td className="px-4 py-3 text-foreground">{member.email || "-"}</td>
+                        <td className="px-4 py-3 text-foreground">{member.papel || "-"}</td>
+                        <td className="px-4 py-3 text-foreground">
                           {tempPassword ? (
                             <button
                               type="button"
-                              className="rounded border border-slate-300 bg-slate-50 px-2 py-1 font-mono text-xs"
+                              className="rounded border border-border bg-muted px-2 py-1 font-mono text-xs"
                               onClick={async () => {
                                 try {
                                   await navigator.clipboard.writeText(tempPassword);
@@ -447,7 +447,7 @@ export default function CentrosFormacaoTableClient() {
                               {tempPassword}
                             </button>
                           ) : (
-                            <span className="text-slate-400">—</span>
+                            <span className="text-muted-foreground">—</span>
                           )}
                         </td>
                         <td className="px-4 py-3">
@@ -480,7 +480,7 @@ function FilterButton({ active, onClick, children }: { active: boolean; onClick:
       className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors ${
         active
           ? "border-emerald bg-emerald text-white"
-          : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+          : "border-border bg-card text-foreground hover:bg-muted"
       }`}
     >
       {children}
