@@ -1,4 +1,6 @@
 "use client";
+import { PortalPullToRefresh } from "@/components/portal/ui/PortalPullToRefresh";
+
 
 import { loadAgendaAssignments, type AgendaAssignment } from "./agendaAssignments";
 import React, { useEffect, useState, useMemo } from "react";
@@ -182,7 +184,7 @@ export function ProfessorMateriaisWorkspace({ embedded = false, requestedTurmaId
   };
 
   return (
-    <div className={embedded ? "min-w-0 text-foreground" : "min-h-screen bg-background pb-24 text-foreground"}>
+    <PortalPullToRefresh onRefresh={() => loadData(true)} busy={loading || saving || updatingId !== null} disabled={embedded || dirty || showModal} className={embedded ? "min-w-0 text-foreground" : "min-h-screen bg-background pb-24 text-foreground"}>
       <div className={embedded ? "space-y-4" : `${PORTAL_PAGE_INSET} max-md:px-0 max-md:py-0 space-y-6`}>
         {/* HEADER DA PÁGINA */}
         <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -391,6 +393,6 @@ export function ProfessorMateriaisWorkspace({ embedded = false, requestedTurmaId
         )}
 
       </div>
-    </div>
+    </PortalPullToRefresh>
   );
 }
