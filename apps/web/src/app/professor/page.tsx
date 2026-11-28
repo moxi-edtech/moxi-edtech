@@ -1,4 +1,6 @@
 "use client";
+import { PortalPullToRefresh } from "@/components/portal/ui/PortalPullToRefresh";
+
 
 import AssignmentsBanner from "@/components/professor/AssignmentsBanner";
 import { ProfessorAgendaSkeleton, ProfessorSkeletonBone, ProfessorTurmasSkeleton } from "@/components/professor/ProfessorLoadingSkeletons";
@@ -206,7 +208,7 @@ export default function Page() {
   }, [retryVersion, requestedAcademicYearId, escolaParam]);
 
   useEffect(() => {
-    if (historical || !lessonYearId || loadedLessonScope !== JSON.stringify([escolaParam ?? "", requestedAcademicYearId])) return;
+    if (loading || historical || !lessonYearId || loadedLessonScope !== JSON.stringify([escolaParam ?? "", requestedAcademicYearId])) return;
     let disposed = false;
     const poll = async () => {
       if (disposed || document.hidden || pollingInFlight.current || loadError) return;
@@ -245,9 +247,9 @@ export default function Page() {
       if (timeout !== undefined) clearTimeout(timeout);
       document.removeEventListener("visibilitychange", onVisible);
     };
-  }, [loadError, historical, escolaParam, requestedAcademicYearId, loadedLessonScope, lessonYearId]);
+  }, [loadError, historical, escolaParam, requestedAcademicYearId, loadedLessonScope, lessonYearId, loading]);
 
-  const loadAgain = () => setRetryVersion((current) => current + 1);
+  const loadAgain = () => { setLoading(true); setRetryVersion((current) => current + 1); };
 
   const lessonWritable = !historical && !loading && !loadError && Boolean(lessonYearId) && loadedLessonScope === JSON.stringify([escolaParam ?? "", requestedAcademicYearId]);
   const startLesson = async (item: AgendaItem) => {
@@ -381,7 +383,7 @@ export default function Page() {
   const faltasALancar = pendenciasResumo?.faltas_a_lancar ?? null;
 
   return (
-    <div className="min-w-0 text-foreground">
+    <PortalPullToRefresh onRefresh={() => { if (!pollingInFlight.current && !lessonWriteLock.current) loadAgain(); }} busy={loading} disabled={Boolean(activeOperation || selectedTurma || selectedLesson || startingKey || finalizingKey || finalizing)} className="min-w-0 text-foreground">
       <div className="mx-auto w-full min-w-0 max-w-6xl space-y-6 sm:space-y-8">
         
         <PortalWelcomeCard
@@ -669,6 +671,6 @@ export default function Page() {
           </>, }} />
         <PortalDrawerNavigator key={`${operationScope}:operation`} open={Boolean(activeOperation)} onReopen={() => setOperation(operation)} onClose={() => setOperation(null)} onChanged={loadAgain} root={activeOperation ?? { id: "closed", title: "Operação", description: "", content: null }} />
       </div>
-    </div>
+    </PortalPullToRefresh>
   );
 }
