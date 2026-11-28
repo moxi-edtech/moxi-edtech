@@ -355,3 +355,8 @@
 @media (prefers-reduced-motion: reduce) {
   .klasse-context-sheet, .klasse-context-sheet-overlay { animation: none !important; }
 }
+
+/* Native browser reload must not compete with an opted-in page gesture. Drawer scroll stays isolated. */
+@media (pointer: coarse) {
+  html:has([data-portal-pull-refresh="true"]) { overscroll-behavior-y: contain; }
+}
