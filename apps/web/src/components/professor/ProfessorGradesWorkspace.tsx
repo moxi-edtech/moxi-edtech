@@ -1,4 +1,6 @@
 "use client"
+import { PortalPullToRefresh } from "@/components/portal/ui/PortalPullToRefresh";
+
 
 import { useContext, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
 import { PortalFrameActiveContext, usePortalDrawerGuard, usePortalDrawerNavigation } from "@/components/portal/ui/PortalDrawerNavigator"
@@ -921,7 +923,7 @@ export function ProfessorGradesWorkspace({ embedded = false, requestedAnoLetivoI
   const notasBloqueadas = !gradeAvailability.canWrite
 
   return (
-    <div className={embedded ? "min-w-0" : "min-h-screen bg-background"}>
+    <PortalPullToRefresh onRefresh={() => { setLoading(true); setPautaReload(value => value + 1); }} busy={loading || loadingPeriodos || loadingAtribs} disabled={embedded || !selectedPeriodReady || !turmaId || !disciplinaId || contextLocked || contextOpen || reopenSheet || exportOpen || raaOpen || loadingRaa} className={embedded ? "min-w-0" : "min-h-screen bg-background"}>
       <div className={embedded ? "min-w-0 space-y-4" : `${PORTAL_PAGE_INSET} max-md:px-0 max-md:py-0 space-y-4 sm:space-y-6`}>
         {!embedded && <div>
           <DashboardHeader
@@ -1378,6 +1380,6 @@ export function ProfessorGradesWorkspace({ embedded = false, requestedAnoLetivoI
           </section>
         </div>
       </div>
-    </div>
+    </PortalPullToRefresh>
   )
 }
