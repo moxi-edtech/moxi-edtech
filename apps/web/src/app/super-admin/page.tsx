@@ -94,7 +94,7 @@ export default async function SuperAdminDashboard() {
   const date = new Intl.DateTimeFormat("pt-AO", { timeZone: "Africa/Luanda", weekday: "long", day: "numeric", month: "long" }).format(new Date(now));
 
   return (
-    <main data-testid="super-admin-command-center" className={PORTAL_PAGE_INSET + " space-y-6 pb-12"}>
+    <div data-testid="super-admin-command-center" className={PORTAL_PAGE_INSET + " space-y-6 pb-12"}>
       <DashboardHeader title="Visão geral" description="Gestão da plataforma KLASSE" largeDesktopTitle />
       <section aria-label="Estado da rede" className="klasse-welcome-card klasse-operations-academic-card min-w-0 overflow-hidden rounded-xl">
         <div className="flex flex-wrap items-center justify-between gap-4 px-4 py-4 sm:px-6">
@@ -137,13 +137,13 @@ export default async function SuperAdminDashboard() {
           <div className="divide-y divide-border">
             {logs.data.map(log => (
               <div key={log.id} className="flex flex-wrap items-start justify-between gap-2 py-2.5 text-sm">
-                <span className="min-w-0 break-words text-foreground">{log.action} · {log.entity}</span>
+                <span className="min-w-0 break-words text-foreground"><span className="block font-medium">{(log.escolas as unknown as { nome?: string } | null)?.nome ?? "Sistema Central"}</span><span className="text-xs text-muted-foreground">{log.action} · {log.entity}</span></span>
                 <time className="shrink-0 text-xs text-muted-foreground" dateTime={log.created_at ?? undefined}>{log.created_at ? new Date(log.created_at).toLocaleString("pt-AO", { timeZone: "Africa/Luanda", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) : "—"}</time>
               </div>
             ))}
           </div>}
       </section>
       <CommandCenterDetails finance={<ChartsSection data={charts} />} schools={schools ? <SchoolsSection escolas={schools} /> : <p className="text-sm text-muted-foreground">Não foi possível carregar as escolas.</p>} />
-    </main>
+    </div>
   );
 }
