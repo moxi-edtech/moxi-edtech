@@ -377,10 +377,10 @@ export default function SchoolsTableClient({
   const closeConfirm = () => setConfirm((c) => ({ ...c, open: false }));
 
   return (
-    <div className="min-h-screen bg-slate-950">
+    <div className="min-w-0 rounded-xl bg-slate-950">
       <ConfigHealthBanner />
 
-      <div className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+      <div className="w-full min-w-0">
         {/* Header + Status */}
         <div className="rounded-xl bg-slate-900 ring-1 ring-white/10 p-4 sm:p-5">
           <div className="flex flex-col gap-3">

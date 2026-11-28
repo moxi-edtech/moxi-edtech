@@ -35,8 +35,8 @@ export default function AdminHealthDashboard() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 p-6">
-        <div className="max-w-7xl mx-auto">
+      <div className="min-w-0">
+        <div className="w-full min-w-0">
           <div className="animate-pulse space-y-4">
             <div className="h-8 bg-gray-200 rounded w-1/4"></div>
             <div className="h-40 bg-gray-200 rounded"></div>
@@ -53,9 +53,9 @@ export default function AdminHealthDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-4 md:p-6">
+    <div className="min-w-0">
       <AuditPageView portal="super_admin" acao="PAGE_VIEW" entity="health_dashboard" />
-      <div className="max-w-7xl mx-auto">
+      <div className="w-full min-w-0">
         {/* Header */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
           <div>

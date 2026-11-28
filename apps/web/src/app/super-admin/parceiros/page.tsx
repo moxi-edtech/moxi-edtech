@@ -281,8 +281,8 @@ export default function SuperAdminAfiliadosPage() {
     `https://wa.me/?text=${encodeURIComponent(message)}`;
 
   return (
-    <div className="min-h-screen bg-slate-50 p-6 font-sans">
-      <div className="max-w-6xl mx-auto space-y-6">
+    <div className="min-w-0">
+      <div className="min-w-0 space-y-6">
         <div className="flex justify-between items-center">
           <div>
             <nav className="flex items-center gap-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">

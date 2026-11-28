@@ -55,7 +55,7 @@ function NovaEscolaContent() {
   return (
     <>
       <AuditPageView portal="super_admin" acao="PAGE_VIEW" entity="escola_create" />
-      <div className="bg-slate-50 p-6">
+      <div className="min-w-0">
         <CriarEscolaForm />
       </div>
     </>
@@ -185,7 +185,7 @@ function CriarEscolaForm() {
   const isNifValid = formData.nif.length === 0 || formData.nif.length === 9;
 
   return (
-    <div className="max-w-3xl mx-auto space-y-8 animate-klasse-fade-up">
+    <div className="min-w-0 space-y-8 animate-klasse-fade-up">
       
       {/* Header */}
       <div className="text-center space-y-3">

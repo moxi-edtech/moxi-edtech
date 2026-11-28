@@ -328,7 +328,7 @@ function ListaUsuarios() {
 
       {/* ── Top Bar ── */}
       <header className="sticky top-0 z-20 border-b border-border bg-card/80 backdrop-blur-md">
-        <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
+        <div className="min-w-0 flex flex-wrap items-center justify-between gap-3 py-3">
           <div className="flex items-center gap-4">
             <div className="flex h-3 w-3 rounded-full bg-emerald ring-4 ring-emerald/10" />
             <div>
@@ -360,7 +360,7 @@ function ListaUsuarios() {
       </header>
 
       {/* ── Main Content ── */}
-      <main className="max-w-7xl mx-auto px-6 py-8">
+      <div className="min-w-0 py-4">
         
         {erro && (
           <div className="mb-6 flex items-center gap-3 p-4 rounded-xl bg-red-50 border border-red-200 text-red-600 text-sm font-geist">
@@ -532,7 +532,7 @@ function ListaUsuarios() {
             </table>
           </div>
         </div>
-      </main>
+      </div>
 
       {/* ── Modal Reset Senha (Isolado e Crítico) ── */}
       {resetUser && (

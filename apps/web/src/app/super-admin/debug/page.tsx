@@ -57,7 +57,7 @@ function SessionDebug() {
   const jsonStr = useMemo(() => JSON.stringify(data, null, 2), [data]);
 
   return (
-    <div className="max-w-4xl mx-auto p-6 space-y-6">
+    <div className="min-w-0 space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">Debug de Sessão</h1>
         <div className="flex gap-2">

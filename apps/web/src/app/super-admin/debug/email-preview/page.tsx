@@ -44,7 +44,7 @@ function EmailPreviewClient() {
   const meta = data?.meta
 
   return (
-    <div className="max-w-5xl mx-auto p-6 space-y-6">
+    <div className="min-w-0 space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">Preview de E-mail • Onboarding</h1>
       </div>

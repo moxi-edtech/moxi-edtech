@@ -100,7 +100,7 @@ export default function ComunicacaoPage() {
   };
 
   return (
-    <div className="mx-auto max-w-4xl space-y-6 pb-16">
+    <div className="min-w-0 space-y-6 pb-16">
       <div className="flex flex-col gap-2">
         <h1 className="text-3xl font-bold tracking-tight">Comunicador</h1>
         <p className="text-slate-500">Envie e-mails customizados ou utilize templates pré-definidos.</p>

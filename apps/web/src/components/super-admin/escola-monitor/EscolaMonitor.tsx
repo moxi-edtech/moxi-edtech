@@ -458,11 +458,11 @@ export default function EscolaMonitor({
   const alunosTotal = metricas?.alunos_total ?? 0;
 
   return (
-    <div className="bg-slate-50 font-sans text-slate-900">
+    <div className="min-w-0 space-y-6 font-sans text-slate-900">
 
       {/* ── HEADER SUPERIOR ── */}
-      <div className="bg-slate-50 px-6 py-10">
-        <div className="max-w-6xl mx-auto">
+      <div className="min-w-0">
+        <div className="min-w-0">
           <div className="bg-white p-8 rounded-[2.5rem] border border-slate-200/60 shadow-[0_8px_30px_rgba(0,0,0,0.04)] space-y-6">
 
             {/* Breadcrumb */}
@@ -552,7 +552,7 @@ export default function EscolaMonitor({
       </div>
 
       {/* ── CONTEÚDO PRINCIPAL ── */}
-      <main className="max-w-6xl mx-auto p-6 space-y-8 animate-klasse-fade-in">
+      <div className="min-w-0 space-y-8 animate-klasse-fade-in">
 
         {/* KPIs */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -1097,7 +1097,7 @@ export default function EscolaMonitor({
           </div>
 
         </div>
-      </main>
+      </div>
     </div>
   );
 }

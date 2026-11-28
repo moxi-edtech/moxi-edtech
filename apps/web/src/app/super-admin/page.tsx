@@ -9,7 +9,6 @@ import ChartsSection from "@/components/super-admin/ChartsSection";
 import SchoolsSection from "@/components/super-admin/SchoolsSection";
 import { calcularSaudeEscola } from "@/lib/super-admin/escola-saude-utils";
 import { isSuperAdminRole } from "@/lib/auth/requireSuperAdminAccess";
-import { PORTAL_PAGE_INSET } from "@/lib/layout/portal-page";
 import { supabaseServer } from "@/lib/supabaseServer";
 import type { ChartsData } from "@/lib/charts";
 
@@ -94,7 +93,7 @@ export default async function SuperAdminDashboard() {
   const date = new Intl.DateTimeFormat("pt-AO", { timeZone: "Africa/Luanda", weekday: "long", day: "numeric", month: "long" }).format(new Date(now));
 
   return (
-    <div data-testid="super-admin-command-center" className={PORTAL_PAGE_INSET + " space-y-6 pb-12"}>
+    <div data-testid="super-admin-command-center" className="min-w-0 space-y-6 pb-12">
       <DashboardHeader title="Visão geral" description="Gestão da plataforma KLASSE" largeDesktopTitle />
       <section aria-label="Estado da rede" className="klasse-welcome-card klasse-operations-academic-card min-w-0 overflow-hidden rounded-xl">
         <div className="flex flex-wrap items-center justify-between gap-4 px-4 py-4 sm:px-6">
