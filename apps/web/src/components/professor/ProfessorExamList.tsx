@@ -1,4 +1,6 @@
 "use client";
+import { PortalPullToRefresh } from "@/components/portal/ui/PortalPullToRefresh";
+
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
@@ -36,7 +38,7 @@ function ExamPages({ school, yearId, editor }: { school: string; yearId: string;
     return () => controller.abort();
   }, [school, yearId, offset, retry, rows]);
 
-  return <section className="space-y-4">
+  return <PortalPullToRefresh onRefresh={() => { setPages(new Map()); setRetry(value => value + 1); }} busy={!rows && !failed} className="space-y-4">
     <Link href={editor} className="inline-flex min-h-11 items-center rounded-xl bg-klasse-gold px-4 text-sm font-semibold text-white">Elaborar ou editar prova</Link>
     {failed ? <p role="alert">Não foi possível consultar as provas. <button onClick={() => setRetry(value => value + 1)} className="min-h-11 underline">Tentar novamente</button></p>
       : !rows ? <p role="status">A carregar provas…</p>
@@ -49,5 +51,5 @@ function ExamPages({ school, yearId, editor }: { school: string; yearId: string;
       <button className="min-h-11" disabled={!offset || !rows} onClick={() => setOffset(value => value - 30)}>Anterior</button>
       <button className="min-h-11" disabled={rows?.length !== 30 || offset >= 9990} onClick={() => setOffset(value => value + 30)}>Seguinte</button>
     </div>}
-  </section>;
+  </PortalPullToRefresh>;
 }
