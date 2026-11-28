@@ -1,10 +1,10 @@
 'use client'
 
-import { useCallback, useState, useEffect, useRef } from 'react'
+import { useContext, useCallback, useState, useEffect, useRef } from 'react'
 import { ArrowRight, Loader2, CheckCircle2, Wallet, Upload, FileCheck2 } from 'lucide-react'
-import { useToast, useConfirm } from '@/components/feedback/FeedbackSystem'
+import { useToast } from '@/components/feedback/FeedbackSystem'
 import { PortalSheet } from '@/components/portal/ui/PortalSheet'
-import { usePortalDrawerGuard, usePortalDrawerNavigation } from '@/components/portal/ui/PortalDrawerNavigator'
+import { usePortalDrawerGuard, PortalFrameActiveContext, usePortalDrawerNavigation } from '@/components/portal/ui/PortalDrawerNavigator'
 import { Notice } from '@/components/ui/alert'
 
 type RematriculaStatus = {
@@ -50,7 +50,7 @@ function uploadWithProgress(url: string, formData: FormData, onProgress: (value:
 
 export function RematriculaBanner({ embedded = false, onFinance }: { embedded?: boolean; onFinance?: () => void } = {}) {
   const { success, error } = useToast()
-  const confirm = useConfirm()
+  const [reviewing, setReviewing] = useState(false)
   const [status, setStatus] = useState<RematriculaStatus | null>(null)
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState(false)
@@ -63,6 +63,7 @@ export function RematriculaBanner({ embedded = false, onFinance }: { embedded?: 
   const [flowError, setFlowError] = useState<string | null>(null)
   const [evidenceMessage, setEvidenceMessage] = useState('')
 
+  const frameActive = useContext(PortalFrameActiveContext);
   const navigation = usePortalDrawerNavigation()
   const submitting = useRef(false)
   const sequence = useRef(0)
@@ -73,6 +74,7 @@ export function RematriculaBanner({ embedded = false, onFinance }: { embedded?: 
     if (submitting.current || (dirty && !window.confirm('Descartar alterações à rematrícula?'))) return
     setSelectedServices([])
     setEvidenceMessage('')
+    setReviewing(false)
     setOpen(false)
   }
 
@@ -97,6 +99,7 @@ export function RematriculaBanner({ embedded = false, onFinance }: { embedded?: 
   }, [fetchStatus])
 
   useEffect(() => {
+    if (!frameActive) return
     const refreshWhenVisible = () => {
       if (document.visibilityState === 'visible') void fetchStatus()
     }
@@ -106,15 +109,15 @@ export function RematriculaBanner({ embedded = false, onFinance }: { embedded?: 
       window.removeEventListener('focus', refreshWhenVisible)
       document.removeEventListener('visibilitychange', refreshWhenVisible)
     }
-  }, [fetchStatus])
+  }, [fetchStatus, frameActive])
 
   useEffect(() => {
     const payment = status?.rematricula?.paymentIntent
     const shouldRefresh = Boolean(status?.hasDebt || (payment && payment.status !== 'settled'))
-    if (!shouldRefresh) return
-    const timer = window.setInterval(() => void fetchStatus(), 30000)
+    if (!frameActive || !shouldRefresh) return
+    const timer = window.setInterval(() => { if (!document.hidden) void fetchStatus() }, 30000)
     return () => window.clearInterval(timer)
-  }, [fetchStatus, status?.hasDebt, status?.rematricula?.paymentIntent])
+  }, [fetchStatus, frameActive, status?.hasDebt, status?.rematricula?.paymentIntent])
 
   const handleConfirm = async () => {
     if (status?.hasDebt) {
@@ -135,12 +138,6 @@ export function RematriculaBanner({ embedded = false, onFinance }: { embedded?: 
     submitting.current = true
     setStarting(true)
     try {
-      const ok = await confirm({
-        title: 'Iniciar rematrícula',
-        message: `Deseja iniciar a rematrícula para ${status?.nextAno}? O total desta transação será ${money.format(selectedTotal)}.`,
-        confirmLabel: 'Continuar para pagamento',
-      })
-      if (!ok) return
       setBusy(true)
       const res = await fetch('/api/aluno/rematricula/iniciar', {
         method: 'POST',
@@ -150,6 +147,7 @@ export function RematriculaBanner({ embedded = false, onFinance }: { embedded?: 
       const json = await res.json().catch(() => null)
       if (!res.ok || !json?.ok) throw new Error(json?.error || 'Falha ao iniciar rematrícula')
       setOpen(true)
+      setReviewing(false)
       success('Rematrícula iniciada', 'Confira os dados de pagamento e envie o comprovativo desta transação.')
       setSelectedServices([])
       navigation?.notifyChanged()
@@ -322,8 +320,8 @@ export function RematriculaBanner({ embedded = false, onFinance }: { embedded?: 
         {status.academic?.decision === 'inscricao_condicional' && <p className="text-sm leading-6 text-muted-foreground">A progressão condicional foi autorizada pelo RAA. As disciplinas pendentes continuam a exigir acompanhamento.</p>}
         {statusError && <div role="status" className="mt-3 flex flex-wrap items-center gap-3 text-sm text-muted-foreground"><span>Não foi possível atualizar o estado.</span><button type="button" onClick={() => void fetchStatus()} className="min-h-11 font-semibold text-primary underline">Tentar novamente</button></div>}
       </Notice>
-      <PortalSheet inline={embedded} open={open && !isConfirmed && !status.hasDebt} busy={starting || uploading} onClose={closeForm}
-        title="Rematrícula" description={`Confira o pedido para ${status.nextAno ?? 'o próximo ano lectivo'}.`} size="expanded">
+      <PortalSheet inline={embedded} open={open && !isConfirmed && !status.hasDebt} busy={starting || uploading} onClose={reviewing ? () => setReviewing(false) : closeForm}
+        title={reviewing && !paymentIntent ? 'Iniciar rematrícula' : 'Rematrícula'} description={`Confira o pedido para ${status.nextAno ?? 'o próximo ano lectivo'}.`} size="expanded">
             {paymentIntent ? (
               <div className="mt-5 space-y-4">
                 <div className={`rounded-2xl border p-4 ${paymentIntent.has_evidence ? 'border-amber-200 bg-amber-50' : 'border-emerald-200 bg-emerald-50'}`}><p className={`text-xs font-black uppercase tracking-widest ${paymentIntent.has_evidence ? 'text-amber-700' : 'text-emerald-700'}`}>{rejectedEvidence ? 'Comprovativo não confirmado' : paymentIntent.status === 'settled' ? 'Pagamento confirmado' : pendingEvidence ? 'Comprovativo recebido · em análise' : 'Pagamento disponível · aguarda comprovativo'}</p><p className="mt-1 text-sm text-foreground">Referência: <strong>{paymentIntent.reference || 'Rematrícula'}</strong></p><p className="mt-1 text-2xl font-black text-foreground">{money.format(paymentIntent.amount)}</p></div>
@@ -337,12 +335,23 @@ export function RematriculaBanner({ embedded = false, onFinance }: { embedded?: 
                 </>}
                 {flowError && <div className="rounded-xl bg-rose-50 p-3 text-xs font-bold text-rose-700"><p>{flowError}</p><button type="button" onClick={() => void fetchStatus()} className="mt-2 rounded-lg bg-card px-3 py-2 text-xs font-black text-rose-800">Atualizar estado</button></div>}
               </div>
+            ) : reviewing ? (
+              <div className="space-y-4">
+                <p role="status" className="text-sm">Confirma a rematrícula para {status.nextAno ?? 'o próximo ano lectivo'} pelo total de <strong>{money.format(selectedTotal)}</strong>?</p>
+                <button type="button" onClick={() => void startPayment()} disabled={starting || !status.rematricula?.service}
+                  className="min-h-11 rounded-xl bg-klasse-gold px-4 text-sm font-semibold text-white hover:brightness-95 disabled:opacity-50">
+                  {starting ? 'A iniciar…' : 'Confirmar e iniciar pagamento'}
+                </button>
+                <button type="button" onClick={() => setReviewing(false)} disabled={starting}
+                  className="min-h-11 rounded-xl border border-border px-4 text-sm font-semibold">Rever serviços</button>
+                {flowError && <p role="alert" className="text-sm text-rose-700">{flowError}</p>}
+              </div>
             ) : (
               <div className="mt-5 space-y-4">
                 <div className="rounded-2xl border border-border bg-muted p-4"><p className="text-sm font-black text-foreground">Serviço obrigatório</p><div className="mt-2 flex items-center justify-between text-sm"><span>{status.rematricula?.service?.nome || 'Rematrícula'}</span><strong>{money.format(status.rematricula?.service?.valor || 0)}</strong></div></div>
                 {(status.rematricula?.services ?? []).length > 0 && <div><p className="text-sm font-black text-foreground">Serviços adicionais (opcionais)</p><div className="mt-2 space-y-2">{(status.rematricula?.services ?? []).map((service) => <label key={service.id} className={`flex cursor-pointer items-start gap-3 rounded-2xl border p-3 ${selectedServices.includes(service.id) ? 'border-amber bg-amber-50' : 'border-border'}`}><input type="checkbox" checked={selectedServices.includes(service.id)} onChange={() => setSelectedServices((current) => current.includes(service.id) ? current.filter((id) => id !== service.id) : [...current, service.id])} className="mt-1 h-4 w-4" /><span className="flex-1 text-sm"><strong className="block text-foreground">{service.nome}</strong><small className="block text-muted-foreground">{service.descricao || service.codigo}</small></span><strong className="text-sm text-emerald">{money.format(service.valor)}</strong></label>)}</div></div>}
                 <div className="flex items-center justify-between border-t border-border pt-4 text-base font-black"><span>Total da transação</span><span>{money.format(selectedTotal)}</span></div>
-                <button type="button" onClick={() => void startPayment()} disabled={starting || !status.rematricula?.service} className="flex w-full items-center justify-center gap-2 rounded-2xl bg-amber-500 px-4 py-3 text-sm font-black text-primary-foreground disabled:opacity-50">{starting ? <Loader2 className="animate-spin" size={17} /> : <ArrowRight size={17} />} Continuar para pagamento</button>
+                <button type="button" onClick={() => setReviewing(true)} disabled={starting || !status.rematricula?.service} className="flex w-full items-center justify-center gap-2 rounded-2xl bg-amber-500 px-4 py-3 text-sm font-black text-primary-foreground disabled:opacity-50">{starting ? <Loader2 className="animate-spin" size={17} /> : <ArrowRight size={17} />} Continuar para pagamento</button>
                 {flowError && <p className="rounded-xl bg-rose-50 p-3 text-xs font-bold text-rose-700">{flowError}</p>}
               </div>
             )}

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { usePortalDrawerNavigation } from "@/components/portal/ui/PortalDrawerNavigator";
 import { currentGradePeriod, type GradePeriodRow } from "@/lib/academico/grade-period-context";
 
 type Subject = { id: string; nome: string | null };
@@ -9,6 +10,7 @@ type Grade = { aluno_id: string; matricula_id: string; mac?: number | null; npp?
 export function ProfessorStudentGrades({ turmaId, academicYearId, studentId, matriculaId, subjects }: {
   turmaId: string; academicYearId?: string; studentId: string; matriculaId: string; subjects: Subject[];
 }) {
+  const read = usePortalDrawerNavigation()?.read;
   const [subject, setSubject] = useState(subjects[0]?.id ?? "");
   const [period, setPeriod] = useState<number | null>(null);
   const [periods, setPeriods] = useState<number[]>([]);
@@ -26,7 +28,7 @@ export function ProfessorStudentGrades({ turmaId, academicYearId, studentId, mat
     if (academicYearId) params.set("ano_letivo_id", academicYearId);
     void (async () => {
       try {
-        const response = await fetch(`/api/professor/periodos?${params}`, { cache: "no-store", signal: ctrl.signal });
+        const response = await (read ? read(`/api/professor/periodos?${params}`, { signal: ctrl.signal, fresh: retry > 0 }) : fetch(`/api/professor/periodos?${params}`, { cache: "no-store", signal: ctrl.signal }));
         const body = await response.json();
         if (!response.ok || !body?.ok || !Array.isArray(body.items)) throw new Error("Períodos indisponíveis.");
         if (ctrl.signal.aborted) return;
@@ -39,7 +41,7 @@ export function ProfessorStudentGrades({ turmaId, academicYearId, studentId, mat
       } catch { if (!ctrl.signal.aborted) setPeriodError(true); }
     })();
     return () => ctrl.abort();
-  }, [turmaId, academicYearId, retry]);
+  }, [turmaId, academicYearId, retry, read]);
   useEffect(() => {
     setResult(null); setError(null);
     if (!periodReady || period === null || !subject || !selectedSubject) return;
@@ -48,7 +50,7 @@ export function ProfessorStudentGrades({ turmaId, academicYearId, studentId, mat
     if (academicYearId) params.set("ano_letivo_id", academicYearId);
     void (async () => {
       try {
-        const response = await fetch(`/api/professor/pauta?${params}`, { cache: "no-store", signal: ctrl.signal });
+        const response = await (read ? read(`/api/professor/pauta?${params}`, { signal: ctrl.signal, fresh: retry > 0 }) : fetch(`/api/professor/pauta?${params}`, { cache: "no-store", signal: ctrl.signal }));
         const body = await response.json();
         if (!response.ok || !Array.isArray(body)) throw new Error("Não foi possível consultar as notas nesta disciplina.");
         if (ctrl.signal.aborted) return;
@@ -59,7 +61,7 @@ export function ProfessorStudentGrades({ turmaId, academicYearId, studentId, mat
       } catch (cause) { if (!ctrl.signal.aborted) setError(cause instanceof Error ? cause.message : "Consulta indisponível."); }
     })();
     return () => ctrl.abort();
-  }, [scope, turmaId, academicYearId, studentId, matriculaId, subject, period, periodReady, selectedSubject, retry]);
+  }, [scope, turmaId, academicYearId, studentId, matriculaId, subject, period, periodReady, selectedSubject, retry, read]);
   const data = result?.scope === scope ? result : null;
   const columns = useMemo(() => data?.row ? [
     { label: "MAC", value: data.row.mac, active: data.components.length === 0 || data.components.includes("MAC") },
@@ -69,8 +71,8 @@ export function ProfessorStudentGrades({ turmaId, academicYearId, studentId, mat
   ].filter(item => item.active) : [], [data]);
   return <div className="min-w-0 space-y-4">
     <p className="text-sm text-muted-foreground">Consulta individual · Apenas disciplinas atribuídas ao professor. Sem acesso ao dossier administrativo ou financeiro.</p>
-    <label className="block text-sm font-medium">Disciplina<select value={subject} onChange={event => setSubject(event.target.value)} className="mt-1 min-h-11 w-full rounded-xl border border-border bg-card px-3 text-base">{subjects.map(item => <option key={item.id} value={item.id}>{item.nome ?? "Disciplina"}</option>)}</select></label>
-    <label className="block text-sm font-medium">Trimestre<select value={period ?? ""} disabled={!periodReady || periods.length === 0} onChange={event => setPeriod(Number(event.target.value))} className="mt-1 min-h-11 w-full rounded-xl border border-border bg-card px-3 text-base"><option value="" disabled>Selecciona o período</option>{periods.map(item => <option key={item} value={item}>{item}.º trimestre</option>)}</select></label>
+    <label className="block text-sm font-medium">Disciplina<select aria-label="Disciplina" value={subject} onChange={event => setSubject(event.target.value)} className="mt-1 min-h-11 w-full rounded-xl border border-border bg-card px-3 text-base">{subjects.map(item => <option key={item.id} value={item.id}>{item.nome ?? "Disciplina"}</option>)}</select></label>
+    <label className="block text-sm font-medium">Trimestre<select aria-label="Trimestre" value={period ?? ""} disabled={!periodReady || periods.length === 0} onChange={event => setPeriod(Number(event.target.value))} className="mt-1 min-h-11 w-full rounded-xl border border-border bg-card px-3 text-base"><option value="" disabled>Selecciona o período</option>{periods.map(item => <option key={item} value={item}>{item}.º trimestre</option>)}</select></label>
     {!subjects.length ? <p className="text-sm text-muted-foreground">Sem disciplinas atribuídas.</p> : periodError || error ? <div role="alert" className="space-y-2 rounded-xl border border-border p-3 text-sm"><p>{error ?? "Não foi possível consultar os períodos."}</p><button type="button" onClick={() => setRetry(n => n+1)} className="min-h-11 rounded-xl border border-border px-3 font-semibold text-primary">Tentar novamente</button></div>
     : periodReady && periods.length === 0 ? <p className="text-sm text-muted-foreground">Nenhum trimestre configurado.</p>
     : !data ? <p role="status" className="text-sm text-muted-foreground">A carregar informação académica…</p>

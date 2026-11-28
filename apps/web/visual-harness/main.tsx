@@ -2,6 +2,15 @@ import React, { useState } from "react";
 import { TabFinanceiro } from "../src/components/aluno/tabs/TabFinanceiro";
 import { TabFaltas } from "../src/components/aluno/tabs/TabFaltas";
 import { EstadoVitalBanner } from "../src/components/layout/escola-admin/EstadoVitalBanner";
+import { PortalDrawerNavigator } from "../src/components/portal/ui/PortalDrawerNavigator";
+import { PortalPullToRefresh } from "../src/components/portal/ui/PortalPullToRefresh";
+import { AcademicoWorkspace } from "../src/components/aluno/academico/AcademicoWorkspace";
+import { RematriculaBanner } from "../src/components/aluno/home/RematriculaBanner";
+import { ProfessorExamList } from "../src/components/professor/ProfessorExamList";
+import { ProfessorStudentGrades } from "../src/components/professor/ProfessorStudentGrades";
+import { ProfessorGradesWorkspace } from "../src/components/professor/ProfessorGradesWorkspace";
+import { StudentAppyPayButton } from "../src/components/financeiro/AppyPayReferenceButton";
+import { ProfessorFrequenciasWorkspace } from "../src/components/professor/ProfessorFrequenciasWorkspace";
 import { PortalSheet } from "../src/components/portal/ui/PortalSheet";
 import { ModalShell } from "../src/components/ui/ModalShell";
 import { FilaAtendimentoModal } from "../src/components/secretaria/FilaAtendimentoModal";
@@ -408,7 +417,25 @@ function PortalPaymentSheetFixture() {
       dadosPagamento={null} studentId="00000000-0000-4000-8000-000000000402" />
   </main>;
 }
-if (target && name === "dashboard-dialog-geometry") createRoot(target).render(<DashboardDialogFixture />);
+function DrawerDataFixture() {
+  const [open, setOpen] = useState(false);
+  const flow = new URLSearchParams(location.search).get("flow");
+  const content = flow === "academic" ? <AcademicoWorkspace embedded />
+    : flow === "exams" ? <ProfessorExamList school="fixture" yearId="year-a" editor="/professor/provas" />
+    : flow === "enrollment" ? <RematriculaBanner embedded />
+    : flow === "grade-entry" ? <ProfessorGradesWorkspace embedded requestedAnoLetivoId="year-a" requestedTurmaId="fixture-class" requestedDisciplinaId="disc" />
+    : flow === "individual-grades" ? <ProfessorStudentGrades turmaId="fixture-class" academicYearId="year-a" studentId="fixture-student" matriculaId="fixture-enrollment" subjects={[{id:"disc",nome:"Matemática"},{id:"disc-2",nome:"Português"}]} />
+    : flow === "appypay" ? <StudentAppyPayButton targetId="fixture-month" kind="monthly" studentId="fixture-student" descricao="Propina sintética" />
+    : <ProfessorFrequenciasWorkspace embedded urlTurmaId="fixture-class" urlDisciplinaId="disc" />;
+  return <FeedbackProvider>
+    <button onClick={() => setOpen(true)}>Abrir portal</button>
+    <PortalDrawerNavigator open={open} root={{ id: "fixture", title: "Portal", description: "Teste de navegação", content }}
+      onClose={() => setOpen(false)} onReopen={() => setOpen(true)} />
+  </FeedbackProvider>;
+}
+if (target && name === "pull-to-refresh") createRoot(target).render(<PullRefreshFixture />);
+else if (target && name === "drawer-data") createRoot(target).render(<DrawerDataFixture />);
+else if (target && name === "dashboard-dialog-geometry") createRoot(target).render(<DashboardDialogFixture />);
 else if (target && name === "portal-finance-context") createRoot(target).render(<main className="klasse-portal-theme klasse-academic-mobile min-h-screen p-4"><TabFinanceiro /></main>);
 else if (target && name === "portal-absence-context") createRoot(target).render(<main className="klasse-portal-theme klasse-academic-mobile min-h-screen p-4"><TabFaltas /></main>);
 else if (target && name === "operations-academic-card") createRoot(target).render(<main className="mx-auto min-h-screen max-w-6xl p-4"><EstadoVitalBanner compact calendarHref="/escola/fixture/operacoes/calendario" estado={{escola_id:"fixture",session_id:null,ano_ativo:2026,periodo_id:null,periodo_tipo:"TRIMESTRE",periodo_numero:1,hoje_bloqueado_pedagogico:false,evento_hoje_nome:"Reunião pedagógica sintética",fase_operacional:"REGULAR"}} /></main>);
@@ -439,3 +466,23 @@ else if (target && name === "balcao-perf") {
 } else if (target && name === "class-transfer") createRoot(target).render(<main style={{maxWidth:720,margin:"24px auto",padding:16}}><h1>Correção de turma · Matrícula sintética</h1><TransferForm matriculaId="00000000-0000-4000-8000-000000000021" currentTurmaId="00000000-0000-4000-8000-000000000011" anoLetivo={2026} anoLetivoId="00000000-0000-4000-8000-000000000006" onSuccess={()=>{}} /></main>);
 else if (target && Scene) createRoot(target).render(<>{Scene()}</>);
 else if (target) target.textContent = "Visual fixture not found";
+
+function PullRefreshFixture() {
+  const [dirty, setDirty] = useState(false);
+  const [open, setOpen] = useState(false);
+  const [completed, setCompleted] = useState(0);
+  const [busy, setBusy] = useState(false);
+  return <PortalPullToRefresh data-testid="pull-fixture" className="min-h-[1600px] p-4" disabled={dirty || open} onRefresh={async () => {
+    const response = await fetch("/api/fixture/pull-refresh");
+    if (response.ok) setCompleted(n => n + 1);
+  }}>
+    <h1 data-testid="pull-target">Dados da página</h1>
+    <output data-testid="pull-completed">{completed}</output>
+    <button type="button" onClick={() => setDirty(value => !value)}>Alternar edição</button>
+    <button type="button" onClick={() => setOpen(true)}>Abrir drawer de teste</button>
+    <button type="button" onClick={() => setBusy(value => !value)}>Alternar operação</button>
+    <PortalDrawerNavigator open={open} root={{ id:"pull-drawer", title:"Drawer de teste", description:"Sem actualização", content:
+      <PortalPullToRefresh onRefresh={() => fetch("/api/fixture/forbidden")}><p data-testid="drawer-pull-target">Dados do drawer</p></PortalPullToRefresh> }}
+      onClose={() => { if (!busy) setOpen(false); }} onReopen={() => setOpen(true)} />
+  </PortalPullToRefresh>;
+}

@@ -8,7 +8,98 @@ const dir="apps/web/visual-evidence";
 await mkdir(dir,{recursive:true});
 const browser=await chromium.launch({headless:true});
 const results=[];
+async function validateDrawerData() {
+  const page = await browser.newPage();
+  const counts = new Map();
+  const writes = [];
+  let release;
+  const slow = new Promise(resolve => { release = resolve; });
+  const roster = "/api/professor/turmas/fixture-class/alunos";
+  const responses = {
+    "/api/professor/atribuicoes": { ok: true, items: [{ id: "assignment", turma: {id:"fixture-class", nome:"Turma A"}, disciplina: {id:"disc", nome:"Matemática"} }] },
+    [roster]: { ok: true, items: [{id:"fixture-student", nome:"Aluno sintético", matricula_id:"fixture-enrollment"}] },
+    "/api/aluno/rematricula/status": { ok: true, eligible: true, nextAno: 2027, rematricula: { service: { nome: "Rematrícula", valor: 2500 }, services: [] } },
+    "/api/aluno/disciplinas": { ok: true, disciplinas: [{ id: "disc", nome: "Disciplina sintética", periodos_ativos: [1] }] },
+    "/api/aluno/faltas": { ok: true, resumo: {faltas: 0, presencas: 1, atrasos: 0}, items: [] },
+    "/api/aluno/minhas-notas": { ok: true, matricula_encontrada: true, is_liberado: true, disciplinas: [] },
+    "/api/aluno/documentos/catalogo": { ok: true, documentos: [], boletim_pago: true },
+  };
+  await page.route("**/api/**", async route => {
+    const req = route.request();
+    const path = new URL(req.url()).pathname;
+    counts.set(path, (counts.get(path) ?? 0) + 1);
+    if (req.method() === "POST") writes.push({path, body: req.postDataJSON()});
+    if (path === "/api/escola/fixture/provas") {
+      const offset = Number(new URL(req.url()).searchParams.get("offset"));
+      const provas = Array.from({length:offset ? 1 : 30}, (_,i) => ({id:String(offset+i), titulo:"Prova " + (offset+i), classe:"7ª", trimestre:1, estado:"rascunho"}));
+      await route.fulfill({json:{permissions:{author:true},provas}});
+      return;
+    }
+    if (path === "/api/aluno/disciplinas") await slow;
+    await route.fulfill({json: responses[path] ?? {ok: true}});
+  });
+  const open = async flow => {
+    await page.goto(base + "/?story=drawer-data&flow=" + flow);
+    await page.getByRole("button", {name: "Abrir portal"}).click();
+  };
+  try {
+    await open("academic");
+    const response = page.waitForResponse(r => new URL(r.url()).pathname === "/api/aluno/disciplinas");
+    const area = page.getByRole("tabpanel", {name: "Disciplinas"});
+    await page.getByRole("tab", {name: "Disciplinas"}).click();
+    await area.getByText("A carregar disciplinas").waitFor({state:"attached"});
+    release();
+    await response;
+    await area.getByText("Disciplina sintética").waitFor();
+    await page.waitForLoadState("networkidle");
+    const loaded = Object.fromEntries(counts);
+    for (const name of ["Faltas", "Documentos", "Notas", "Disciplinas"]) {
+      await page.getByRole("tab", {name, exact:true}).click();
+      await page.getByRole("tabpanel", {name, exact:true}).waitFor();
+    }
+    await area.getByText("Disciplina sintética").waitFor();
+    await page.waitForLoadState("networkidle");
+    assert.deepEqual(Object.fromEntries(counts), loaded, "tab switches repeated API calls");
+    await open("exams");
+    await page.getByRole("button",{name:"Seguinte"}).click();
+    await page.getByRole("button",{name:"Anterior"}).click();
+    await page.getByRole("button",{name:"Seguinte"}).click();
+    assert.equal(counts.get("/api/escola/fixture/provas"),2);
+    assert.equal(await page.getByRole("dialog").count(),1);
+    await open("withdrawal");
+    await page.getByRole("button", {name:"Outras ações para Aluno sintético"}).click();
+    await page.getByRole("button", {name:"Sinalizar desistência"}).click();
+    const signal = page.getByRole("region", {name:"Sinalizar possível desistência"});
+    await signal.getByRole("textbox").fill("Sinalização sintética para teste.");
+    assert.equal(await page.getByRole("dialog").count(), 1);
+    await signal.getByRole("button", {name:"Enviar sinalização"}).click();
+    await signal.getByText("Sinalização enviada à Secretaria.").waitFor();
+    await signal.getByRole("button", {name:"Fechar", exact:true}).click();
+    await page.getByText("Aluno sintético", {exact:true}).waitFor();
+    assert.equal(counts.get(roster), 1, "opening the signal refetched the roster");
+    await open("enrollment");
+    const review = page.getByRole("button", {name:"Continuar para pagamento"});
+    await review.click();
+    assert.equal(await page.getByRole("dialog").count(), 1);
+    await page.getByRole("button", {name:"Rever serviços"}).click();
+    await review.click();
+    const path = "/api/aluno/rematricula/iniciar";
+    assert.equal(writes.filter(w => w.path === path).length, 0);
+    const refreshed = page.waitForResponse(r => new URL(r.url()).pathname === "/api/aluno/rematricula/status");
+    await page.getByRole("button", {name:"Confirmar e iniciar pagamento"}).click();
+    await refreshed;
+    assert.deepEqual(writes.filter(w => w.path === path), [{path, body:{servicos_ids:[]}}]);
+    results.push({scenario:"drawer-data", initialAcademicRequests:loaded, requestsOnTabSwitch:0});
+  } finally {
+    release();
+    await page.close();
+  }
+}
 try {
+  await validateDrawerData();
+  await validateDashboardNavigation();
+  await validateGradeAndPaymentRequests();
+  await validatePullToRefresh();
   for (const viewport of [{width:390,height:844},{width:768,height:1024},{width:1024,height:768},{width:1366,height:768}]) {
     for (const reducedMotion of ["reduce","no-preference"]) {
       const ctx=await browser.newContext({viewport,reducedMotion});
@@ -245,3 +336,307 @@ try {
   }
 }finally{await browser.close();await writeFile(dir+"/portal-context-sheets.json",JSON.stringify(results,null,2));}
 console.log("Contextual sheet tests passed",results);
+
+async function validateDashboardNavigation() {
+  const page = await browser.newPage({ viewport:{width:390,height:844} });
+  const dialog = page.getByRole("dialog");
+  const failures = [];
+  page.on("pageerror", err => failures.push(err.message));
+  const visit = async story => {
+    await page.goto(base + "/?story=" + story);
+    await page.waitForLoadState("networkidle");
+    await page.evaluate(() => {
+      window.drawerRequests = [];
+      const fetch = window.fetch.bind(window);
+      window.fetch = (input, init) => {
+        const url = new URL(typeof input === "string" ? input : input.url ?? input, location.href);
+        url.searchParams.sort();
+        window.drawerRequests.push({ path: url.pathname, key: (init?.method ?? input?.method ?? "GET").toUpperCase() + " " + url.pathname + url.search });
+        return fetch(input, init);
+      };
+    });
+  };
+  const count = path => page.evaluate(path => window.drawerRequests.filter(request => request.path === path).length, path);
+  const reads = async paths => page.evaluate(paths => window.drawerRequests.filter(request => request.key.startsWith("GET ") && paths.some(path => request.path === path || (path.endsWith("*") && request.path.startsWith(path.slice(0,-1))))).map(request => request.key).sort(), paths);
+  const assertNoRepeat = async (paths, action, label) => {
+    await page.waitForLoadState("networkidle");
+    const before = await reads(paths);
+    await action();
+    await page.waitForLoadState("networkidle");
+    assert.deepEqual(await reads(paths), before, `${label}: repeated GET`);
+    console.log("Drawer request budget:", label, "0 redundant GETs", paths.join(", "));
+  };
+  const click = (scope, name) => scope.getByRole("button", {name,exact:true}).first().click();
+  const child = async (name, title) => {
+    console.log("Drawer navigation:", name, "→", title);
+    const parent = await dialog.getAttribute("aria-labelledby");
+    const heading = await page.locator("[id]").evaluateAll((els, id) => els.find(el => el.id === id)?.textContent, parent);
+    await click(dialog, name);
+    await page.getByRole("dialog",{name:title,exact:true}).waitFor();
+    assert.equal(await dialog.count(), 1);
+    if (title === "Materiais pedagógicos") {
+      const before = await count("/api/professor/materiais-pedagogicos");
+      await click(dialog,"Novo Material");
+      assert.equal(await page.getByRole("dialog").count(),1);
+      await click(dialog,"Cancelar");
+      assert.equal(await count("/api/professor/materiais-pedagogicos"),before);
+    }
+    await page.evaluate(() => history.back());
+    await page.getByRole("dialog",{name:heading,exact:true}).waitFor();
+  };
+  const close = async () => { await page.keyboard.press("Escape"); await dialog.waitFor({state:"hidden"}); };
+  try {
+    await page.route("**/api/**", route => {
+      const path = new URL(route.request().url()).pathname;
+      const data = path.endsWith("/calendario") ? {ok:true,periodos:[],items:[{id:"evt",nome:"Reunião sintética",descricao:"Detalhe do evento",data_inicio:"2099-12-01",data_fim:"2099-12-01",tipo:"REUNIAO"}]} : path.endsWith("/avisos") ? {ok:true,avisos:[{id:"notice",titulo:"Circular sintética",resumo:"Mensagem"}]}
+        : path.endsWith("/financeiro") ? {ok:true,mensalidades:[{id:"month",competencia:"2026-11",valor:500,status:"pendente"}],servicos:[{id:"service",nome:"Serviço sintético",valor:500,status:"pendente",acao:{label:"Consultar",href:"/aluno/documentos?servico=DOC"}}],movimentos:[]}
+        : path.endsWith("/pauta") ? [] : {ok:true,items:[],periodos:[],eventos:[],slots:[],assignments:[]};
+      return route.fulfill({json:data});
+    });
+    await visit("dashboard-clean");
+    await page.locator("section").filter({has:page.getByRole("heading",{name:"Próxima aula",exact:true})}).last().getByRole("button").first().click();
+    await click(dialog,"Consultar horário completo");
+    for (const tab of ["Próximos eventos","Aulas","Próximos eventos"]) await click(dialog,tab);
+    assert.equal(await count("/api/aluno/horario"),1);
+    assert.equal(await count("/api/aluno/home/academic-events"),1);
+    await close();
+    await page.getByRole("button",{name:/Reunião de encarregados/}).first().click();
+    await click(dialog,"Ver todos os avisos");
+    await assertNoRepeat(["/api/aluno/avisos"], () => child(/Circular sintética/,"Circular sintética"), "Aviso: detalhe e retorno");
+    await close();
+    await page.getByTestId("aluno-summary-cards").getByRole("button",{name:/^Propinas vencidas/}).click();
+    await assertNoRepeat(["/api/aluno/financeiro"], async () => {
+      await click(dialog,/^Filtrar período/);
+      await dialog.getByRole("region",{name:"Filtrar período"}).getByRole("button",{name:"Voltar"}).click();
+      await click(dialog,/2026-11/);
+      await click(dialog,"Enviar comprovativo");
+      await dialog.getByRole("region",{name:"Pagamento consolidado"}).waitFor();
+      assert.equal(await page.getByRole("dialog").count(),1);
+      await dialog.getByRole("region",{name:"Pagamento consolidado"}).getByRole("button",{name:"Voltar",exact:true}).first().click();
+    }, "Financeiro: filtro sem aplicar, propina e pagamento sem confirmar");
+    await click(dialog,/Serviço sintético/);
+    await child(/Secretaria Digital/,"Documentos e serviços");
+    await assertNoRepeat(["/api/aluno/documentos/catalogo"], () => child(/Secretaria Digital/,"Documentos e serviços"), "Serviço: reentrada na Secretaria Digital");
+    await close();
+    await visit("professor-com-turmas");
+    const turma = page.getByRole("button",{name:/Matemática.*Língua Portuguesa/}).first();
+    await turma.click();
+    for (const [label,title] of [["Chamada","Registar chamada"],["Notas","Lançamento de notas"],["Plano de aula","Planos de aula"],["Materiais","Materiais pedagógicos"],["Horário da turma","Horário da turma"],["Aluno sintético","Aluno sintético"]]) await child(label,title);
+    for (const [label,title,paths] of [
+      ["Chamada","Registar chamada",["/api/professor/atribuicoes","/api/professor/turmas/*"]],
+      ["Notas","Lançamento de notas",["/api/professor/atribuicoes"]],
+      ["Plano de aula","Planos de aula",["/api/professor/planos-aula","/api/professor/agenda"]],
+      ["Materiais","Materiais pedagógicos",["/api/professor/materiais-pedagogicos","/api/professor/agenda"]],
+      ["Horário da turma","Horário da turma",["/api/professor/turmas/*"]],
+      ["Aluno sintético","Aluno sintético",["/api/professor/periodos"]],
+    ]) await assertNoRepeat(paths, () => child(label,title), `Turma: reentrada em ${title}`);
+    assert.equal(await count("/api/professor/agenda"),0);
+    await close();
+    await page.locator('button[aria-expanded][aria-haspopup="dialog"]').filter({hasText:"08:00"}).first().click();
+    for (const [label,title] of [["Chamada","Registar chamada"],["Notas","Lançamento de notas"],["Plano de aula","Planos de aula"]]) await child(label,title);
+    await close();
+    for (const [label,title] of [["Ver calendário","Calendário académico"],["Calendário de Avaliações","Calendário de avaliações"]]) {
+      await click(page,label);
+      await page.getByRole("dialog",{name:title,exact:true}).waitFor();
+      await assertNoRepeat(["/api/professor/calendario"], async () => {
+        await click(dialog,"Eventos");
+        await click(dialog,"Ver detalhes de Reunião sintética");
+        await dialog.getByRole("region",{name:"Reunião sintética"}).getByRole("button",{name:"Voltar"}).click();
+        await click(dialog,"Períodos lectivos");
+        await click(dialog,"Avaliações");
+        await click(dialog,"Histórico de avaliações");
+        await dialog.getByRole("region",{name:"Histórico de avaliações"}).waitFor();
+      }, `${title}: abas, evento e histórico`);
+      assert.equal(await dialog.count(),1);
+      await close();
+    }
+    assert.deepEqual(failures,[]);
+  } finally { await page.close(); }
+}
+
+async function validateGradeAndPaymentRequests() {
+  const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
+  const requests = [];
+  const api = "/api/aluno/financeiro/appypay";
+  const reference = { id: "fixture-reference", entity: "12345", reference: "123456789", amount: 500, currency: "AOA", expires_at: "2099-12-01T00:00:00Z", status: "active" };
+  let issued = false;
+  let gradeEntry = false;
+  try {
+    await page.route("**/api/**", route => {
+      const req = route.request();
+      const url = new URL(req.url());
+      url.searchParams.sort();
+      const body = req.method() === "POST" ? req.postDataJSON() : null;
+      requests.push({ path: url.pathname, key: req.method() + " " + url.pathname + url.search, action: body?.action ?? url.searchParams.get("action"), body });
+      if (url.pathname === "/api/professor/atribuicoes") return route.fulfill({ json:{ok:true, context:{anoLetivoId:"year-a",mode:"CURRENT"}, items:[{turma:{id:"fixture-class",nome:"Turma A"},disciplina:{id:"disc",nome:"Matemática"},turma_disciplina_id:"link-a"}]} });
+      if (url.pathname === "/api/professor/periodos") return route.fulfill({ json: { ok: true, items: [1,2,3].map(numero => ({ id: "period-"+numero, numero, data_inicio: gradeEntry && numero===2 ? "2000-01-01" : null, data_fim: gradeEntry && numero===2 ? "2099-12-31" : null, trava_notas_em: null })) } });
+      if (url.pathname === "/api/professor/pauta") {
+        const mac = 10 + Number(url.searchParams.get("trimestre")) + (url.searchParams.get("disciplinaId") === "disc-2" ? 3 : 0);
+        return route.fulfill({ json: [{ aluno_id:"fixture-student", matricula_id:"fixture-enrollment", nome:"Aluno sintético", numero_chamada:1, mac, npt:17, mt:15 }], headers: { "x-klasse-grade-max":"20", "x-klasse-grade-components":"MAC,NPT" } });
+      }
+      if (url.pathname === api) {
+        if (req.method() === "GET") return route.fulfill({ json: url.searchParams.get("action") === "status" ? { ok:true, enabled:true } : { ok:true, amount:500, environment:"sandbox", canIssue:!issued, reference:issued ? reference : null } });
+        if (body.action === "issue") { issued = true; return route.fulfill({ json: { ok:true, reference } }); }
+        if (body.action === "check") return route.fulfill({ json: { ok:true, status:"reconciled" } });
+      }
+      return route.fulfill({ json:{ok:true} });
+    });
+    const open = async flow => {
+      await page.goto(base + "/?story=drawer-data&flow=" + flow);
+      await page.getByRole("button",{name:"Abrir portal"}).click();
+    };
+    await open("individual-grades");
+    const discipline = page.getByLabel("Disciplina",{exact:true});
+    const period = page.getByLabel("Trimestre",{exact:true});
+    const expectGrade = async value => page.getByText("MAC",{exact:true}).locator("..").getByText(value + " / 20",{exact:true}).waitFor();
+    await expectGrade(11);
+    await period.selectOption("2"); await expectGrade(12);
+    await discipline.selectOption("disc-2"); await expectGrade(15);
+    await period.selectOption("1"); await expectGrade(14);
+    const gradeReads = () => requests.filter(r => r.path === "/api/professor/pauta");
+    assert.equal(gradeReads().length,4,"first visit to each subject/term combination must query once");
+    assert.equal(new Set(gradeReads().map(r=>r.key)).size,4);
+    await discipline.selectOption("disc"); await expectGrade(11);
+    await period.selectOption("2"); await expectGrade(12);
+    await discipline.selectOption("disc-2"); await expectGrade(15);
+    assert.equal(gradeReads().length,4,"revisiting subject/term repeated the grade query");
+    assert.equal(requests.filter(r => r.path === "/api/professor/periodos").length,1);
+    console.log("Drawer request budget: individual grades, four first reads, zero repeats on subject/term revisit");
+    requests.length = 0;
+    gradeEntry = true;
+    await open("grade-entry");
+    await page.getByText("Aluno sintético",{exact:true}).first().waitFor();
+    await page.waitForLoadState("networkidle");
+    assert.equal(gradeReads().length,1,"grade entry must wait for canonical term rather than fetch default term 1");
+    assert.ok(gradeReads()[0].key.includes("trimestre=2"));
+    const initialKeys = requests.filter(r=>r.key.startsWith("GET ")).map(r=>r.key);
+    assert.equal(new Set(initialKeys).size,initialKeys.length,"duplicate GET in initial grade entry");
+    await page.getByRole("button",{name:/Turma e disciplina/}).click();
+    const context = page.getByRole("region",{name:"Contexto de lançamento"});
+    const term = context.getByLabel("Trimestre");
+    await term.selectOption("1");
+    await page.waitForLoadState("networkidle");
+    assert.equal(gradeReads().length,2);
+    await term.selectOption("2");
+    await page.waitForLoadState("networkidle");
+    assert.equal(gradeReads().length,2,"return to already loaded grade term");
+    const allGradeKeys = requests.filter(r=>r.key.startsWith("GET ")).map(r=>r.key);
+    assert.equal(new Set(allGradeKeys).size,allGradeKeys.length,"grade term revisit duplicated a read");
+    await context.getByRole("button",{name:"Concluir selecção"}).click();
+    await page.waitForLoadState("networkidle");
+    assert.equal(requests.filter(r=>r.key.startsWith("GET ")).length,allGradeKeys.length,"closing grade context refetched data");
+    console.log("Drawer request budget: grade entry waits for canonical term; zero repeated GETs including academic auxiliary data");
+    await open("appypay");
+    await page.getByRole("button",{name:"Pagar com AppyPay"}).click();
+    const panel = page.getByRole("region",{name:"Pagamento por referência"});
+    const generate = panel.getByRole("button",{name:/Gerar referência de/});
+    await generate.waitFor();
+    const payments = action => requests.filter(r=>r.path===api&&r.action===action);
+    assert.equal(payments("status").length,1);
+    assert.equal(payments("preview").length,1);
+    assert.equal(payments("issue").length,0);
+    assert.equal(payments("check").length,0);
+    await panel.getByRole("button",{name:"Fechar",exact:true}).click();
+    await page.getByRole("button",{name:"Pagar com AppyPay"}).click();
+    await generate.waitFor();
+    // A new payment preview is deliberate: the payable balance may have changed.
+    assert.equal(payments("preview").length,2);
+    assert.equal(payments("status").length,1);
+    assert.equal(payments("issue").length,0);
+    await generate.click();
+    await panel.getByText("Referência emitida — a aguardar pagamento",{exact:true}).waitFor();
+    assert.equal(payments("issue").length,1);
+    assert.equal(payments("issue")[0].body.expectedAmount,500);
+    assert.equal(payments("preview").length,2);
+    assert.equal(payments("check").length,0);
+    await panel.getByRole("button",{name:"Verificar pagamento"}).click();
+    await panel.getByText("Pagamento confirmado e registado.",{exact:true}).waitFor();
+    assert.equal(payments("check").length,1);
+    assert.equal(payments("issue").length,1);
+    assert.equal(payments("preview").length,2);
+    console.log("Drawer request budget: AppyPay monthly: one preview per opening, one explicit issue, one explicit check, no implicit writes");
+  } finally { await page.close(); }
+}
+
+async function validatePullToRefresh() {
+  const page = await browser.newPage({ viewport:{width:390,height:844}, hasTouch:true, isMobile:true });
+  let requests=0, forbidden=0, release;
+  const held = new Promise(resolve => { release = resolve; });
+  await page.route("**/api/fixture/pull-refresh", async route => {
+    assert.equal(route.request().method(),"GET");
+    requests++;
+    if (requests===1) await held;
+    await route.fulfill({json:{ok:true}});
+  });
+  await page.route("**/api/fixture/forbidden", route => { forbidden++; return route.fulfill({json:{ok:true}}); });
+  const swipe = (locator, dx, dy, cancel=false) => locator.evaluate((target,{dx,dy,cancel}) => {
+    const make = (x,y) => new Touch({identifier:1,target,clientX:x,clientY:y});
+    const start=make(100,100), end=make(100+dx,100+dy);
+    const dispatch = (type,touches,changed) => target.dispatchEvent(new TouchEvent(type,{touches,targetTouches:touches,changedTouches:changed,bubbles:true,cancelable:true}));
+    dispatch("touchstart",[start],[start]); dispatch("touchmove",[end],[end]);
+    dispatch(cancel?"touchcancel":"touchend",[],[end]);
+  },{dx,dy,cancel});
+  const dismiss = locator => locator.evaluate(target => {
+    for (const [type,y] of [["pointerdown",100],["pointermove",210],["pointerup",210]]) target.dispatchEvent(new PointerEvent(type,{pointerId:1,pointerType:"touch",isPrimary:true,clientX:100,clientY:y,bubbles:true,cancelable:true}));
+  });
+  try {
+    await page.goto(base+"/?story=pull-to-refresh");
+    assert.ok(await page.evaluate(()=>matchMedia("(pointer: coarse)").matches));
+    const target=page.getByTestId("pull-target");
+    await target.waitFor();
+    await swipe(target,0,35);
+    await swipe(target,130,15);
+    await swipe(target,0,-90);
+    await swipe(target,0,110,true);
+    assert.equal(requests,0,"short, horizontal, upward and cancelled gestures must not refresh");
+    await page.evaluate(()=>window.scrollTo(0,200));
+    await page.waitForFunction(()=>window.scrollY>0);
+    await swipe(target,0,110);
+    assert.equal(requests,0,"refresh away from scroll top");
+    await page.evaluate(()=>window.scrollTo(0,0));
+    await page.waitForFunction(()=>window.scrollY===0);
+    await swipe(target,0,110);
+    await page.getByText("A actualizar…",{exact:true}).waitFor();
+    await page.waitForFunction(()=>document.querySelector('[data-testid="pull-fixture"]')!==null);
+    await swipe(target,0,110);
+    release();
+    await page.getByTestId("pull-completed").getByText("1",{exact:true}).waitFor();
+    assert.equal(requests,1,"parallel refresh");
+    await page.getByRole("button",{name:"Alternar edição"}).click();
+    await swipe(target,0,110);
+    assert.equal(requests,1,"dirty form refreshed");
+    await page.getByRole("button",{name:"Alternar edição"}).click();
+    await page.getByRole("button",{name:"Abrir drawer de teste"}).click();
+    const drawer=page.getByRole("dialog",{name:"Drawer de teste"});
+    await drawer.waitFor();
+    assert.equal(await drawer.locator('[data-portal-pull-refresh="true"]').count(),0);
+    await swipe(page.getByTestId("drawer-pull-target"),0,110);
+    assert.equal(forbidden,0,"drawer refreshed");
+    assert.equal(requests,1,"background page refreshed while drawer open");
+    await dismiss(drawer.locator('[data-portal-dismiss-handle]'));
+    await drawer.waitFor({state:"hidden"});
+    assert.equal(forbidden,0,"dismiss must not refresh");
+    assert.equal(requests,1,"dismiss must not refresh background");
+    await page.goto(base+"/?story=dashboard-clean");
+    const dashboard=page.getByTestId("aluno-dashboard-editorial");
+    await dashboard.waitFor();
+    await page.waitForLoadState("networkidle");
+    await page.evaluate(()=>{
+      window.pullCalls=[];
+      const original=window.fetch.bind(window);
+      window.fetch=(input,init)=>{
+        const url=new URL(typeof input==="string"?input:input.url??input,location.href);
+        if(url.pathname.startsWith("/api/")) window.pullCalls.push((init?.method??"GET")+" "+url.pathname);
+        return original(input,init);
+      };
+    });
+    await swipe(dashboard.getByRole("heading",{name:"Em resumo",exact:true}),0,110);
+    await page.waitForFunction(()=>window.pullCalls.includes("GET /api/aluno/dashboard"));
+    await page.waitForFunction(()=>!document.querySelector('[data-testid="aluno-dashboard-editorial"] [role="status"]')?.textContent?.includes("A actualizar"));
+    const calls=await page.evaluate(()=>window.pullCalls);
+    assert.equal(calls.filter(call=>call==="GET /api/aluno/dashboard").length,1);
+    assert.ok(calls.every(call=>call.startsWith("GET ")));
+    assert.equal(new Set(calls).size,calls.length,"student dashboard refresh repeated a GET");
+    console.log("Pull-to-refresh: one GET per resource, ignored invalid gestures, blocked draft and drawer, swipe dismiss without refresh");
+  } finally { release(); await page.close(); }
+}

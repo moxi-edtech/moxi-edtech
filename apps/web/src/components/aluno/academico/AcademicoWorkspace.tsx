@@ -72,16 +72,16 @@ export function AcademicoWorkspace({ embedded = false, initialTab, onOpenNotices
       <PortalTabs items={sections} value={activeTab} onChange={navigateTab}
         layout="compact" idPrefix="academic" label="Área académica" testId="academic-local-tabs" />
       <section id="academic-panel-notas" role="tabpanel" aria-labelledby="academic-tab-notas" hidden={activeTab !== "notas"} tabIndex={0}>
-        {(!embedded || visited.includes("notas")) && <TabNotas embedded onOpenDocuments={(serviceCode) => navigateTab("documentos", serviceCode ?? undefined)} />}
+        <TabNotas embedded onOpenDocuments={(serviceCode) => navigateTab("documentos", serviceCode ?? undefined)} />
       </section>
       <section id="academic-panel-disciplinas" role="tabpanel" aria-labelledby="academic-tab-disciplinas" hidden={activeTab !== "disciplinas"} tabIndex={0}>
-        {visited.includes("disciplinas") && <DisciplinasList />}
+        {(embedded || visited.includes("disciplinas")) && <DisciplinasList />}
       </section>
       <section id="academic-panel-faltas" role="tabpanel" aria-labelledby="academic-tab-faltas" hidden={activeTab !== "faltas"} tabIndex={0}>
-        {visited.includes("faltas") && <TabFaltas />}
+        {(embedded || visited.includes("faltas")) && <TabFaltas />}
       </section>
       <section id="academic-panel-documentos" role="tabpanel" aria-labelledby="academic-tab-documentos" hidden={activeTab !== "documentos"} tabIndex={0}>
-        {visited.includes("documentos") && <TabDocumentos embedded focusServiceCode={focusService} onOpenNotas={() => navigateTab("notas")} onOpenNotices={onOpenNotices} />}
+        {(embedded || visited.includes("documentos")) && <TabDocumentos embedded active={activeTab === "documentos"} focusServiceCode={focusService} onOpenNotas={() => navigateTab("notas")} onOpenNotices={onOpenNotices} />}
       </section>
     </div>
   );

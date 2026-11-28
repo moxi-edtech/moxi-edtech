@@ -1,4 +1,6 @@
 "use client";
+import { PortalPullToRefresh } from "@/components/portal/ui/PortalPullToRefresh";
+
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
@@ -57,7 +59,7 @@ export function DisciplinasList() {
 
   const isCurrent = !loading && scope === query && !error;
   return (
-    <div className="min-w-0 space-y-5" data-testid="aluno-disciplinas">
+    <PortalPullToRefresh onRefresh={() => { setLoading(true); reload(); }} busy={loading} className="min-w-0 space-y-5" data-testid="aluno-disciplinas">
       <div className="space-y-1">
         <h2 className="text-lg font-semibold text-foreground">As tuas disciplinas</h2>
         {isCurrent && <p className="text-sm text-muted-foreground">{yearLabel ? `Ano letivo ${yearLabel} · ` : ""}${disciplinas.length} disciplinas da tua turma</p>}
@@ -84,6 +86,6 @@ export function DisciplinasList() {
           ))}
         </div>
       )}
-    </div>
+    </PortalPullToRefresh>
   );
 }

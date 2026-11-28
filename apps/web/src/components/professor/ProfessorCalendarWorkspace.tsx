@@ -1,4 +1,6 @@
 "use client";
+import { PortalPullToRefresh } from "@/components/portal/ui/PortalPullToRefresh";
+
 
 import { usePortalDrawerNavigation } from "@/components/portal/ui/PortalDrawerNavigator";
 import { PortalSheet } from "@/components/portal/ui/PortalSheet";
@@ -137,6 +139,7 @@ const getRelativeLabel = (start: string, end: string, todayIso: string) => {
 
 export function ProfessorCalendarWorkspace({ embedded = false, initialView = "calendar", academicYearId = "" }: { embedded?: boolean; initialView?: "calendar" | "assessments" | "periods"; academicYearId?: string }) {
   const navigation = usePortalDrawerNavigation();
+  const read = navigation?.read;
   const [view, setView] = useState(initialView);
   const [retry, setRetry] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -167,7 +170,7 @@ export function ProfessorCalendarWorkspace({ embedded = false, initialView = "ca
         setError(null);
 
         const params = new URLSearchParams(); if (academicYearId) params.set("ano_letivo_id", academicYearId);
-        const res = await fetch(`/api/professor/calendario${params.size ? "?" + params.toString() : ""}`, { cache: "no-store", signal: controller.signal });
+        const res = await (read ? read(`/api/professor/calendario${params.size ? "?" + params.toString() : ""}`, { signal: controller.signal, fresh: retry > 0 }) : fetch(`/api/professor/calendario${params.size ? "?" + params.toString() : ""}`, { cache: "no-store", signal: controller.signal }));
         const json = (await res.json().catch(() => null)) as CalendarioResponse | null;
 
         if (!res.ok || !json?.ok) {
@@ -191,7 +194,7 @@ export function ProfessorCalendarWorkspace({ embedded = false, initialView = "ca
       active = false;
       controller.abort();
     };
-  }, [retry, escolaParam, academicYearId]);
+  }, [retry, escolaParam, academicYearId, read]);
 
   const currentPeriodo = useMemo(
     () => periodos.find((periodo) => periodo.data_inicio <= todayIso && periodo.data_fim >= todayIso) ?? null,
@@ -286,7 +289,7 @@ export function ProfessorCalendarWorkspace({ embedded = false, initialView = "ca
                 ) : null}
                 </>);
   return (
-    <div className={embedded ? "min-w-0" : "min-h-screen bg-background"}>
+    <PortalPullToRefresh onRefresh={() => { setLoading(true); setRetry(value => value + 1); }} busy={loading} disabled={embedded || eventOpen || historyOpen} className={embedded ? "min-w-0" : "min-h-screen bg-background"}>
       <div className={embedded ? "flex min-w-0 flex-col gap-4" : `${PORTAL_PAGE_INSET} max-md:px-0 max-md:py-0 flex flex-col gap-4 sm:gap-6`}>
         {!embedded && <DashboardHeader
           title="Calendário Académico"
@@ -500,6 +503,6 @@ export function ProfessorCalendarWorkspace({ embedded = false, initialView = "ca
           </>
         )}
       </div>
-    </div>
+    </PortalPullToRefresh>
   );
 }

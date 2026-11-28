@@ -103,8 +103,8 @@ test("second round of sheets reuses authorized data without eager roster or time
   assert.ok(calendar.includes('item.tipo === "AVALIACAO_ESCOLAR" && item.data_fim < todayIso'));
   assert.ok(calendar.includes("<PortalSheet open={historyOpen}"));
   assert.ok(dashboard.includes("content: lessonOpen ? <>"));
-  assert.ok(dashboard.includes("<TabHorario dailyOnly />"));
-  assert.ok(dashboard.includes("content: <TabHorario />"));
+  assert.ok(dashboard.includes("<TabHorario dailyOnly>{snapshot =>"));
+  assert.ok(dashboard.includes("content: <TabHorario snapshot={snapshot} />"));
   assert.ok(schedule.includes("resolvedRequestKey === requestKey"));
   assert.ok(grades.includes("const sheetOpen = Boolean(expandedId && sheetSubject && sheetTerm)"));
   assert.ok(grades.includes("avaliacoes: locked ? [] : subject.avaliacoes"));
@@ -179,8 +179,9 @@ test("student dashboard reuses guarded academic and financial workspaces", () =>
   assert.match(academic, /if \(guarded\) return/);
   assert.match(navigator, /register\(id, sourceId, \{ dirty, busy \}\)/);
   assert.match(navigator, /notifyChanged/);
-  assert.match(sheet, /props.inline \? <InlinePortalPanel/);
-  assert.match(finance, /inert=\{Boolean\(navigation && paymentOpen\)\}/);
+  assert.match(sheet, /props.inline \|\| surface === "drawer" \? <InlinePortalPanel/);
+  assert.match(navigator, /<PortalPresentationContext.Provider value="drawer">/);
+  assert.match(finance, /hidden=\{Boolean\(navigation && paymentOpen\)\}/);
   assert.match(notes, /<AcademicRequestPanel inline=\{Boolean\(navigation\)\}/);
   assert.match(absences, /usePortalDrawerGuard\(detailOpen && Boolean\(reason.trim\(\)\), sending\)/);
   assert.match(documents, /if \(onOpenNotices\) \{ onOpenNotices\(\); return; \}/);

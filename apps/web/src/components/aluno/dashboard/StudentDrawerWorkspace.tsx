@@ -1,17 +1,12 @@
 "use client";
 
-import dynamic from "next/dynamic";
 import AuditPageView from "@/components/audit/AuditPageView";
 import { usePortalDrawerNavigation } from "@/components/portal/ui/PortalDrawerNavigator";
 import { TabNotificacoes } from "@/components/aluno/tabs/TabNotificacoes";
-import type { AcademicTab } from "@/components/aluno/academico/AcademicoWorkspace";
-
-const loading = () => <p role="status" className="text-sm text-muted-foreground">A carregar informação…</p>;
-const Enrollment = dynamic(() => import("@/components/aluno/home/RematriculaBanner").then(module => module.RematriculaBanner));
-
-const Academic = dynamic(() => import("@/components/aluno/academico/AcademicoWorkspace").then(module => module.AcademicoWorkspace), { loading });
-const Finance = dynamic(() => import("@/components/aluno/tabs/TabFinanceiro").then(module => module.TabFinanceiro), { loading });
-const Documents = dynamic(() => import("@/components/aluno/tabs/TabDocumentos").then(module => module.TabDocumentos), { loading });
+import { AcademicoWorkspace as Academic, type AcademicTab } from "@/components/aluno/academico/AcademicoWorkspace";
+import { TabFinanceiro as Finance } from "@/components/aluno/tabs/TabFinanceiro";
+import { TabDocumentos as Documents } from "@/components/aluno/tabs/TabDocumentos";
+import { RematriculaBanner as Enrollment } from "@/components/aluno/home/RematriculaBanner";
 
 export function StudentDrawerWorkspace({ scope, kind, initialTab, serviceCode }: {
   scope: string;

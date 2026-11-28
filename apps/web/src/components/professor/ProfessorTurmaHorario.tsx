@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Clock3 } from "lucide-react";
+import { usePortalDrawerNavigation } from "@/components/portal/ui/PortalDrawerNavigator";
 import { DashboardHeader } from "@/components/layout/DashboardHeader";
 
 const days = ["", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado", "Domingo"];
@@ -14,20 +15,19 @@ type HorarioResponse = {
 };
 
 export function ProfessorTurmaHorario({ turmaId, embedded = false }: { turmaId?: string; embedded?: boolean }) {
+  const read = usePortalDrawerNavigation()?.read;
   const [payload, setPayload] = useState<HorarioResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [retry, setRetry] = useState(0);
 
-  const load = useCallback(async (signal: AbortSignal) => {
+  const load = useCallback(async (signal: AbortSignal, fresh = false) => {
     if (!turmaId) { setPayload(null); setLoading(false); return; }
     setPayload(null);
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch(`/api/professor/turmas/${encodeURIComponent(turmaId)}/horario`, {
-        cache: "no-store", signal,
-      });
+      const response = await (read ? read(`/api/professor/turmas/${encodeURIComponent(turmaId)}/horario`, { signal, fresh }) : fetch(`/api/professor/turmas/${encodeURIComponent(turmaId)}/horario`, { cache: "no-store", signal }));
       const json = await response.json().catch(() => null);
       if (!response.ok || json?.ok !== true) throw new Error("Não foi possível consultar o horário.");
       if (!signal.aborted) setPayload(json as HorarioResponse);
@@ -36,11 +36,11 @@ export function ProfessorTurmaHorario({ turmaId, embedded = false }: { turmaId?:
     } finally {
       if (!signal.aborted) setLoading(false);
     }
-  }, [turmaId]);
+  }, [turmaId, read]);
 
   useEffect(() => {
     const ctrl = new AbortController();
-    void load(ctrl.signal);
+    void load(ctrl.signal, retry > 0);
     return () => ctrl.abort();
   }, [load, retry]);
   const grouped = useMemo(() => (payload?.items ?? []).reduce((acc, item) => {

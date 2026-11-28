@@ -1,5 +1,8 @@
 "use client";
+import { PortalPullToRefresh } from "@/components/portal/ui/PortalPullToRefresh";
 
+
+import { loadAgendaAssignments, type AgendaAssignment } from "./agendaAssignments";
 import React, { useEffect, useState, useMemo } from "react";
 import { usePortalDrawerGuard, usePortalDrawerNavigation } from "@/components/portal/ui/PortalDrawerNavigator";
 import { DashboardHeader } from "@/components/layout/DashboardHeader";
@@ -40,7 +43,7 @@ type Assignment = {
   disciplina_nome?: string;
 };
 
-export function ProfessorMateriaisWorkspace({ embedded = false, requestedTurmaId = "", requestedDisciplinaId = "" }: { embedded?: boolean; requestedTurmaId?: string; requestedDisciplinaId?: string }) {
+export function ProfessorMateriaisWorkspace({ embedded = false, requestedTurmaId = "", requestedDisciplinaId = "", initialAgenda }: { embedded?: boolean; requestedTurmaId?: string; requestedDisciplinaId?: string; initialAgenda?: readonly AgendaAssignment[] }) {
   const { success, error: toastError } = useToast();
   const [materiais, setMateriais] = useState<MaterialPedagogico[]>([]);
   const [assignments, setAssignments] = useState<Assignment[]>([]);
@@ -69,24 +72,23 @@ export function ProfessorMateriaisWorkspace({ embedded = false, requestedTurmaId
     setDirty(false);
     setForm(current => ({ ...current, titulo: "", descricao: "", conteudo: "", arquivo_url: "" }));
   };
-  const loadData = async () => {
+  const loadData = async (fresh = false) => {
     try {
       setLoading(true);
       setLoadError(null);
-      const [mRes, agendaRes] = await Promise.all([
-        fetch("/api/professor/materiais-pedagogicos", { cache: "no-store" }),
-        fetch("/api/professor/agenda", { cache: "no-store" }),
+      const [mRes, agendaItems] = await Promise.all([
+        (navigation ? navigation.read("/api/professor/materiais-pedagogicos", { fresh }) : fetch("/api/professor/materiais-pedagogicos", { cache: "no-store" })),
+        loadAgendaAssignments(initialAgenda),
       ]);
 
       const mJson = await mRes.json();
-      const agendaJson = await agendaRes.json();
 
       if (!mRes.ok || !mJson?.ok) throw new Error(mJson?.error || "Não foi possível carregar os materiais.");
       setMateriais(Array.isArray(mJson.items) ? mJson.items : []);
 
-      if (agendaRes.ok && agendaJson.items) {
+      {
         const pairsMap = new Map<string, Assignment>();
-        for (const item of agendaJson.items) {
+        for (const item of agendaItems) {
           if (item.turma_id && item.disciplina_id) {
             const key = `${item.turma_id}:${item.disciplina_id}`;
             if (!pairsMap.has(key)) {
@@ -151,7 +153,7 @@ export function ProfessorMateriaisWorkspace({ embedded = false, requestedTurmaId
       setShowModal(false);
       setDirty(false);
       setForm({ titulo: "", descricao: "", conteudo: "", arquivo_url: "", turma_id: "", disciplina_id: "" });
-      loadData();
+      loadData(true);
     } catch (err) {
       toastError("Não foi possível guardar o material", err instanceof Error ? err.message : String(err));
     } finally {
@@ -173,7 +175,7 @@ export function ProfessorMateriaisWorkspace({ embedded = false, requestedTurmaId
 
       navigation?.notifyChanged();
       success(newStatus === "publicado" ? "Material publicado" : "Material despublicado");
-      loadData();
+      loadData(true);
     } catch (err) {
       toastError("Não foi possível alterar a publicação", err instanceof Error ? err.message : String(err));
     } finally {
@@ -182,7 +184,7 @@ export function ProfessorMateriaisWorkspace({ embedded = false, requestedTurmaId
   };
 
   return (
-    <div className={embedded ? "min-w-0 text-foreground" : "min-h-screen bg-background pb-24 text-foreground"}>
+    <PortalPullToRefresh onRefresh={() => loadData(true)} busy={loading || saving || updatingId !== null} disabled={embedded || dirty || showModal} className={embedded ? "min-w-0 text-foreground" : "min-h-screen bg-background pb-24 text-foreground"}>
       <div className={embedded ? "space-y-4" : `${PORTAL_PAGE_INSET} max-md:px-0 max-md:py-0 space-y-6`}>
         {/* HEADER DA PÁGINA */}
         <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -226,7 +228,7 @@ export function ProfessorMateriaisWorkspace({ embedded = false, requestedTurmaId
           <ProfessorResourceErrorState
             title="Não foi possível carregar os materiais."
             description={loadError}
-            onRetry={() => void loadData()}
+            onRetry={() => void loadData(true)}
           />
         ) : loading ? (
           <ProfessorResourceGridSkeleton label="A carregar materiais pedagógicos" />
@@ -391,6 +393,6 @@ export function ProfessorMateriaisWorkspace({ embedded = false, requestedTurmaId
         )}
 
       </div>
-    </div>
+    </PortalPullToRefresh>
   );
 }

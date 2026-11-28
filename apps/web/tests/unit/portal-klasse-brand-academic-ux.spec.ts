@@ -117,7 +117,7 @@ test("aluno reutiliza os cards de Operações com densidade mobile e navegação
   assert.match(card, /min-h-16[^"]*bg-card p-3/);
   assert.match(card, /min-h-\[88px\][^"]*bg-card p-4/);
   assert.match(card, /if \(href\) return <Link href=\{href\}/);
-  assert.match(dashboard, /<PortalDrawerPushButton[\s\S]*?content: <TabHorario \/>/);
+  assert.match(dashboard, /<TabHorario dailyOnly>\{snapshot => \(\s*<PortalDrawerPushButton\b[^>]*frame=\{\{[^}]*\$\{drawerScope\}:weekly`[^>]*content: <TabHorario snapshot=\{snapshot\} \/>/);
   assert.doesNotMatch(dashboard, /href=\{go\("\/aluno\/horario"\)\}/);
   assert.match(dashboard, /contextual \? \{ onClick: \(\) => openDrawer\(contextual\)/);
   assert.match(dashboard, /href: go\(item.href\)/);

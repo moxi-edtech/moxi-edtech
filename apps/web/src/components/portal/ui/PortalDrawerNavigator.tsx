@@ -1,7 +1,8 @@
 "use client";
 
 import { createContext, useCallback, useContext, useId, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { PortalSheet } from "@/components/portal/ui/PortalSheet";
+import { PortalPresentationContext, PortalSheet } from "@/components/portal/ui/PortalSheet";
+import { createDrawerReadCache } from "./drawerReadCache";
 
 export type PortalDrawerFrame = {
   id: string;
@@ -13,7 +14,8 @@ export type PortalDrawerFrame = {
 
 type Entry = { frame: PortalDrawerFrame; previousScroll: number; opener: HTMLElement | null };
 type Guard = { dirty: boolean; busy: boolean };
-type Navigation = { push: (frame: PortalDrawerFrame) => void; registerGuard: (frameId: string, sourceId: string, guard: Guard | null) => void; notifyChanged: () => void; busy: boolean; dirty: boolean };
+type Navigation = { read: ReturnType<typeof createDrawerReadCache>["read"]; push: (frame: PortalDrawerFrame) => void; registerGuard: (frameId: string, sourceId: string, guard: Guard | null) => void; notifyChanged: () => void; busy: boolean; dirty: boolean };
+export const PortalFrameActiveContext = createContext(true);
 const FrameContext = createContext<string | null>(null);
 const Context = createContext<Navigation | null>(null);
 // A page may mount separate turma, lesson and operation navigators. Only the
@@ -50,7 +52,8 @@ export function PortalDrawerNavigator({ root, open, onClose, onReopen, onChanged
   const active = entries[entries.length - 1]?.frame ?? root;
   const [guards, setGuards] = useState<Record<string, Record<string, Guard>>>({});
   const changed = useRef(false);
-  const notifyChanged = useCallback(() => { changed.current = true; }, []);
+  const readCache = useMemo(() => createDrawerReadCache(), [open, root.id]);
+  const notifyChanged = useCallback(() => { changed.current = true; readCache.invalidate(); }, [readCache]);
   const registerGuard = useCallback((frameId: string, sourceId: string, guard: Guard | null) => {
     setGuards(current => {
       const prior = current[frameId] ?? {};
@@ -108,11 +111,19 @@ export function PortalDrawerNavigator({ root, open, onClose, onReopen, onChanged
     history.pushState({ ...history.state, [historyKey]: { token, depth: 0 } }, "");
   }, [open, root.id]);
   const push = useCallback((frame: PortalDrawerFrame) => {
-    if (!open || busy || dirty || frame.id === root.id) return;
+    if (!open || busy || dirty) return;
     const previousScroll = body.current?.scrollTop ?? 0;
     const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     const current = session.current;
-    if (!current || historyOwner !== current.token || travelling.current || entries.some(entry => entry.frame.id === frame.id)) return;
+    if (!current || historyOwner !== current.token || travelling.current) return;
+    const depth = frame.id === root.id ? 0 : entries.findIndex(entry => entry.frame.id === frame.id) + 1;
+    if (frame.id === root.id || depth > 0) {
+      if (depth < entries.length) {
+        travelling.current = true;
+        history.go(depth - entries.length);
+      }
+      return;
+    }
     const next = [...entries, { frame, previousScroll, opener }];
     current.trail = next;
     history.pushState({ ...history.state, [historyKey]: { token: current.token, depth: next.length } }, "");
@@ -207,17 +218,19 @@ export function PortalDrawerNavigator({ root, open, onClose, onReopen, onChanged
 
   return (
     <PortalSheet open={open} onClose={close} title={active.title} description={active.description}
-      size={active.size ?? "expanded"} busy={busy} onBack={entries.length ? back : undefined} navigationKey={active.id} bodyRef={body}>
-      <Context.Provider value={{ push, registerGuard, notifyChanged, busy, dirty }}>
+      size={root.size ?? "expanded"} busy={busy} onBack={entries.length ? back : undefined} navigationKey={active.id} bodyRef={body}>
+      <PortalPresentationContext.Provider value="drawer">
+      <Context.Provider value={{ read: readCache.read, push, registerGuard, notifyChanged, busy, dirty }}>
         <div key={root.id} hidden={entries.length > 0} className={entries.length ? "hidden" : "space-y-4"}>
-          <FrameContext.Provider value={root.id}>{root.content}</FrameContext.Provider>
+          <PortalFrameActiveContext.Provider value={open && entries.length === 0}><FrameContext.Provider value={root.id}>{root.content}</FrameContext.Provider></PortalFrameActiveContext.Provider>
         </div>
         {entries.map(({ frame }, index) => (
           <div key={frame.id} hidden={index !== entries.length - 1} className={index !== entries.length - 1 ? "hidden" : "space-y-4"}>
-            <FrameContext.Provider value={frame.id}>{frame.content}</FrameContext.Provider>
+            <PortalFrameActiveContext.Provider value={open && index === entries.length - 1}><FrameContext.Provider value={frame.id}>{frame.content}</FrameContext.Provider></PortalFrameActiveContext.Provider>
           </div>
         ))}
       </Context.Provider>
+      </PortalPresentationContext.Provider>
     </PortalSheet>
   );
 }

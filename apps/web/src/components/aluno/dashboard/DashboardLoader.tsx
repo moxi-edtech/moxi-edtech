@@ -1,4 +1,6 @@
 "use client";
+import { PortalPullToRefresh } from "@/components/portal/ui/PortalPullToRefresh";
+
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 import { ArrowRight, BookOpen, FileText, Wallet, Bell, Clock3, AlertCircle, CalendarCheck } from "lucide-react";
@@ -72,6 +74,7 @@ export default function DashboardLoader() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [reload, setReload] = useState(0);
+  const [refreshing, setRefreshing] = useState(false);
   const drawerScope = `${school}:${scopedQuery}`;
   const [drawer, setDrawer] = useState<{ scope: string; kind: "daily" | "notices" | "notice" | "academic" | "finance" | "documents" | "enrollment"; noticeId?: string } | null>(null);
   useEffect(() => { setDrawer(null); }, [drawerScope]);
@@ -80,11 +83,12 @@ export default function DashboardLoader() {
   const lessonOpen = activeDrawer === "daily";
   const selectedNotice = activeDrawer === "notice" ? screen?.dashboard.avisos_recentes.find(item => item.id === drawer?.noticeId) : null;
   const lastLoadedScope = useRef<string | null>(null);
-  const refresh = useCallback(() => setReload(n => n + 1), []);
+  const refresh = useCallback(() => { setRefreshing(true); setReload(n => n + 1); }, []);
   useEffect(() => {
     const controller = new AbortController();
     const load = async () => {
       const background = lastLoadedScope.current === drawerScope;
+      setRefreshing(true);
       if (!background) { setLoading(true); setScreen(null); }
       setError(null);
       try {
@@ -96,7 +100,8 @@ export default function DashboardLoader() {
         if (controller.signal.aborted) return;
 
         lastLoadedScope.current = drawerScope;
-        setScreen({ dashboard: dash, boletim: null, catalogo: null, rematricula: null, raa: null });
+        setScreen(previous => background && previous ? { ...previous, dashboard: dash } : { dashboard: dash, boletim: null, catalogo: null, rematricula: null, raa: null });
+        setLoading(false);
 
         // Dados facultativos chegam em paralelo e atualizam a interface independentemente.
         // O skeleton principal não deve aguardar por boletim, catálogo, RAA ou rematrícula.
@@ -104,7 +109,7 @@ export default function DashboardLoader() {
           if (controller.signal.aborted) return;
           setScreen(current => current ? { ...current, [key]: value } : current);
         };
-        void Promise.allSettled([
+        await Promise.allSettled([
           fetchJson<BoletimData>("/api/aluno/boletim", controller.signal, scopedQuery).then(data => update("boletim", data)),
           fetchJson<CatalogoData>("/api/aluno/documentos/catalogo", controller.signal, scopedQuery).then(data => update("catalogo", data)),
           scopedQuery ? Promise.resolve() : fetchJson<StudentRematricula & { ok: boolean }>("/api/aluno/rematricula/status", controller.signal).then(data => update("rematricula", data)),
@@ -112,7 +117,7 @@ export default function DashboardLoader() {
         ]);
       } catch(e) {
         if (!controller.signal.aborted) setError(e instanceof Error ? e.message : "Não foi possível carregar a tua página.");
-      } finally { if (!controller.signal.aborted) setLoading(false); }
+      } finally { if (!controller.signal.aborted) { setLoading(false); setRefreshing(false); } }
     };
     void load();
     return () => controller.abort();
@@ -125,11 +130,11 @@ export default function DashboardLoader() {
     academic: screen.raa?.result,
   }) : [], [screen, scopedQuery]);
   if (loading || (!error && lastLoadedScope.current !== drawerScope)) return <LoadingDashboard/>;
-  if (error || !screen) return <div className="mx-auto max-w-6xl px-4 py-8"><ErrorState title="Não foi possível carregar" description={error || "Tenta novamente."} onRetry={refresh}/></div>;
+  if (error || !screen) return <PortalPullToRefresh onRefresh={refresh} busy={refreshing} className="mx-auto max-w-6xl px-4 py-8"><ErrorState title="Não foi possível carregar" description={error || "Tenta novamente."} onRetry={refresh}/></PortalPullToRefresh>;
   const lesson = nextLessonLabel(screen.dashboard.proxima_aula);
   const firstName = screen.boletim?.nome_aluno?.trim().split(/\s+/)[0] || "aluno";
   const today = new Date();
-  return <div className="w-full min-w-0 space-y-6 text-foreground sm:space-y-8" data-testid="aluno-dashboard-editorial">
+  return <PortalPullToRefresh onRefresh={refresh} busy={loading || refreshing} disabled={activeDrawer !== null} className="w-full min-w-0 space-y-6 text-foreground sm:space-y-8" data-testid="aluno-dashboard-editorial">
     <PortalWelcomeCard role="aluno" name={firstName} context={screen.dashboard.ano_letivo ? `Ano lectivo ${screen.dashboard.ano_letivo}` : null} date={today} />
     <PortalSection id="aluno-summary" title="Em resumo">
       <div className="grid grid-cols-2 gap-3 min-[380px]:grid-cols-3" data-testid="aluno-summary-cards">
@@ -200,12 +205,13 @@ export default function DashboardLoader() {
       } : {
         id: `${drawerScope}:daily`, title: "Horário diário", description: "Consulta as aulas publicadas por dia da semana.",
         content: lessonOpen ? <>
-          <TabHorario dailyOnly />
+          <TabHorario dailyOnly>{snapshot => (
           <PortalDrawerPushButton className="klasse-portal-cta min-h-11 w-full rounded-xl px-4 py-2 text-sm font-semibold"
-            frame={{ id: `${drawerScope}:weekly`, title: "Horário completo", description: "Consulta todas as aulas da semana.", content: <TabHorario /> }}>
+            frame={{ id: `${drawerScope}:weekly`, title: "Horário completo", description: "Consulta todas as aulas da semana.", content: <TabHorario snapshot={snapshot} /> }}>
             Consultar horário completo
           </PortalDrawerPushButton>
+          )}</TabHorario>
         </> : null,
       }} />
-  </div>;
+  </PortalPullToRefresh>;
 }

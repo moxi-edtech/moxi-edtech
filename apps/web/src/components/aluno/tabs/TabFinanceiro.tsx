@@ -1,6 +1,8 @@
 "use client";
+import { PortalPullToRefresh } from "@/components/portal/ui/PortalPullToRefresh";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+
+import { useContext, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import AcaoRapidaCard from "@/components/shared/AcaoRapidaCard";
 import Link from "next/link";
@@ -8,7 +10,7 @@ import { Check, Filter, Wallet, ArrowUpCircle, ArrowDownCircle, Printer, Loader2
 import { Button } from "@/components/ui/Button";
 import { StudentAppyPayButton } from "@/components/financeiro/AppyPayReferenceButton";
 import { PaymentDrawer } from "@/components/aluno/financeiro-portal/PaymentDrawer";
-import { usePortalDrawerNavigation } from "@/components/portal/ui/PortalDrawerNavigator";
+import { PortalFrameActiveContext, usePortalDrawerNavigation } from "@/components/portal/ui/PortalDrawerNavigator";
 import { PortalSheet } from "@/components/portal/ui/PortalSheet";
 import type { AlunoServicoFinanceiro } from "@/lib/financeiro/servicosPagamento";
 
@@ -81,7 +83,9 @@ export function TabFinanceiro({ onOpenDocuments }: { onOpenDocuments?: (serviceC
 }
 
 function FinanceiroScope({ studentId, onOpenDocuments }: { studentId: string | null; onOpenDocuments?: (serviceCode: string | null) => void }) {
+  const frameActive = useContext(PortalFrameActiveContext);
   const navigation = usePortalDrawerNavigation();
+  const read = navigation?.read;
   const currentYear = Number(new Intl.DateTimeFormat("en", { year: "numeric", timeZone: "Africa/Luanda" }).format(new Date()));
 
   const [loading, setLoading] = useState(true);
@@ -127,7 +131,7 @@ function FinanceiroScope({ studentId, onOpenDocuments }: { studentId: string | n
   }, [studentId, fromAno, toAno]);
 
   // One request per scope. A superseded response cannot publish data or errors.
-  const refresh = useCallback(async () => {
+  const refresh = useCallback(async (fresh = true) => {
     if (activeRequest.current || paymentLock.current) return;
     const controller = new AbortController();
     activeRequest.current = controller;
@@ -135,7 +139,7 @@ function FinanceiroScope({ studentId, onOpenDocuments }: { studentId: string | n
     if (scopeReady.current !== query) setLoading(true);
     setFetchError(null);
     try {
-      const response = await fetch(`/api/aluno/financeiro${query}`, { cache: "no-store", signal: controller.signal });
+      const response = await (read ? read(`/api/aluno/financeiro${query}`, { signal: controller.signal, fresh }) : fetch(`/api/aluno/financeiro${query}`, { cache: "no-store", signal: controller.signal }));
       const json = await response.json() as ApiResponse;
       if (controller.signal.aborted || activeRequest.current !== controller) return;
       if (!response.ok || !json.ok) {
@@ -163,19 +167,24 @@ function FinanceiroScope({ studentId, onOpenDocuments }: { studentId: string | n
         setRefreshing(false);
       }
     }
-  }, [query]);
+  }, [query, read]);
   useEffect(() => {
-    void refresh();
-    const timer = window.setInterval(() => void refresh(), 30000);
-    const focus = () => void refresh();
-    window.addEventListener("focus", focus);
+    void refresh(false);
     return () => {
       activeRequest.current?.abort();
       activeRequest.current = null;
-      window.clearInterval(timer);
-      window.removeEventListener("focus", focus);
     };
   }, [refresh]);
+  useEffect(() => {
+    if (!frameActive) return;
+    const refreshVisible = () => { if (!document.hidden) void refresh(); };
+    const timer = window.setInterval(refreshVisible, 30000);
+    window.addEventListener("focus", refreshVisible);
+    return () => {
+      window.clearInterval(timer);
+      window.removeEventListener("focus", refreshVisible);
+    };
+  }, [frameActive, refresh]);
   const ready = loadedQuery === query;
   const selectedMonthly = ready && detail?.scope === query && detail.kind === "monthly" ? rows.find(item => item.id === detail.id) : undefined;
   const selectedService = ready && detail?.scope === query && detail.kind === "service" ? servicos.find(item => item.id === detail.id) : undefined;
@@ -209,7 +218,7 @@ function FinanceiroScope({ studentId, onOpenDocuments }: { studentId: string | n
     activeRequest.current?.abort(); activeRequest.current = null; setRefreshing(false);
     setPaymentRows(items.map(item => ({...item}))); setPaymentOpen(true);
   };
-  const closePayment = () => { paymentLock.current = false; setPaymentOpen(false); void refresh(); };
+  const closePayment = () => { paymentLock.current = false; setPaymentOpen(false); };
   const refreshAfterPayment = () => { navigation?.notifyChanged(); activeRequest.current?.abort(); activeRequest.current = null; void refresh(); };
 
   const handleReprintRecibo = (reciboId: string | null | undefined) => {
@@ -218,12 +227,12 @@ function FinanceiroScope({ studentId, onOpenDocuments }: { studentId: string | n
   };
 
   return (
-    <div className="space-y-6">
-      <div inert={Boolean(navigation && paymentOpen)} className="space-y-6">
+    <PortalPullToRefresh onRefresh={() => refresh()} busy={loading || refreshing} disabled={filterOpen || detailOpen || paymentOpen || paymentLock.current} className="space-y-6">
+      <div hidden={Boolean(navigation && paymentOpen)} className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-2">
         {!navigation && <h1 className="text-2xl font-semibold tracking-tight text-primary">Financeiro</h1>}
         <button
-          onClick={refresh}
+          onClick={() => void refresh()}
           className="min-h-11 rounded-xl border border-border bg-card px-4 text-sm font-semibold text-foreground shadow-sm hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring"
         >
           {refreshing ? "A atualizar..." : "Atualizar"}
@@ -463,9 +472,9 @@ function FinanceiroScope({ studentId, onOpenDocuments }: { studentId: string | n
         mensalidades={paymentRows}
         dadosPagamento={dadosPagamento}
         onClose={closePayment}
-        onUploaded={(ids) => { navigation?.notifyChanged(); setRows((prev) => prev.map((r) => (ids.includes(r.id) ? { ...r, status: "em_verificacao" } : r))); setSelectedIds(prev => prev.filter(id => !ids.includes(id))); }}
+        onUploaded={(ids) => { paymentLock.current = false; refreshAfterPayment(); setRows((prev) => prev.map((r) => (ids.includes(r.id) ? { ...r, status: "em_verificacao" } : r))); setSelectedIds(prev => prev.filter(id => !ids.includes(id))); }}
         studentId={studentId}
       />
-    </div>
+    </PortalPullToRefresh>
   );
 }

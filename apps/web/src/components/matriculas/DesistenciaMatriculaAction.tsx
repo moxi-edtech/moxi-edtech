@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { createPortal } from "react-dom";
+import { useState } from "react";
+import { PortalSheet } from "@/components/portal/ui/PortalSheet";
+import { usePortalDrawerGuard } from "@/components/portal/ui/PortalDrawerNavigator";
 import { Check, Loader2, RotateCcw, UserRoundX } from "lucide-react";
 
 type Signal = { id: string; motivo: string; criado_em: string };
@@ -24,7 +25,6 @@ export function DesistenciaMatriculaAction({
   alunoId, escolaId, alunoNome, turmaId, anoLetivoId, matriculaId, tipo, variant = "button", onTriggerClick, onChanged,
 }: Props) {
   const [open, setOpen] = useState(false);
-  const [mounted, setMounted] = useState(false);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [motivo, setMotivo] = useState("");
@@ -32,27 +32,10 @@ export function DesistenciaMatriculaAction({
   const [error, setError] = useState<string | null>(null);
   const [lookup, setLookup] = useState<Lookup | null>(null);
   const [done, setDone] = useState(false);
-  const dialog = useRef<HTMLDialogElement>(null);
-  const opener = useRef<HTMLButtonElement>(null);
+  usePortalDrawerGuard(open && !done && Boolean(motivo.trim()), open && saving);
 
   const staff = tipo !== "sinalizar";
   const reativar = tipo === "reativar";
-
-  useEffect(() => { setMounted(true); }, []);
-
-  useEffect(() => {
-    const el = dialog.current;
-    if (!el) return;
-    if (open && !el.open) el.showModal();
-    if (!open && el.open) {
-      el.close();
-      opener.current?.focus({ preventScroll: true });
-    }
-  }, [open]);
-
-  useEffect(() => () => {
-    if (dialog.current?.open) dialog.current.close();
-  }, []);
 
   async function loadCurrent() {
     if (!staff) return;
@@ -140,7 +123,7 @@ export function DesistenciaMatriculaAction({
 
   return (
     <>
-      <button type="button" ref={opener} onClick={() => { onTriggerClick?.(); showDialog(); }}
+      <button type="button" onClick={() => { onTriggerClick?.(); showDialog(); }}
         className={variant === "menu"
           ? "flex min-h-10 w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-medium text-foreground hover:bg-muted focus-visible:outline-2 focus-visible:outline-klasse-gold"
           : "inline-flex min-h-9 items-center gap-1.5 rounded-xl border border-border bg-card px-3 py-2 text-xs font-semibold text-foreground hover:border-klasse-gold hover:text-klasse-green focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-klasse-gold"}>
@@ -148,13 +131,9 @@ export function DesistenciaMatriculaAction({
           : <UserRoundX size={16} className="text-muted-foreground" aria-hidden />}
         {reativar ? "Reativar matrícula" : tipo === "confirmar" ? "Marcar desistente" : "Sinalizar desistência"}
       </button>
-      {mounted && createPortal(<dialog ref={dialog} onCancel={(e) => { e.preventDefault(); setOpen(false); }}
-        className="w-[min(94vw,500px)] max-h-[85dvh] overflow-y-auto rounded-xl border border-border bg-card p-5 text-foreground shadow-xl backdrop:bg-foreground/40"
-        aria-label={`${reativar ? "Reativar matrícula" : staff ? "Registar desistência" : "Sinalizar possível desistência"} de ${alunoNome}`}>
-        <h3 className="text-base font-semibold text-klasse-green">
-          {reativar ? "Reativar matrícula" : staff ? "Registar desistência" : "Sinalizar possível desistência"}
-        </h3>
-        <p className="mt-1 text-sm font-semibold">{alunoNome}</p>
+      <PortalSheet open={open} onClose={() => setOpen(false)} busy={saving}
+        title={reativar ? "Reativar matrícula" : staff ? "Registar desistência" : "Sinalizar possível desistência"}
+        description={alunoNome}>
         <p className="mt-2 text-sm text-muted-foreground">
           {reativar
             ? "Reativa a mesma matrícula deste ano, se houver vaga e o histórico ainda estiver aberto. O motivo da desistência anterior fica auditado; não cria outra matrícula, cobrança ou resultado académico."
@@ -215,7 +194,7 @@ export function DesistenciaMatriculaAction({
             </button>
           )}
         </div>
-      </dialog>, document.body)}
+      </PortalSheet>
     </>
   );
 }

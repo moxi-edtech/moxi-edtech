@@ -196,7 +196,7 @@ test("API e perfil devolvem estado de desistência e a reativação via RPC", ()
   assert.match(panel, /Desistente neste ano letivo/);
   assert.match(panel, /state\.desistencia\.matriculaId/);
   assert.match(action, /variant\?: "button" \| "menu"/);
-  assert.match(action, /createPortal\(/);
+  assert.match(action, /<PortalSheet open=\{open\}/);
 });
 
 test("lista compacta localiza desistentes, oferece menu e recarrega estado real", () => {

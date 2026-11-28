@@ -8,6 +8,7 @@ type Student = { matricula_id: string; id: string | null; nome: string | null };
 type Result = { ok: boolean; turmaId?: string; items?: Student[] };
 export function ProfessorTurmaRoster({ turmaId, academicYearId = "", subjects = [] }: { turmaId: string; academicYearId?: string; subjects?: { id: string; nome: string | null }[] }) {
   const navigation = usePortalDrawerNavigation();
+  const read = navigation?.read;
   const scope = JSON.stringify([turmaId, academicYearId]);
   const [result, setResult] = useState<{ scope: string; items: Student[] } | null>(null);
   const [error, setError] = useState(false);
@@ -20,7 +21,7 @@ export function ProfessorTurmaRoster({ turmaId, academicYearId = "", subjects = 
       try {
         const params = new URLSearchParams();
         if (academicYearId) params.set("ano_letivo_id", academicYearId);
-        const response = await fetch(`/api/professor/turmas/${encodeURIComponent(turmaId)}/alunos${params.size ? "?" + params.toString() : ""}`, { cache: "no-store", signal: ctrl.signal });
+        const response = await (read ? read(`/api/professor/turmas/${encodeURIComponent(turmaId)}/alunos${params.size ? "?" + params.toString() : ""}`, { signal: ctrl.signal, fresh: retry > 0 }) : fetch(`/api/professor/turmas/${encodeURIComponent(turmaId)}/alunos${params.size ? "?" + params.toString() : ""}`, { cache: "no-store", signal: ctrl.signal }));
         const payload = await response.json() as Result;
         if (!response.ok || !payload.ok || payload.turmaId !== turmaId || !Array.isArray(payload.items)) throw new Error("Turma indisponível");
         if (!ctrl.signal.aborted) setResult({ scope, items: payload.items });
@@ -29,7 +30,7 @@ export function ProfessorTurmaRoster({ turmaId, academicYearId = "", subjects = 
       }
     })();
     return () => ctrl.abort();
-  }, [turmaId, academicYearId, scope, retry]);
+  }, [turmaId, academicYearId, scope, retry, read]);
   const items = result?.scope === scope ? result.items : null;
   return <section className="space-y-3" aria-label="Alunos da turma">
     <h3 className="text-sm font-semibold text-foreground">Alunos da turma</h3>

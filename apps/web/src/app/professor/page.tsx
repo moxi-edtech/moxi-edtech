@@ -1,13 +1,20 @@
 "use client";
+import { PortalPullToRefresh } from "@/components/portal/ui/PortalPullToRefresh";
+
 
 import AssignmentsBanner from "@/components/professor/AssignmentsBanner";
 import { ProfessorAgendaSkeleton, ProfessorSkeletonBone, ProfessorTurmasSkeleton } from "@/components/professor/ProfessorLoadingSkeletons";
 import ProfessorReopeningRequests from "@/components/professor/ProfessorReopeningRequests";
 import { useEscolaId } from "@/hooks/useEscolaId";
-import dynamic from "next/dynamic";
 import { PortalDrawerNavigator, PortalDrawerPushButton, type PortalDrawerFrame } from "@/components/portal/ui/PortalDrawerNavigator";
 import { ProfessorTurmaHorario } from "@/components/professor/ProfessorTurmaHorario";
 import { ProfessorTurmaRoster } from "@/components/professor/ProfessorTurmaRoster";
+import { ProfessorFrequenciasWorkspace as AttendanceWorkspace } from "@/components/professor/ProfessorFrequenciasWorkspace";
+import { ProfessorPlanosWorkspace as PlansWorkspace } from "@/components/professor/ProfessorPlanosWorkspace";
+import { ProfessorMateriaisWorkspace as MaterialsWorkspace } from "@/components/professor/ProfessorMateriaisWorkspace";
+import { ProfessorCalendarWorkspace as CalendarWorkspace } from "@/components/professor/ProfessorCalendarWorkspace";
+import { ProfessorGradesWorkspace as GradesWorkspace } from "@/components/professor/ProfessorGradesWorkspace";
+import { ProfessorExamList as ExamList } from "@/components/professor/ProfessorExamList";
 import { PortalWelcomeCard } from "@/components/portal/ui/PortalWelcomeCard";
 import { PortalSection } from "@/components/portal/ui/PortalSection";
 import AcaoRapidaCard from "@/components/shared/AcaoRapidaCard";
@@ -92,15 +99,6 @@ const dayLabel = (day: number) => {
   }
 };
 
-const AttendanceWorkspace = dynamic(() => import("@/components/professor/ProfessorFrequenciasWorkspace").then(module => module.ProfessorFrequenciasWorkspace), { loading: () => <p role="status" className="text-sm text-muted-foreground">A carregar chamada…</p> });
-const PlansWorkspace = dynamic(() => import("@/components/professor/ProfessorPlanosWorkspace").then(module => module.ProfessorPlanosWorkspace), { loading: () => <p role="status" className="text-sm text-muted-foreground">A carregar planos…</p> });
-
-const MaterialsWorkspace = dynamic(() => import("@/components/professor/ProfessorMateriaisWorkspace").then(module => module.ProfessorMateriaisWorkspace), { loading: () => <p role="status" className="text-sm text-muted-foreground">A carregar materiais…</p> });
-
-const CalendarWorkspace = dynamic(() => import("@/components/professor/ProfessorCalendarWorkspace").then(module => module.ProfessorCalendarWorkspace), { loading: () => <p role="status" className="text-sm text-muted-foreground">A carregar calendário…</p> });
-const GradesWorkspace = dynamic(() => import("@/components/professor/ProfessorGradesWorkspace").then(module => module.ProfessorGradesWorkspace), { loading: () => <p role="status" className="text-sm text-muted-foreground">A carregar notas…</p> });
-
-const ExamList = dynamic(() => import("@/components/professor/ProfessorExamList").then(module => module.ProfessorExamList));
 type OperationKind = "exams" | "attendance" | "plans" | "materials" | "grades" | "calendar" | "assessments" | "periods";
 
 export default function Page() {
@@ -210,7 +208,7 @@ export default function Page() {
   }, [retryVersion, requestedAcademicYearId, escolaParam]);
 
   useEffect(() => {
-    if (historical || !lessonYearId || loadedLessonScope !== JSON.stringify([escolaParam ?? "", requestedAcademicYearId])) return;
+    if (loading || historical || !lessonYearId || loadedLessonScope !== JSON.stringify([escolaParam ?? "", requestedAcademicYearId])) return;
     let disposed = false;
     const poll = async () => {
       if (disposed || document.hidden || pollingInFlight.current || loadError) return;
@@ -249,9 +247,9 @@ export default function Page() {
       if (timeout !== undefined) clearTimeout(timeout);
       document.removeEventListener("visibilitychange", onVisible);
     };
-  }, [loadError, historical, escolaParam, requestedAcademicYearId, loadedLessonScope, lessonYearId]);
+  }, [loadError, historical, escolaParam, requestedAcademicYearId, loadedLessonScope, lessonYearId, loading]);
 
-  const loadAgain = () => setRetryVersion((current) => current + 1);
+  const loadAgain = () => { setLoading(true); setRetryVersion((current) => current + 1); };
 
   const lessonWritable = !historical && !loading && !loadError && Boolean(lessonYearId) && loadedLessonScope === JSON.stringify([escolaParam ?? "", requestedAcademicYearId]);
   const startLesson = async (item: AgendaItem) => {
@@ -372,7 +370,7 @@ export default function Page() {
     id: JSON.stringify([operationScope, kind, turmaId ?? "", disciplinaId ?? ""]),
     title: ({ exams: "Provas", attendance: "Registar chamada", plans: "Planos de aula", materials: "Materiais pedagógicos", grades: "Lançamento de notas", calendar: "Calendário académico", assessments: "Calendário de avaliações", periods: "Períodos lectivos" })[kind],
     description: ({ exams: "Consulta as provas das tuas disciplinas.", attendance: "Regista e guarda as presenças da turma.", plans: "Prepara, guarda e acompanha os planos de aula.", materials: "Cria, consulta e publica os materiais.", grades: "Selecciona o contexto, guarda as notas e exporta a mini-pauta.", calendar: "Consulta eventos oficiais da escola.", assessments: "Consulta avaliações próximas e anteriores.", periods: "Consulta períodos e datas de fecho." })[kind],
-    content: (historical || (requestedAcademicYearId && (loading || loadError))) && (kind === "plans" || kind === "materials") ? <p>Esta operação está disponível no ano lectivo activo.</p> : kind === "exams" ? <ExamList school={escolaId || escolaParam || ""} yearId={requestedAcademicYearId} editor={professorHref("/professor/provas")} /> : kind === "attendance" ? <AttendanceWorkspace embedded requestedAcademicYearId={requestedAcademicYearId} urlTurmaId={turmaId} urlDisciplinaId={disciplinaId} /> : kind === "plans" ? <PlansWorkspace embedded requestedTurmaId={turmaId ?? ""} requestedDisciplinaId={disciplinaId ?? ""} /> : kind === "materials" ? <MaterialsWorkspace embedded requestedTurmaId={turmaId ?? ""} requestedDisciplinaId={disciplinaId ?? ""} /> : kind === "grades" ? <GradesWorkspace embedded requestedAnoLetivoId={requestedAcademicYearId} requestedTurmaId={turmaId ?? ""} requestedDisciplinaId={disciplinaId ?? ""} /> : <CalendarWorkspace embedded initialView={kind} academicYearId={requestedAcademicYearId} />,
+    content: (historical || (requestedAcademicYearId && (loading || loadError))) && (kind === "plans" || kind === "materials") ? <p>Esta operação está disponível no ano lectivo activo.</p> : kind === "exams" ? <ExamList school={escolaId || escolaParam || ""} yearId={requestedAcademicYearId} editor={professorHref("/professor/provas")} /> : kind === "attendance" ? <AttendanceWorkspace embedded requestedAcademicYearId={requestedAcademicYearId} urlTurmaId={turmaId} urlDisciplinaId={disciplinaId} /> : kind === "plans" ? <PlansWorkspace embedded initialAgenda={lessonWritable ? agenda : undefined} requestedTurmaId={turmaId ?? ""} requestedDisciplinaId={disciplinaId ?? ""} /> : kind === "materials" ? <MaterialsWorkspace embedded initialAgenda={lessonWritable ? agenda : undefined} requestedTurmaId={turmaId ?? ""} requestedDisciplinaId={disciplinaId ?? ""} /> : kind === "grades" ? <GradesWorkspace embedded requestedAnoLetivoId={requestedAcademicYearId} requestedTurmaId={turmaId ?? ""} requestedDisciplinaId={disciplinaId ?? ""} /> : <CalendarWorkspace embedded initialView={kind} academicYearId={requestedAcademicYearId} />,
   });
   const openOperation = (kind: OperationKind, turmaId?: string | null, disciplinaId?: string | null) => {
     setExpandedTurmaId(null);
@@ -385,7 +383,7 @@ export default function Page() {
   const faltasALancar = pendenciasResumo?.faltas_a_lancar ?? null;
 
   return (
-    <div className="min-w-0 text-foreground">
+    <PortalPullToRefresh onRefresh={() => { if (!pollingInFlight.current && !lessonWriteLock.current) loadAgain(); }} busy={loading} disabled={Boolean(activeOperation || selectedTurma || selectedLesson || startingKey || finalizingKey || finalizing)} className="min-w-0 text-foreground">
       <div className="mx-auto w-full min-w-0 max-w-6xl space-y-6 sm:space-y-8">
         
         <PortalWelcomeCard
@@ -673,6 +671,6 @@ export default function Page() {
           </>, }} />
         <PortalDrawerNavigator key={`${operationScope}:operation`} open={Boolean(activeOperation)} onReopen={() => setOperation(operation)} onClose={() => setOperation(null)} onChanged={loadAgain} root={activeOperation ?? { id: "closed", title: "Operação", description: "", content: null }} />
       </div>
-    </div>
+    </PortalPullToRefresh>
   );
 }

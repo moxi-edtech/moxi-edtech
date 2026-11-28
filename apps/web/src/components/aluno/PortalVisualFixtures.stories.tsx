@@ -23,7 +23,8 @@ declare global {
   interface Window { __klasseVisualFixture?: FixtureMode; __klasseVisualFetchInstalled?: boolean }
 }
 
-if (typeof window !== "undefined" && !window.__klasseVisualFetchInstalled) {
+// The drawer data scenario controls request timing and responses in Playwright.
+if (typeof window !== "undefined" && new URLSearchParams(window.location.search).get("story") !== "drawer-data" && !window.__klasseVisualFetchInstalled) {
   window.__klasseVisualFetchInstalled = true;
   const liveFetch = window.fetch.bind(window);
   window.fetch = (input: RequestInfo | URL, init?: RequestInit) => {

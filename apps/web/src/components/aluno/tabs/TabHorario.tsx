@@ -1,8 +1,11 @@
 "use client";
+import { PortalPullToRefresh } from "@/components/portal/ui/PortalPullToRefresh";
 
-import { useEffect, useMemo, useState } from "react";
+
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Clock, Calendar, FileCheck } from "lucide-react";
 import { useSearchParams } from "next/navigation";
+import { usePortalDrawerNavigation } from "@/components/portal/ui/PortalDrawerNavigator";
 import AcaoRapidaCard from "@/components/shared/AcaoRapidaCard";
 import { TableSkeleton } from "@/components/feedback/FeedbackSystem";
 
@@ -59,7 +62,13 @@ const DIAS_SEMANA = [
   { id: 5, nome: "Sexta" },
 ];
 
-export function TabHorario({ dailyOnly = false }: { dailyOnly?: boolean } = {}) {
+type TimetableSnapshot = { key: string; data: TimetableData };
+export function TabHorario({ dailyOnly = false, snapshot, children }: {
+  dailyOnly?: boolean;
+  snapshot?: TimetableSnapshot;
+  children?: (snapshot?: TimetableSnapshot) => ReactNode;
+} = {}) {
+  const read = usePortalDrawerNavigation()?.read;
   const searchParams = useSearchParams();
   const studentId = searchParams?.get("aluno") ?? null;
   const academicYearId = searchParams?.get("ano_letivo_id") ?? null;
@@ -70,8 +79,9 @@ export function TabHorario({ dailyOnly = false }: { dailyOnly?: boolean } = {}) 
   const [horarioRetry, setHorarioRetry] = useState(0);
   const requestKey = `${studentId ?? "default"}:${academicYearId ?? "active"}`;
   const [resolvedRequestKey, setResolvedRequestKey] = useState<string | null>(null);
-  const visibleData = resolvedRequestKey === requestKey ? data : null;
-  const timetableLoading = loading || resolvedRequestKey !== requestKey;
+  const initial = snapshot?.key === requestKey ? snapshot.data : null;
+  const visibleData = initial ?? (resolvedRequestKey === requestKey ? data : null);
+  const timetableLoading = !initial && (loading || resolvedRequestKey !== requestKey);
   const [activeDay, setActiveDay] = useState<number>(() => {
     const day = new Intl.DateTimeFormat("en-US", { timeZone: "Africa/Luanda", weekday: "short" }).format(new Date());
     return ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].indexOf(day);
@@ -80,9 +90,11 @@ export function TabHorario({ dailyOnly = false }: { dailyOnly?: boolean } = {}) 
   const [academicEvents, setAcademicEvents] = useState<AcademicEvent[]>([]);
   const [agendaLoading, setAgendaLoading] = useState(false);
   const [agendaError, setAgendaError] = useState<string | null>(null);
+  const [agendaRequested, setAgendaRequested] = useState(false);
   const [agendaRetry, setAgendaRetry] = useState(0);
 
   useEffect(() => {
+    if (initial) return;
     const ctrl = new AbortController();
     setLoading(true);
     setData(null);
@@ -113,7 +125,7 @@ export function TabHorario({ dailyOnly = false }: { dailyOnly?: boolean } = {}) 
       }
     })();
     return () => ctrl.abort();
-  }, [studentId, academicYearId, horarioRetry, requestKey]);
+  }, [studentId, academicYearId, horarioRetry, requestKey, initial]);
 
   const slotsPorDia = useMemo(() => {
     if (!visibleData?.slots) return [];
@@ -127,7 +139,7 @@ export function TabHorario({ dailyOnly = false }: { dailyOnly?: boolean } = {}) 
   // Fonte: calendário oficial, autorizado pela API para aluno/ano/curso/escola.
   // Não construir provas a partir do horário nem inventar datas.
   useEffect(() => {
-    if (activeTab !== "agenda") return;
+    if (!agendaRequested) return;
     const ctrl = new AbortController();
     const params = new URLSearchParams();
     if (studentId) params.set("studentId", studentId);
@@ -138,9 +150,8 @@ export function TabHorario({ dailyOnly = false }: { dailyOnly?: boolean } = {}) 
     setAgendaLoading(true);
     void (async () => {
       try {
-        const response = await fetch(`/api/aluno/home/academic-events${query ? `?${query}` : ""}`, {
-          cache: "no-store", signal: ctrl.signal,
-        });
+        const url = `/api/aluno/home/academic-events${query ? `?${query}` : ""}`;
+        const response = await (read ? read(url, { signal: ctrl.signal, fresh: agendaRetry > 0 }) : fetch(url, { cache: "no-store", signal: ctrl.signal }));
         const json = await response.json().catch(() => null);
         if (!response.ok || json?.ok !== true || !Array.isArray(json.items)) {
           throw new Error("Não foi possível consultar os próximos eventos.");
@@ -161,10 +172,10 @@ export function TabHorario({ dailyOnly = false }: { dailyOnly?: boolean } = {}) 
       }
     })();
     return () => ctrl.abort();
-  }, [studentId, academicYearId, activeTab, agendaRetry]);
+  }, [studentId, academicYearId, agendaRequested, agendaRetry, read]);
 
   return (
-    <div className="min-w-0 space-y-6">
+    <PortalPullToRefresh onRefresh={() => { if (activeTab === "agenda") { setAgendaLoading(true); setAgendaRequested(true); setAgendaRetry(value => value + 1); } else { setLoading(true); setHorarioRetry(value => value + 1); } }} busy={activeTab === "agenda" ? agendaLoading : timetableLoading} disabled={dailyOnly || Boolean(initial)} className="min-w-0 space-y-6">
       {!dailyOnly && <header className="space-y-1">
         <h1 className="text-2xl font-semibold tracking-tight text-primary">Horário</h1>
         {visibleData?.context?.anoLetivoLabel && (
@@ -191,7 +202,7 @@ export function TabHorario({ dailyOnly = false }: { dailyOnly?: boolean } = {}) 
         </button>
         <button
           type="button"
-          onClick={() => setActiveTab("agenda")}
+          onClick={() => { setAgendaRequested(true); setActiveTab("agenda"); }}
           aria-pressed={activeTab === "agenda"}
           className={`min-h-11 flex-1 rounded-xl py-2 text-sm font-semibold focus-visible:ring-2 focus-visible:ring-ring transition-colors ${
             activeTab === "agenda"
@@ -316,6 +327,7 @@ export function TabHorario({ dailyOnly = false }: { dailyOnly?: boolean } = {}) 
         </section>
       )}
 
-    </div>
+      {!timetableLoading && children?.(visibleData ? { key: requestKey, data: visibleData } : undefined)}
+    </PortalPullToRefresh>
   );
 }

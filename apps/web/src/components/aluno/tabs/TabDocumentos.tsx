@@ -1,7 +1,9 @@
 'use client';
+import { PortalPullToRefresh } from "@/components/portal/ui/PortalPullToRefresh";
 
-import { usePortalDrawerGuard, usePortalDrawerNavigation } from "@/components/portal/ui/PortalDrawerNavigator";
-import { useState, useEffect, useCallback } from "react";
+
+import { usePortalDrawerGuard, PortalFrameActiveContext, usePortalDrawerNavigation } from "@/components/portal/ui/PortalDrawerNavigator";
+import { useContext, useState, useEffect, useCallback, useRef } from "react";
 import { FileText, Download, Loader2, Clock, AlertCircle, Upload, ChevronRight } from "lucide-react";
 import { PortalSurface } from "@/components/portal/ui/PortalSurface";
 import { PortalEmptyState } from "@/components/portal/ui/PortalEmptyState";
@@ -57,7 +59,7 @@ const DIGITAL_DOCUMENT_CODES = new Set([
   'DOC_CERTIFICADO_HABILITACOES',
 ]);
 
-export function TabDocumentos({ embedded = false, focusServiceCode = null, onOpenNotas, onOpenNotices }: { embedded?: boolean; focusServiceCode?: string | null; onOpenNotas?: () => void; onOpenNotices?: () => void } = {}) {
+export function TabDocumentos({ embedded = false, active = true, focusServiceCode = null, onOpenNotas, onOpenNotices }: { embedded?: boolean; active?: boolean; focusServiceCode?: string | null; onOpenNotas?: () => void; onOpenNotices?: () => void } = {}) {
   const searchParams = useSearchParams();
   const pathname = usePathname();
   const router = useRouter();
@@ -83,41 +85,51 @@ export function TabDocumentos({ embedded = false, focusServiceCode = null, onOpe
   // Modal state
   const [selectedDoc, setSelectedDoc] = useState<DocumentoCatalogo | null>(null);
   const [showDrawer, setShowDrawer] = useState(false);
+  const frameActive = useContext(PortalFrameActiveContext);
   const navigation = usePortalDrawerNavigation();
+  const read = navigation?.read;
+  const catalogSequence = useRef(0);
   usePortalDrawerGuard(false, loading !== null);
   const visibleDocs = docs.filter((doc) =>
     (!serviceCode || doc.codigo === serviceCode)
   );
 
-  const fetchCatalogo = useCallback(async (quiet = false) => {
+  const catalogPending = useRef(0);
+  const fetchCatalogo = useCallback(async (quiet = false, fresh = true) => {
+    catalogPending.current += 1;
+    const sequence = ++catalogSequence.current;
     setCatalogError(null);
     if (!quiet) setFetching(true);
     try {
-      const res = await fetch(`/api/aluno/documentos/catalogo${query}`, { cache: "no-store" });
+      const res = await (read ? read(`/api/aluno/documentos/catalogo${query}`, { fresh }) : fetch(`/api/aluno/documentos/catalogo${query}`, { cache: "no-store" }));
       const json = await res.json();
+      if (sequence !== catalogSequence.current) return false;
       if (!res.ok || !json.ok) throw new Error(json.error || "Não foi possível carregar a Secretaria Digital.");
       setDocs(json.documentos ?? []);
       setDadosPagamento(json.dados_pagamento ?? null);
       return true;
     } catch (err) {
+      if (sequence !== catalogSequence.current) return false;
       if (!quiet) setDocs([]);
       setCatalogError(err instanceof Error ? err.message : "Não foi possível carregar os serviços.");
       return false;
     } finally {
-      if (!quiet) setFetching(false);
+      catalogPending.current -= 1;
+      if (sequence === catalogSequence.current) setFetching(false);
     }
-  }, [query]);
+  }, [query, read]);
 
   useEffect(() => {
     setDocs([]);
     setSelectedDoc(null);
     setShowDrawer(false);
-    void fetchCatalogo();
+    void fetchCatalogo(false, false);
+    return () => { catalogSequence.current += 1; };
   }, [fetchCatalogo]);
 
   const hasPending = docs.some((item) => item.status === "pending");
   useEffect(() => {
-    if (!hasPending) return;
+    if (!hasPending || !frameActive || !active) return;
     let stopped = false;
     let inFlight = false;
     let timer: ReturnType<typeof setTimeout> | undefined;
@@ -129,6 +141,7 @@ export function TabDocumentos({ embedded = false, focusServiceCode = null, onOpe
     };
     const refresh = async () => {
       if (stopped || document.hidden || inFlight) return;
+      if (catalogPending.current > 0) { schedule(); return; }
       inFlight = true;
       try {
         const succeeded = await fetchCatalogo(true);
@@ -154,7 +167,7 @@ export function TabDocumentos({ embedded = false, focusServiceCode = null, onOpe
       window.removeEventListener("focus", onVisible);
       document.removeEventListener("visibilitychange", onVisible);
     };
-  }, [hasPending, fetchCatalogo]);
+  }, [active, frameActive, hasPending, fetchCatalogo]);
 
   const handleAction = async (doc: DocumentoCatalogo) => {
     if (navigation && (showDrawer || loading !== null)) return;
@@ -265,7 +278,7 @@ export function TabDocumentos({ embedded = false, focusServiceCode = null, onOpe
   if (fetching) return <PortalLoadingState label="A carregar documentos" rows={3} className="pb-4" />;
 
   return (
-    <div className="min-w-0 space-y-5">
+    <PortalPullToRefresh onRefresh={() => catalogPending.current ? undefined : fetchCatalogo(true)} busy={fetching} disabled={!active || showDrawer || loading !== null} className="min-w-0 space-y-5">
       {/* Cabeçalho */}
       {!embedded && <header className="space-y-1">
         <h1 className="text-2xl font-semibold tracking-tight text-primary">Secretaria Digital</h1>
@@ -376,7 +389,7 @@ export function TabDocumentos({ embedded = false, focusServiceCode = null, onOpe
           intentId: selectedDoc.pagamento_intent_id
         } : null}
       />
-    </div>
+    </PortalPullToRefresh>
   );
 }
 

@@ -1,4 +1,6 @@
 "use client";
+import { PortalPullToRefresh } from "@/components/portal/ui/PortalPullToRefresh";
+
 
 import { useEffect, useState } from "react";
 import { Bell, ChevronRight } from "lucide-react";
@@ -9,6 +11,7 @@ type Aviso = { id: string; titulo: string; resumo: string; origem: string; data:
 
 export function TabNotificacoes() {
   const navigation = usePortalDrawerNavigation();
+  const read = navigation?.read;
   const [loading, setLoading] = useState(true);
   const [failed, setFailed] = useState(false);
   const [items, setItems] = useState<Aviso[]>([]);
@@ -22,7 +25,7 @@ export function TabNotificacoes() {
     setFailed(false);
     void (async () => {
       try {
-        const res = await fetch("/api/aluno/avisos", { cache: "no-store", signal: ctrl.signal });
+        const res = await (read ? read("/api/aluno/avisos", { signal: ctrl.signal, fresh: retry > 0 }) : fetch("/api/aluno/avisos", { cache: "no-store", signal: ctrl.signal }));
         const json = await res.json().catch(() => null);
         if (!res.ok || json?.ok !== true || !Array.isArray(json.avisos)) throw new Error("Falha ao carregar avisos");
         if (!ctrl.signal.aborted) setItems(json.avisos as Aviso[]);
@@ -33,7 +36,7 @@ export function TabNotificacoes() {
       }
     })();
     return () => ctrl.abort();
-  }, [retry]);
+  }, [retry, read]);
 
   const openNotice = (notice: Aviso) => {
     if (!navigation) { setSelectedId(notice.id); return; }
@@ -44,7 +47,7 @@ export function TabNotificacoes() {
   };
 
   return (
-    <section className="space-y-6" aria-label="Avisos">
+    <PortalPullToRefresh as="section" onRefresh={() => { setLoading(true); setRetry(value => value + 1); }} busy={loading} disabled={Boolean(selectedId)} className="space-y-6" aria-label="Avisos">
       {!navigation && <div className="space-y-1">
         <h1 id="aluno-avisos-title" className="text-2xl font-semibold tracking-tight text-primary">Avisos</h1>
       </div>}
@@ -84,6 +87,6 @@ export function TabNotificacoes() {
         <p className="whitespace-pre-wrap break-words text-sm leading-relaxed">{selected?.resumo || "Sem informação adicional."}</p>
         {selected?.data && !Number.isNaN(Date.parse(selected.data)) && <p className="text-xs text-muted-foreground">{new Date(selected.data).toLocaleDateString("pt-AO")}</p>}
       </PortalSheet>}
-    </section>
+    </PortalPullToRefresh>
   );
 }
