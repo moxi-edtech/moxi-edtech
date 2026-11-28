@@ -1,0 +1,39 @@
+name: Fiscal BILL-002 and BILL-003 isolated PostgreSQL 17
+on:
+  pull_request:
+    paths:
+      - 'supabase/ops/tests/bill023-*'
+      - 'supabase/ops/fiscal/bill023-fixture-candidate.sql'
+      - '.github/workflows/fiscal-bill023-isolated.yml'
+permissions:
+  contents: read
+jobs:
+  bill023-postgres17:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: fixture-only
+          POSTGRES_DB: bill023_fixture
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d bill023_fixture"
+          --health-interval 5s --health-timeout 5s --health-retries 12
+    env:
+      PGHOST: 127.0.0.1
+      PGUSER: postgres
+      PGPASSWORD: fixture-only
+      PGDATABASE: bill023_fixture
+    steps:
+      - uses: actions/checkout@v4
+      - name: Reproduce live baseline and defects
+        run: psql -X -v ON_ERROR_STOP=1 -f supabase/ops/tests/bill023-baseline.sql
+      - name: Apply candidate only in disposable fixture
+        run: psql -X -v ON_ERROR_STOP=1 -f supabase/ops/fiscal/bill023-fixture-candidate.sql
+      - name: Validate immutability and numbering boundaries
+        run: psql -X -v ON_ERROR_STOP=1 -f supabase/ops/tests/bill023-regression.sql
+      - name: Exercise 32 independent concurrent connections
+        run: bash supabase/ops/tests/bill023-concurrency.sh

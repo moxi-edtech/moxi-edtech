@@ -1,5 +1,7 @@
 # AGT — Go/No-Go Checklist (Certificação Fiscal)
 
+> **Actualização 24/11/2026:** NO-GO. Este checklist de março preserva evidência histórica, não comprova conformidade da main actual. Ver [reconciliação actual](AGT_RECONCILIACAO_20261124.md) e #440/#308. Nenhuma escola será activada antes de certificação e autorização separada.
+
 Data: 2026-03-26
 Status global: **NO-GO**
 Pack de execução: `docs/fiscal/certificacao/agt-certification-go-live-pack.md`

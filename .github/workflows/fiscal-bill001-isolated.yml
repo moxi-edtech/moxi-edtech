@@ -1,0 +1,32 @@
+name: Fiscal BILL-001 isolated PostgreSQL 17
+on:
+  pull_request:
+    paths:
+      - 'supabase/ops/tests/bill001-immutability-fixture.sql'
+      - 'docs/fiscal/certificacao/evidence/migration-provenance-20261124.json'
+      - '.github/workflows/fiscal-bill001-isolated.yml'
+permissions:
+  contents: read
+jobs:
+  bill001-postgres17:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: fixture-only
+          POSTGRES_DB: bill001_fixture
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d bill001_fixture"
+          --health-interval 5s --health-timeout 5s --health-retries 12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run isolated BILL-001 guard and ACL regression
+        env:
+          PGPASSWORD: fixture-only
+        run: |
+          psql -h 127.0.0.1 -U postgres -d bill001_fixture -v ON_ERROR_STOP=1 -c 'SHOW server_version'
+          psql -h 127.0.0.1 -U postgres -d bill001_fixture -v ON_ERROR_STOP=1 -f supabase/ops/tests/bill001-immutability-fixture.sql
