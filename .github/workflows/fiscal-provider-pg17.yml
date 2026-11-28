@@ -1,0 +1,43 @@
+name: Fiscal Provider · PostgreSQL 17 sandbox
+on:
+  pull_request:
+    paths:
+      - 'supabase/migrations/20271205010000_fiscal_provider_persistence_sandbox.sql'
+      - 'supabase/ops/tests/fiscal_provider_pg17_*'
+      - '.github/workflows/fiscal-provider-pg17.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  postgres17:
+    name: Sandbox outbox, tenant isolation and grants
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: fiscal_provider_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d fiscal_provider_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PGHOST: localhost
+      PGPORT: "5432"
+      PGUSER: postgres
+      PGPASSWORD: postgres
+      PGDATABASE: fiscal_provider_test
+    steps:
+      - uses: actions/checkout@v4
+      - name: Apply exact migration and test in disposable database
+        run: |
+          set -euo pipefail
+          psql -X -v ON_ERROR_STOP=1 -f supabase/ops/tests/fiscal_provider_pg17_fixture.sql
+          psql -X -v ON_ERROR_STOP=1 -f supabase/migrations/20271205010000_fiscal_provider_persistence_sandbox.sql
+          psql -X -v ON_ERROR_STOP=1 -f supabase/ops/tests/fiscal_provider_pg17_assert.sql
