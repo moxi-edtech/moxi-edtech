@@ -1,4 +1,6 @@
 "use client"
+import { PortalPullToRefresh } from "@/components/portal/ui/PortalPullToRefresh";
+
 
 import React, { useEffect, useMemo, useState } from 'react'
 import { enqueueOfflineAction } from '@/lib/offline/queue'
@@ -47,6 +49,9 @@ export function ProfessorFrequenciasWorkspace({ embedded = false, requestedAcade
   const [contextOpen, setContextOpen] = useState(false)
   const mobile = usePortalMobile()
   const [studentsLoading, setStudentsLoading] = useState(false)
+  const [assignmentsLoading, setAssignmentsLoading] = useState(true)
+  const [assignmentsRefresh, setAssignmentsRefresh] = useState(0)
+  const [rosterRefresh, setRosterRefresh] = useState(0)
   const [loadedRosterKey, setLoadedRosterKey] = useState("")
   const [statusMap, setStatusMap] = useState<Record<string, 'presente'|'falta'|'atraso'>>({})
   const [submitStatus, setSubmitStatus] = useState<'idle' | 'pending' | 'saved' | 'failed'>('idle')
@@ -63,6 +68,7 @@ export function ProfessorFrequenciasWorkspace({ embedded = false, requestedAcade
     const controller = new AbortController()
     ;(async () => {
       try {
+        setAssignmentsLoading(true)
         setLoadError(null)
         const query = requestedAcademicYearId ? '?' + new URLSearchParams({ ano_letivo_id: requestedAcademicYearId }) : ''
         const res = await (read ? read('/api/professor/atribuicoes' + query, { signal: controller.signal }) : fetch('/api/professor/atribuicoes' + query, { cache: 'no-store', signal: controller.signal }))
@@ -84,10 +90,10 @@ export function ProfessorFrequenciasWorkspace({ embedded = false, requestedAcade
       } catch (cause) {
         if (controller.signal.aborted) return
         setLoadError(cause instanceof Error ? cause.message : 'Não foi possível carregar o ano letivo ativo.')
-      }
+      } finally { if (!controller.signal.aborted) setAssignmentsLoading(false) }
     })()
     return () => controller.abort()
-  }, [embedded, urlTurmaId, urlDisciplinaId, requestedAcademicYearId, read])
+  }, [embedded, urlTurmaId, urlDisciplinaId, requestedAcademicYearId, read, assignmentsRefresh])
 
   useEffect(() => {
     const controller = new AbortController()
@@ -117,7 +123,7 @@ export function ProfessorFrequenciasWorkspace({ embedded = false, requestedAcade
       }
     })()
     return () => controller.abort()
-  }, [turmaId, disciplinaId, academicYearId, read])
+  }, [turmaId, disciplinaId, academicYearId, read, rosterRefresh])
 
   useEffect(() => {
     setSubmitStatus('idle')
@@ -276,7 +282,7 @@ export function ProfessorFrequenciasWorkspace({ embedded = false, requestedAcade
             </div>);
 
   return (
-    <div className={embedded ? "min-w-0 space-y-4" : "mx-auto w-full min-w-0 max-w-6xl space-y-6 md:p-6"}>
+    <PortalPullToRefresh onRefresh={() => { if (turmaId && disciplinaId) { setStudentsLoading(true); setRosterRefresh(value => value + 1); } else { setAssignmentsLoading(true); setAssignmentsRefresh(value => value + 1); } }} busy={assignmentsLoading || studentsLoading} disabled={embedded || contextLocked || contextOpen || Boolean(openActionsId) || submitStatus === "pending"} className={embedded ? "min-w-0 space-y-4" : "mx-auto w-full min-w-0 max-w-6xl space-y-6 md:p-6"}>
       {!embedded && <div className="mb-3 sm:mb-4">
         <DashboardHeader
           title="Frequências & Diário de Classe"
@@ -510,6 +516,6 @@ export function ProfessorFrequenciasWorkspace({ embedded = false, requestedAcade
           </div>
         </section>
       </form>
-    </div>
+    </PortalPullToRefresh>
   )
 }
