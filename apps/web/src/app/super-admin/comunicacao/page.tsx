@@ -141,7 +141,7 @@ export default function ComunicacaoPage() {
                 <Label htmlFor="to">Para (To) <span className="text-red-500">*</span></Label>
                 <input
                   id="to" 
-                  className="w-full p-3 border rounded-lg transition-colors duration-200 border-border focus:ring-teal-500 focus:border-teal-500"
+                  className="w-full p-3 border rounded-lg transition-colors duration-200 border-border focus:ring-teal-500 focus:border-teal-50 dark:focus:border-teal-900/600"
                   placeholder="email@exemplo.com, outro@exemplo.com" 
                   value={formData.to}
                   onChange={(e) => setFormData({ ...formData, to: e.target.value })}
@@ -151,7 +151,7 @@ export default function ComunicacaoPage() {
                 <Label htmlFor="cc">Cópia (CC)</Label>
                 <input
                   id="cc" 
-                  className="w-full p-3 border rounded-lg transition-colors duration-200 border-border focus:ring-teal-500 focus:border-teal-500"
+                  className="w-full p-3 border rounded-lg transition-colors duration-200 border-border focus:ring-teal-500 focus:border-teal-50 dark:focus:border-teal-900/600"
                   placeholder="copia@exemplo.com" 
                   value={formData.cc}
                   onChange={(e) => setFormData({ ...formData, cc: e.target.value })}
@@ -163,7 +163,7 @@ export default function ComunicacaoPage() {
               <Label htmlFor="subject">Assunto <span className="text-red-500">*</span></Label>
               <input
                 id="subject" 
-                className="w-full p-3 border rounded-lg transition-colors duration-200 border-border focus:ring-teal-500 focus:border-teal-500"
+                className="w-full p-3 border rounded-lg transition-colors duration-200 border-border focus:ring-teal-500 focus:border-teal-50 dark:focus:border-teal-900/600"
                 placeholder="Assunto da mensagem" 
                 value={formData.subject}
                 onChange={(e) => setFormData({ ...formData, subject: e.target.value })}

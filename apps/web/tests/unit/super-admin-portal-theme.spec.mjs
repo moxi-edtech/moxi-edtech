@@ -31,5 +31,18 @@ test("Super Admin inherits the shared theme controls and preference provider", (
 test("school list follows theme rather than forcing a dark surface", () => {
   const list = read("components/super-admin/escolas/SchoolsTableClient.tsx");
   assert.match(list, /min-w-0 rounded-xl bg-background/);
-  assert.match(list, /bg-card ring-1 ring-border\/10/);
+  assert.match(list, /bg-card ring-1 ring-border/);
+});
+
+test("health and onboarding status colors include dark-mode contrast variants", () => {
+  for (const [path, color] of [
+    ["components/super-admin/health/SystemStatus.tsx", "green"],
+    ["components/super-admin/health/SchoolsTab.tsx", "emerald"],
+    ["components/super-admin/health/AlertsTab.tsx", "red"],
+    ["app/super-admin/onboarding/page.tsx", "amber"],
+  ]) {
+    const source = read(path);
+    assert.match(source, new RegExp("dark:bg-" + color + "-950/30"), path);
+    assert.match(source, new RegExp("dark:text-" + color + "-(?:200|300)"), path);
+  }
 });

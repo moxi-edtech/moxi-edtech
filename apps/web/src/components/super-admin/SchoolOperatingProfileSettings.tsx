@@ -80,10 +80,10 @@ export default function SchoolOperatingProfileSettings({ schoolId }: { schoolId:
   }
 
   if (loading) return <div className="rounded-xl border border-border bg-card p-5 text-sm text-muted-foreground">A carregar perfil institucional…</div>;
-  if (!profile) return <div className="rounded-xl border border-red-200 bg-red-50 p-5 text-sm text-red-700">Perfil institucional indisponível.</div>;
+  if (!profile) return <div className="rounded-xl border border-red-200 dark:border-red-900/60 bg-red-50 dark:bg-red-950/30 p-5 text-sm text-red-700 dark:text-red-300">Perfil institucional indisponível.</div>;
 
   return (
-    <section className="rounded-xl border border-amber-200 bg-amber-50/40 p-5 shadow-sm">
+    <section className="rounded-xl border border-amber-200 dark:border-amber-900/60 bg-amber-50/40 p-5 shadow-sm">
       <div className="mb-4">
         <h3 className="text-sm font-bold uppercase tracking-wider text-foreground">Perfil institucional</h3>
         <p className="mt-1 text-xs text-muted-foreground">Área exclusiva do Super Admin. Alterações criam uma nova versão e ficam auditadas.</p>

@@ -121,23 +121,23 @@ interface ExistingSchoolOption {
 
 // ─── Helpers Visuais ──────────────────────────────────────────────────────────
 const STATUS_META = {
-  pendente:       { label: "Pendente",      color: "bg-amber-100 text-amber-700 border-amber-200", dot: "bg-amber-500" },
+  pendente:       { label: "Pendente",      color: "bg-amber-100 dark:bg-amber-950/30 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-900/60", dot: "bg-amber-50 dark:bg-amber-950/300" },
   em_configuracao: { label: "Configuração",  color: "bg-muted text-foreground border-border",    dot: "bg-muted" },
-  activo:         { label: "Activo",        color: "bg-emerald-100 text-emerald-700 border-emerald-200", dot: "bg-emerald-500" },
+  activo:         { label: "Activo",        color: "bg-emerald-100 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-900/60", dot: "bg-emerald-50 dark:bg-emerald-950/300" },
   cancelado:      { label: "Cancelado",     color: "bg-muted text-muted-foreground border-border",  dot: "bg-muted" },
 };
 
 const LEAD_STATUS_META = {
-  'NOVO': { label: "Novo", color: "bg-blue-100 text-blue-700 border-blue-200", dot: "bg-blue-500" },
-  'EM_CONTACTO': { label: "Em Contacto", color: "bg-amber-100 text-amber-700 border-amber-200", dot: "bg-amber-500" },
-  'CONVERTIDO': { label: "Convertido", color: "bg-emerald-100 text-emerald-700 border-emerald-200", dot: "bg-emerald-500" },
+  'NOVO': { label: "Novo", color: "bg-blue-100 dark:bg-blue-950/30 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-900/60", dot: "bg-blue-50 dark:bg-blue-950/300" },
+  'EM_CONTACTO': { label: "Em Contacto", color: "bg-amber-100 dark:bg-amber-950/30 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-900/60", dot: "bg-amber-50 dark:bg-amber-950/300" },
+  'CONVERTIDO': { label: "Convertido", color: "bg-emerald-100 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-900/60", dot: "bg-emerald-50 dark:bg-emerald-950/300" },
   'PERDIDO': { label: "Perdido", color: "bg-muted text-muted-foreground border-border", dot: "bg-muted" },
 };
 
 const PLAN_META: Record<string, { label: string; color: string }> = {
   essencial: { label: "Essencial", color: "bg-muted text-foreground border-border" },
-  profissional: { label: "Profissional", color: "bg-amber-100 text-amber-700 border-amber-200" },
-  premium: { label: "Premium", color: "bg-emerald-100 text-emerald-700 border-emerald-200" },
+  profissional: { label: "Profissional", color: "bg-amber-100 dark:bg-amber-950/30 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-900/60" },
+  premium: { label: "Premium", color: "bg-emerald-100 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-900/60" },
 };
 
 const getPlanMeta = (financeiro: any) => {
@@ -719,7 +719,7 @@ export default function SuperAdminOnboardingPage() {
                                       Plano: {plan.label}
                                     </Badge>
                                     {influencerCode && (
-                                      <Badge className="bg-purple-100 text-purple-700 border-purple-200 border font-bold uppercase text-[9px] px-2.5 py-0.5 rounded-full">
+                                      <Badge className="bg-purple-100 dark:bg-purple-950/30 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-900/60 border font-bold uppercase text-[9px] px-2.5 py-0.5 rounded-full">
                                         Ref: {influencerCode}
                                       </Badge>
                                     )}
@@ -747,7 +747,7 @@ export default function SuperAdminOnboardingPage() {
                   ) : (
                     filteredLeads.map(lead => {
                       const meta = LEAD_STATUS_META[lead.status as keyof typeof LEAD_STATUS_META] || LEAD_STATUS_META.NOVO;
-                      const scoreColor = lead.score >= 15 ? 'text-emerald-600' : lead.score >= 10 ? 'text-amber-600' : 'text-rose-600';
+                      const scoreColor = lead.score >= 15 ? 'text-emerald-600 dark:text-emerald-300' : lead.score >= 10 ? 'text-amber-600 dark:text-amber-300' : 'text-rose-600 dark:text-rose-300';
                       return (
                         <Card 
                           key={lead.id} 
@@ -792,10 +792,10 @@ export default function SuperAdminOnboardingPage() {
                       const escolaNome = upload.onboarding_requests?.escola_nome || 'Escola não identificada';
                       const token = upload.onboarding_requests?.tracking_token || 'Sem token';
                       const uploadMeta = {
-                        pendente: { label: 'Pendente', color: 'bg-amber-100 text-amber-700 border-amber-200', dot: 'bg-amber-500' },
-                        processando: { label: 'Processando', color: 'bg-blue-100 text-blue-700 border-blue-200', dot: 'bg-blue-500' },
-                        aprovado: { label: 'Aprovado', color: 'bg-emerald-100 text-emerald-700 border-emerald-200', dot: 'bg-emerald-500' },
-                        rejeitado: { label: 'Rejeitado', color: 'bg-rose-100 text-rose-700 border-rose-200', dot: 'bg-rose-500' },
+                        pendente: { label: 'Pendente', color: 'bg-amber-100 dark:bg-amber-950/30 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-900/60', dot: 'bg-amber-50 dark:bg-amber-950/300' },
+                        processando: { label: 'Processando', color: 'bg-blue-100 dark:bg-blue-950/30 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-900/60', dot: 'bg-blue-50 dark:bg-blue-950/300' },
+                        aprovado: { label: 'Aprovado', color: 'bg-emerald-100 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-900/60', dot: 'bg-emerald-50 dark:bg-emerald-950/300' },
+                        rejeitado: { label: 'Rejeitado', color: 'bg-rose-100 dark:bg-rose-950/30 text-rose-700 dark:text-rose-300 border-rose-200 dark:border-rose-900/60', dot: 'bg-rose-50 dark:bg-rose-950/300' },
                       }[upload.status];
 
                       return (
@@ -867,7 +867,7 @@ export default function SuperAdminOnboardingPage() {
                               />
                             </div>
                             {b.overdue > 0 && (
-                              <p className="text-[10px] text-rose-600 font-bold flex items-center gap-1">
+                              <p className="text-[10px] text-rose-600 dark:text-rose-300 font-bold flex items-center gap-1">
                                 ⚠️ {b.overdue} etapa{b.overdue > 1 ? 's' : ''} em atraso
                               </p>
                             )}
@@ -936,8 +936,8 @@ export default function SuperAdminOnboardingPage() {
                                 <td className="py-3 px-4 text-center text-muted-foreground font-bold">{pr.active}</td>
                                 <td className="py-3 px-4 text-right">
                                   <span className={`inline-block px-2.5 py-0.5 rounded-full font-black text-[10px] ${
-                                    pr.rate >= 75 ? 'bg-emerald-100 text-emerald-800' :
-                                    pr.rate >= 40 ? 'bg-amber-100 text-amber-800' :
+                                    pr.rate >= 75 ? 'bg-emerald-100 dark:bg-emerald-950/30 text-emerald-800 dark:text-emerald-200' :
+                                    pr.rate >= 40 ? 'bg-amber-100 dark:bg-amber-950/30 text-amber-800 dark:text-amber-200' :
                                     'bg-muted text-foreground'
                                   }`}>
                                     {pr.rate}%
@@ -971,15 +971,15 @@ export default function SuperAdminOnboardingPage() {
                       const plan = getPlanMeta(selectedRequest.financeiro);
                       const influencerCode = getInfluencerCode(selectedRequest.financeiro);
                       return (
-                        <div className="rounded-2xl border border-emerald-100 bg-emerald-50 p-4">
-                          <h4 className="mb-3 text-[10px] font-bold text-emerald-700 uppercase tracking-widest">Contexto Comercial</h4>
+                        <div className="rounded-2xl border border-emerald-100 dark:border-emerald-900/60 bg-emerald-50 dark:bg-emerald-950/30 p-4">
+                          <h4 className="mb-3 text-[10px] font-bold text-emerald-700 dark:text-emerald-300 uppercase tracking-widest">Contexto Comercial</h4>
                           <div className="grid grid-cols-2 gap-4">
                             <div>
-                              <p className="text-[9px] font-bold text-emerald-600 uppercase">Plano Escolhido</p>
+                              <p className="text-[9px] font-bold text-emerald-600 dark:text-emerald-300 uppercase">Plano Escolhido</p>
                               <p className="text-sm font-black text-foreground">{plan.label}</p>
                             </div>
                             <div>
-                              <p className="text-[9px] font-bold text-emerald-600 uppercase">Influencer</p>
+                              <p className="text-[9px] font-bold text-emerald-600 dark:text-emerald-300 uppercase">Influencer</p>
                               <p className="text-sm font-black text-foreground">{influencerCode || "Direto"}</p>
                             </div>
                           </div>
@@ -1045,19 +1045,19 @@ export default function SuperAdminOnboardingPage() {
                             Carregando
                           </span>
                         ) : canProvisionSelectedRequest ? (
-                          <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200 border font-bold uppercase text-[9px] px-2.5 py-0.5 rounded-full">
+                          <Badge className="bg-emerald-100 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-900/60 border font-bold uppercase text-[9px] px-2.5 py-0.5 rounded-full">
                             Pronto
                           </Badge>
                         ) : (
-                          <Badge className="bg-amber-100 text-amber-700 border-amber-200 border font-bold uppercase text-[9px] px-2.5 py-0.5 rounded-full">
+                          <Badge className="bg-amber-100 dark:bg-amber-950/30 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-900/60 border font-bold uppercase text-[9px] px-2.5 py-0.5 rounded-full">
                             Pendente
                           </Badge>
                         )}
                       </div>
 
                       {selectedRequestSteps.length === 0 && !loadingSelectedSteps ? (
-                        <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
-                          <p className="text-xs font-medium text-amber-700">
+                        <div className="rounded-2xl border border-amber-200 dark:border-amber-900/60 bg-amber-50 dark:bg-amber-950/30 p-4">
+                          <p className="text-xs font-medium text-amber-700 dark:text-amber-300">
                             Este pedido ainda não possui etapas carregadas. O provisionamento fica bloqueado até que o workflow esteja configurado.
                           </p>
                         </div>
@@ -1070,7 +1070,7 @@ export default function SuperAdminOnboardingPage() {
                             {pendingSelectedRequestSteps.map(step => (
                               <Badge
                                 key={step.id}
-                                className="bg-amber-50 text-amber-700 border-amber-200 border font-bold uppercase text-[9px] px-2.5 py-0.5 rounded-full"
+                                className="bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-900/60 border font-bold uppercase text-[9px] px-2.5 py-0.5 rounded-full"
                               >
                                 {step.title}
                               </Badge>
@@ -1078,7 +1078,7 @@ export default function SuperAdminOnboardingPage() {
                           </div>
                         </div>
                       ) : (
-                        <p className="text-xs font-medium text-emerald-700">
+                        <p className="text-xs font-medium text-emerald-700 dark:text-emerald-300">
                           Todas as etapas do onboarding estão concluídas. O pedido está elegível para provisionamento.
                         </p>
                       )}
@@ -1100,7 +1100,7 @@ export default function SuperAdminOnboardingPage() {
                         <Button 
                           variant="outline" 
                           size="sm" 
-                          className="rounded-xl text-xs font-bold border-border text-rose-600 hover:bg-rose-50"
+                          className="rounded-xl text-xs font-bold border-border text-rose-600 dark:text-rose-300 hover:bg-rose-50 dark:hover:bg-rose-950/30"
                           onClick={() => updateStatus(selectedRequest.id, 'cancelado')}
                         >
                           Cancelar Pedido
@@ -1116,7 +1116,7 @@ export default function SuperAdminOnboardingPage() {
                         PROVISIONAR ESCOLA
                       </Button>
                       {!canProvisionSelectedRequest && (
-                        <p className="text-xs font-medium text-amber-700 leading-relaxed">
+                        <p className="text-xs font-medium text-amber-700 dark:text-amber-300 leading-relaxed">
                           Provisionamento bloqueado. Conclua todas as etapas pendentes antes de transformar este pedido em uma escola operacional.
                         </p>
                       )}
@@ -1141,7 +1141,7 @@ export default function SuperAdminOnboardingPage() {
                       <div className="flex items-center justify-between">
                         <h4 className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Contacto Directo</h4>
                         {selectedLead.afiliado_codigo && (
-                          <Badge className="bg-purple-100 text-purple-700 border-purple-200 font-bold uppercase text-[9px]">
+                          <Badge className="bg-purple-100 dark:bg-purple-950/30 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-900/60 font-bold uppercase text-[9px]">
                             Ref: {selectedLead.afiliado_codigo}
                           </Badge>
                         )}
@@ -1168,9 +1168,9 @@ export default function SuperAdminOnboardingPage() {
                       <div className="flex items-end justify-between">
                         <div>
                           <p className="text-[9px] font-bold text-muted-foreground uppercase">Score Obtido</p>
-                          <p className={`text-2xl font-black ${selectedLead.score >= 15 ? 'text-emerald-600' : 'text-amber-600'}`}>{selectedLead.score}/20</p>
+                          <p className={`text-2xl font-black ${selectedLead.score >= 15 ? 'text-emerald-600 dark:text-emerald-300' : 'text-amber-600 dark:text-amber-300'}`}>{selectedLead.score}/20</p>
                         </div>
-                        <Badge className={`${selectedLead.score >= 15 ? 'bg-emerald-100 text-emerald-700 border-emerald-200' : 'bg-amber-100 text-amber-700 border-amber-200'} font-bold uppercase text-[9px] px-2.5 py-0.5 rounded-full border`}>
+                        <Badge className={`${selectedLead.score >= 15 ? 'bg-emerald-100 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-900/60' : 'bg-amber-100 dark:bg-amber-950/30 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-900/60'} font-bold uppercase text-[9px] px-2.5 py-0.5 rounded-full border`}>
                           {selectedLead.score >= 15 ? 'Avançado' : selectedLead.score >= 10 ? 'Intermédio' : 'Crítico'}
                         </Badge>
                       </div>
@@ -1279,9 +1279,9 @@ export default function SuperAdminOnboardingPage() {
                     </div>
 
                     {selectedUpload.rejection_reason && (
-                      <div className="rounded-2xl border border-rose-100 bg-rose-50 p-4">
+                      <div className="rounded-2xl border border-rose-100 dark:border-rose-900/60 bg-rose-50 dark:bg-rose-950/30 p-4">
                         <p className="text-[10px] font-bold text-rose-500 uppercase tracking-widest mb-1">Última rejeição</p>
-                        <p className="text-sm font-medium text-rose-700">{selectedUpload.rejection_reason}</p>
+                        <p className="text-sm font-medium text-rose-700 dark:text-rose-300">{selectedUpload.rejection_reason}</p>
                       </div>
                     )}
 
@@ -1300,7 +1300,7 @@ export default function SuperAdminOnboardingPage() {
                           variant="outline"
                           onClick={() => reviewUpload(selectedUpload.id, 'rejeitado')}
                           disabled={reviewingUpload}
-                          className="rounded-xl text-xs font-bold border-rose-200 text-rose-600 hover:bg-rose-50 gap-2"
+                          className="rounded-xl text-xs font-bold border-rose-200 dark:border-rose-900/60 text-rose-600 dark:text-rose-300 hover:bg-rose-50 dark:hover:bg-rose-950/30 gap-2"
                         >
                           {reviewingUpload ? <Loader2 className="w-3 h-3 animate-spin" /> : <X size={14} />}
                           Rejeitar
@@ -1389,7 +1389,7 @@ export default function SuperAdminOnboardingPage() {
                           <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Escola destino</p>
                           <p className="text-sm font-black text-foreground">{selectedExistingSchool.nome || 'Escola sem nome'}</p>
                         </div>
-                        <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200 border font-bold uppercase text-[9px] px-2.5 py-0.5 rounded-full">
+                        <Badge className="bg-emerald-100 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-900/60 border font-bold uppercase text-[9px] px-2.5 py-0.5 rounded-full">
                           Elegível
                         </Badge>
                       </div>
@@ -1413,8 +1413,8 @@ export default function SuperAdminOnboardingPage() {
                       </div>
                     </div>
                   )}
-                  <div className="rounded-xl bg-amber-50 border border-amber-200 p-3 mt-4">
-                    <p className="text-xs font-medium text-amber-700 leading-relaxed">
+                  <div className="rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/60 p-3 mt-4">
+                    <p className="text-xs font-medium text-amber-700 dark:text-amber-300 leading-relaxed">
                       <strong>Atenção:</strong> A lista acima já exclui escolas suspensas, inactivas, canceladas e excluídas. O provisionamento irá configurar ano lectivo, classes e turmas diretamente no destino escolhido.
                     </p>
                   </div>

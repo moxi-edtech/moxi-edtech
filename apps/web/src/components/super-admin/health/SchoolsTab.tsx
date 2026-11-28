@@ -26,9 +26,9 @@ const formatRelative = (value: string) => {
 };
 
 const healthColor = (score: number) => {
-  if (score >= 80) return 'bg-emerald-500';
+  if (score >= 80) return 'bg-emerald-50 dark:bg-emerald-950/300';
   if (score >= 60) return 'bg-amber-400';
-  return 'bg-rose-500';
+  return 'bg-rose-50 dark:bg-rose-950/300';
 };
 
 export function SchoolsTab({ escolas }: SchoolsTabProps) {
@@ -60,10 +60,10 @@ export function SchoolsTab({ escolas }: SchoolsTabProps) {
                 <Badge
                   className={
                     escola.sync_status === 'synced'
-                      ? 'bg-emerald-100 text-emerald-700'
+                      ? 'bg-emerald-100 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-300'
                       : escola.sync_status === 'pending'
-                        ? 'bg-amber-100 text-amber-700'
-                        : 'bg-rose-100 text-rose-700'
+                        ? 'bg-amber-100 dark:bg-amber-950/30 text-amber-700 dark:text-amber-300'
+                        : 'bg-rose-100 dark:bg-rose-950/30 text-rose-700 dark:text-rose-300'
                   }
                 >
                   {escola.sync_status}
@@ -98,10 +98,10 @@ export function SchoolsTab({ escolas }: SchoolsTabProps) {
                       key={`${escola.id}-alerta-${idx}`}
                       className={`rounded-full px-2.5 py-0.5 text-[10px] font-semibold ${
                         alerta.tipo === 'critico'
-                          ? 'bg-rose-100 text-rose-700'
+                          ? 'bg-rose-100 dark:bg-rose-950/30 text-rose-700 dark:text-rose-300'
                           : alerta.tipo === 'aviso'
-                            ? 'bg-amber-100 text-amber-700'
-                            : 'bg-emerald-100 text-emerald-700'
+                            ? 'bg-amber-100 dark:bg-amber-950/30 text-amber-700 dark:text-amber-300'
+                            : 'bg-emerald-100 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-300'
                       }`}
                     >
                       {alerta.msg}

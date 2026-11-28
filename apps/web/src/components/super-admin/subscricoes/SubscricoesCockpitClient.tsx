@@ -527,8 +527,8 @@ export default function SubscricoesCockpitClient() {
                       </td>
                       <td className="px-4 py-3">
                         <span className={`rounded-full border px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider ${
-                          getStatus(item) === 'active' ? 'border-green-200 bg-green-50 text-green-700' :
-                          getStatus(item) === 'expired' ? 'border-rose-200 bg-rose-50 text-rose-700' :
+                          getStatus(item) === 'active' ? 'border-green-200 dark:border-green-900/60 bg-green-50 dark:bg-green-950/30 text-green-700 dark:text-green-300' :
+                          getStatus(item) === 'expired' ? 'border-rose-200 dark:border-rose-900/60 bg-rose-50 dark:bg-rose-950/30 text-rose-700 dark:text-rose-300' :
                           'border-border bg-muted text-foreground'
                         }`}>
                           {statusLabel(item)}
@@ -540,8 +540,8 @@ export default function SubscricoesCockpitClient() {
                           <>
                             <div className="flex items-center gap-1.5">
                               <span className={`h-1.5 w-1.5 rounded-full ${
-                                item.billing.last_payment_status === 'confirmado' ? 'bg-green-500' :
-                                item.billing.last_payment_status === 'pendente' ? 'bg-amber-500' :
+                                item.billing.last_payment_status === 'confirmado' ? 'bg-green-50 dark:bg-green-950/300' :
+                                item.billing.last_payment_status === 'pendente' ? 'bg-amber-50 dark:bg-amber-950/300' :
                                 'bg-muted'
                               }`} />
                               <span className="font-semibold text-foreground">
@@ -573,7 +573,7 @@ export default function SubscricoesCockpitClient() {
                         <p className="max-w-[180px] truncate">{item.email || "sem email"}</p>
                         <p className="text-xs text-muted-foreground">{item.telefone || "sem telefone"}</p>
                         {item.last_automated_reminder_at && (
-                          <p className="mt-1 text-[9px] font-bold uppercase text-blue-600">
+                          <p className="mt-1 text-[9px] font-bold uppercase text-blue-600 dark:text-blue-300">
                             Auto-lembrete: {new Date(item.last_automated_reminder_at).toLocaleDateString()}
                           </p>
                         )}
@@ -590,7 +590,7 @@ export default function SubscricoesCockpitClient() {
                               <Button size="sm" onClick={() => handleConfirmPayment(item)} disabled={busyId === item.escola_id} className="bg-emerald hover:bg-emerald/90">
                                 <CheckCircle2 className="h-3 w-3 mr-1" /> Confirmar
                               </Button>
-                              <Button size="sm" variant="secondary" onClick={() => handleRejectPayment(item)} disabled={busyId === item.escola_id} className="border-rose-200 text-rose-700 hover:bg-rose-50">
+                              <Button size="sm" variant="secondary" onClick={() => handleRejectPayment(item)} disabled={busyId === item.escola_id} className="border-rose-200 dark:border-rose-900/60 text-rose-700 dark:text-rose-300 hover:bg-rose-50 dark:hover:bg-rose-950/30">
                                 <XCircle className="h-3 w-3 mr-1" /> Rejeitar
                               </Button>
                             </>
@@ -727,8 +727,8 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 function Stat({ label, value, tone }: { label: string; value: number; tone: "gold" | "amber" | "rose" | "green" }) {
   const colors = {
     gold: "text-amber",
-    amber: "text-amber-700",
-    rose: "text-rose-700",
+    amber: "text-amber-700 dark:text-amber-300",
+    rose: "text-rose-700 dark:text-rose-300",
     green: "text-emerald",
   };
   return (

@@ -82,7 +82,7 @@ function EmailPreviewClient() {
             </a>
           )}
         </div>
-        {err && <div className="text-red-600">Erro: {err}</div>}
+        {err && <div className="text-red-600 dark:text-red-300">Erro: {err}</div>}
       </div>
 
       {data?.ok && (

@@ -113,23 +113,23 @@ const STATUS_META: Record<
 > = {
   pending: {
     label: "Pendente",
-    badge: "bg-amber-50 text-amber-700 border-amber-200",
-    chip: "bg-amber-100 text-amber-700",
+    badge: "bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-900/60",
+    chip: "bg-amber-100 dark:bg-amber-950/30 text-amber-700 dark:text-amber-300",
   },
   approved: {
     label: "Aprovada",
-    badge: "bg-emerald-50 text-emerald-700 border-emerald-200",
-    chip: "bg-emerald-100 text-emerald-700",
+    badge: "bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-900/60",
+    chip: "bg-emerald-100 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-300",
   },
   blocked: {
     label: "Bloqueada",
-    badge: "bg-rose-50 text-rose-700 border-rose-200",
-    chip: "bg-rose-100 text-rose-700",
+    badge: "bg-rose-50 dark:bg-rose-950/30 text-rose-700 dark:text-rose-300 border-rose-200 dark:border-rose-900/60",
+    chip: "bg-rose-100 dark:bg-rose-950/30 text-rose-700 dark:text-rose-300",
   },
   paid: {
     label: "Paga",
-    badge: "bg-sky-50 text-sky-700 border-sky-200",
-    chip: "bg-sky-100 text-sky-700",
+    badge: "bg-sky-50 dark:bg-sky-950/30 text-sky-700 dark:text-sky-300 border-sky-200 dark:border-sky-900/60",
+    chip: "bg-sky-100 dark:bg-sky-950/30 text-sky-700 dark:text-sky-300",
   },
   cancelled: {
     label: "Cancelada",
@@ -141,23 +141,23 @@ const STATUS_META: Record<
 const PAYOUT_STATUS_META: Record<PayoutItemStatus, { label: string; badge: string; chip: string }> = {
   requested: {
     label: "Solicitado",
-    badge: "bg-amber-50 text-amber-700 border-amber-200",
-    chip: "bg-amber-100 text-amber-700",
+    badge: "bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-900/60",
+    chip: "bg-amber-100 dark:bg-amber-950/30 text-amber-700 dark:text-amber-300",
   },
   approved: {
     label: "Aprovado",
-    badge: "bg-emerald-50 text-emerald-700 border-emerald-200",
-    chip: "bg-emerald-100 text-emerald-700",
+    badge: "bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-900/60",
+    chip: "bg-emerald-100 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-300",
   },
   paid: {
     label: "Pago",
-    badge: "bg-sky-50 text-sky-700 border-sky-200",
-    chip: "bg-sky-100 text-sky-700",
+    badge: "bg-sky-50 dark:bg-sky-950/30 text-sky-700 dark:text-sky-300 border-sky-200 dark:border-sky-900/60",
+    chip: "bg-sky-100 dark:bg-sky-950/30 text-sky-700 dark:text-sky-300",
   },
   rejected: {
     label: "Rejeitado",
-    badge: "bg-rose-50 text-rose-700 border-rose-200",
-    chip: "bg-rose-100 text-rose-700",
+    badge: "bg-rose-50 dark:bg-rose-950/30 text-rose-700 dark:text-rose-300 border-rose-200 dark:border-rose-900/60",
+    chip: "bg-rose-100 dark:bg-rose-950/30 text-rose-700 dark:text-rose-300",
   },
   cancelled: {
     label: "Cancelado",
@@ -605,7 +605,7 @@ export default function PartnerCommissionsClient() {
                       </>
                     ) : null}
                     {payout.status === "paid" ? (
-                      <span className="inline-flex items-center gap-2 rounded-xl bg-sky-50 px-3 py-2 text-xs font-semibold text-sky-700">
+                      <span className="inline-flex items-center gap-2 rounded-xl bg-sky-50 dark:bg-sky-950/30 px-3 py-2 text-xs font-semibold text-sky-700 dark:text-sky-300">
                         <Coins className="h-4 w-4" />
                         Liquidado
                       </span>
@@ -761,7 +761,7 @@ export default function PartnerCommissionsClient() {
                         ) : null}
 
                         {item.status === "paid" ? (
-                          <span className="inline-flex items-center gap-2 rounded-xl bg-sky-50 px-3 py-2 text-xs font-semibold text-sky-700">
+                          <span className="inline-flex items-center gap-2 rounded-xl bg-sky-50 dark:bg-sky-950/30 px-3 py-2 text-xs font-semibold text-sky-700 dark:text-sky-300">
                             <Coins className="h-4 w-4" />
                             Liquidada
                           </span>

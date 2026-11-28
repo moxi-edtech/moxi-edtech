@@ -14,9 +14,9 @@ interface AlertsTabProps {
 
 const getAlertColor = (nivel: string) => {
   switch (nivel) {
-    case 'critico': return 'border-red-500 bg-red-50';
-    case 'alto': return 'border-orange-500 bg-orange-50';
-    case 'medio': return 'border-yellow-500 bg-yellow-50';
+    case 'critico': return 'border-red-50 dark:border-red-900/600 bg-red-50 dark:bg-red-950/30';
+    case 'alto': return 'border-orange-50 dark:border-orange-900/600 bg-orange-50 dark:bg-orange-950/30';
+    case 'medio': return 'border-yellow-50 dark:border-yellow-900/600 bg-yellow-50 dark:bg-yellow-950/30';
     case 'baixo': return 'border-border bg-muted';
     default: return 'border-border bg-muted';
   }
@@ -33,7 +33,7 @@ export function AlertsTab({ alertas }: AlertsTabProps) {
     <div className="space-y-4">
       {alertas.length === 0 ? (
         <Alert>
-          <CheckCircle className="h-4 w-4 text-green-600" />
+          <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-300" />
           <AlertTitle>Sem alertas críticos</AlertTitle>
           <AlertDescription>O sistema está funcionando normalmente.</AlertDescription>
         </Alert>
@@ -41,16 +41,16 @@ export function AlertsTab({ alertas }: AlertsTabProps) {
         alertas.map(alerta => (
           <Alert key={alerta.id} className={getAlertColor(alerta.nivel)}>
             <AlertTriangle className={`h-4 w-4 ${
-              alerta.nivel === 'critico' ? 'text-red-600' :
-              alerta.nivel === 'alto' ? 'text-orange-600' :
-              alerta.nivel === 'medio' ? 'text-yellow-600' : 'text-muted-foreground'
+              alerta.nivel === 'critico' ? 'text-red-600 dark:text-red-300' :
+              alerta.nivel === 'alto' ? 'text-orange-600 dark:text-orange-300' :
+              alerta.nivel === 'medio' ? 'text-yellow-600 dark:text-yellow-300' : 'text-muted-foreground'
             }`} />
             <AlertTitle className="flex items-center justify-between">
               <span>{alerta.titulo}</span>
               <Badge variant="outline" className={
-                alerta.nivel === 'critico' ? 'border-red-600 text-red-600' :
-                alerta.nivel === 'alto' ? 'border-orange-600 text-orange-600' :
-                alerta.nivel === 'medio' ? 'border-yellow-600 text-yellow-600' : 
+                alerta.nivel === 'critico' ? 'border-red-600 text-red-600 dark:text-red-300' :
+                alerta.nivel === 'alto' ? 'border-orange-600 text-orange-600 dark:text-orange-300' :
+                alerta.nivel === 'medio' ? 'border-yellow-600 text-yellow-600 dark:text-yellow-300' : 
                 'border-border text-muted-foreground'
               }>
                 {alerta.nivel.toUpperCase()}

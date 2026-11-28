@@ -171,10 +171,10 @@ export default function MarketingAssetsPage() {
                       <Badge variant="outline" className="text-[9px] font-bold uppercase tracking-widest">{asset.tipo}</Badge>
                     </div>
                     <div className="flex gap-1">
-                      <button onClick={() => toggleStatus(asset.id, asset.is_active)} className={`p-2 rounded-lg transition-colors ${asset.is_active ? 'text-emerald-600 hover:bg-emerald-50' : 'text-muted-foreground hover:bg-muted'}`}>
+                      <button onClick={() => toggleStatus(asset.id, asset.is_active)} className={`p-2 rounded-lg transition-colors ${asset.is_active ? 'text-emerald-600 dark:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-950/30' : 'text-muted-foreground hover:bg-muted'}`}>
                         {asset.is_active ? <Check size={16} /> : <X size={16} />}
                       </button>
-                      <button onClick={() => deleteAsset(asset.id)} className="p-2 text-rose-600 hover:bg-rose-50 rounded-lg transition-colors">
+                      <button onClick={() => deleteAsset(asset.id)} className="p-2 text-rose-600 dark:text-rose-300 hover:bg-rose-50 dark:hover:bg-rose-950/30 rounded-lg transition-colors">
                         <Trash2 size={16} />
                       </button>
                     </div>
@@ -189,7 +189,7 @@ export default function MarketingAssetsPage() {
                     </div>
                   )}
                   {asset.url && (
-                    <a href={asset.url} target="_blank" rel="noreferrer" className="text-[10px] font-bold text-blue-600 flex items-center gap-1 hover:underline">
+                    <a href={asset.url} target="_blank" rel="noreferrer" className="text-[10px] font-bold text-blue-600 dark:text-blue-300 flex items-center gap-1 hover:underline">
                       <ExternalLink size={10} />
                       Ver Ficheiro/Link
                     </a>

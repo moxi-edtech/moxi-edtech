@@ -209,7 +209,7 @@ function CriarEscolaForm() {
                 step === currentStep
                   ? "bg-emerald text-white border-emerald shadow-lg shadow-emerald/20"
                   : step < currentStep
-                  ? "bg-emerald-500 text-white border-emerald-500"
+                  ? "bg-emerald-50 dark:bg-emerald-950/300 text-white border-emerald-50 dark:border-emerald-900/600"
                   : "bg-card text-muted-foreground border-border"
               }`}
             >
@@ -232,13 +232,13 @@ function CriarEscolaForm() {
           <div className="space-y-6 animate-klasse-fade-up">
             
             {/* Pre-fill Selector */}
-            <div className="bg-amber-50 border border-amber-100 rounded-3xl p-6 space-y-4">
+            <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-100 dark:border-amber-900/60 rounded-3xl p-6 space-y-4">
               <div className="flex items-center gap-3">
-                <div className="p-2 bg-amber-100 rounded-xl text-amber-700">
+                <div className="p-2 bg-amber-100 dark:bg-amber-950/30 rounded-xl text-amber-700 dark:text-amber-300">
                   <Sparkles size={18} />
                 </div>
                 <div>
-                  <h3 className="text-sm font-bold text-amber-900">Preencher via Onboarding</h3>
+                  <h3 className="text-sm font-bold text-amber-900 dark:text-amber-200">Preencher via Onboarding</h3>
                   <p className="text-xs text-amber-700/70 font-medium">Use dados já submetidos por uma escola.</p>
                 </div>
               </div>
@@ -246,7 +246,7 @@ function CriarEscolaForm() {
                 value={selectedOnboardingId}
                 onChange={(e) => handlePreFill(e.target.value)}
                 disabled={loadingOnboarding}
-                className="w-full bg-card border-amber-200 rounded-xl text-sm font-bold text-foreground focus:ring-amber-500 focus:border-amber-500"
+                className="w-full bg-card border-amber-200 dark:border-amber-900/60 rounded-xl text-sm font-bold text-foreground focus:ring-amber-500 focus:border-amber-50 dark:focus:border-amber-900/600"
               >
                 <option value="">Seleccionar pedido pendente...</option>
                 {onboardingRequests.map(r => (
@@ -276,7 +276,7 @@ function CriarEscolaForm() {
                   <div className="space-y-1.5">
                     <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest px-1">NIF *</label>
                     <input
-                      className={`w-full border rounded-xl p-3 text-sm focus:ring-4 focus:ring-emerald/5 outline-none transition-all ${!isNifValid ? 'border-rose-300' : 'border-border focus:border-emerald'}`}
+                      className={`w-full border rounded-xl p-3 text-sm focus:ring-4 focus:ring-emerald/5 outline-none transition-all ${!isNifValid ? 'border-rose-300 dark:border-rose-900/60' : 'border-border focus:border-emerald'}`}
                       placeholder="9 dígitos"
                       value={formData.nif}
                       onChange={(e) => handleInputChange('nif', e.target.value.replace(/\D/g, '').slice(0, 9))}
@@ -408,12 +408,12 @@ function CriarEscolaForm() {
         {/* Step 3: Success Confirmation */}
         {currentStep === 3 && creationResult && (
           <div className="space-y-6 animate-klasse-fade-up">
-            <div className="bg-emerald-50 border-2 border-emerald-100 rounded-[2rem] p-8 text-center space-y-4">
-              <div className="w-20 h-20 bg-emerald-500 rounded-full flex items-center justify-center mx-auto shadow-xl shadow-emerald-200">
+            <div className="bg-emerald-50 dark:bg-emerald-950/30 border-2 border-emerald-100 dark:border-emerald-900/60 rounded-[2rem] p-8 text-center space-y-4">
+              <div className="w-20 h-20 bg-emerald-50 dark:bg-emerald-950/300 rounded-full flex items-center justify-center mx-auto shadow-xl shadow-emerald-200">
                 <CheckCircle2 size={40} className="text-white" />
               </div>
-              <h2 className="text-2xl font-black text-emerald-900 font-sora">Escola Criada!</h2>
-              <p className="text-emerald-700 font-medium">O ambiente para <strong className="text-emerald-900">{formData.nome}</strong> está pronto.</p>
+              <h2 className="text-2xl font-black text-emerald-900 dark:text-emerald-200 font-sora">Escola Criada!</h2>
+              <p className="text-emerald-700 dark:text-emerald-300 font-medium">O ambiente para <strong className="text-emerald-900 dark:text-emerald-200">{formData.nome}</strong> está pronto.</p>
             </div>
 
             <Card className="rounded-3xl border-border shadow-xl overflow-hidden bg-card">

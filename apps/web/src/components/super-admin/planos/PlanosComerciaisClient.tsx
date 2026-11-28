@@ -166,7 +166,7 @@ export default function PlanosComerciaisClient() {
         <div className="flex items-center gap-3">
           <div className={cn(
             "p-2 rounded-lg",
-            isDirty ? "bg-amber-100 text-amber-700" : "bg-emerald-100 text-emerald-700"
+            isDirty ? "bg-amber-100 dark:bg-amber-950/30 text-amber-700 dark:text-amber-300" : "bg-emerald-100 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-300"
           )}>
             {isDirty ? <AlertTriangle className="h-5 w-5" /> : <CheckCircle2 className="h-5 w-5" />}
           </div>
@@ -253,9 +253,9 @@ export default function PlanosComerciaisClient() {
             </DialogDescription>
           </DialogHeader>
           <div className="py-4">
-             <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 flex gap-3">
-                <AlertTriangle className="h-5 w-5 text-amber-600 shrink-0" />
-                <p className="text-sm text-amber-800 font-medium">
+             <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/60 rounded-lg p-4 flex gap-3">
+                <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-300 shrink-0" />
+                <p className="text-sm text-amber-800 dark:text-amber-200 font-medium">
                   Atenção: Preços configurados como 0 farão com que novas escolas entrem como "Pendente de Parametrização" no sistema de faturação.
                 </p>
              </div>
@@ -314,13 +314,13 @@ function PlanCard({
   return (
     <article className={cn(
       "rounded-2xl border bg-card shadow-sm overflow-hidden transition-all",
-      isModified ? "border-amber-200 ring-1 ring-amber-100" : "border-border"
+      isModified ? "border-amber-200 dark:border-amber-900/60 ring-1 ring-amber-100" : "border-border"
     )}>
       <div className="flex items-center justify-between bg-muted/50 px-6 py-4 border-b border-border">
         <div className="flex items-center gap-3">
           <h3 className="text-lg font-bold text-foreground">{planName}</h3>
           {isModified && (
-            <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 text-[10px]">
+            <Badge variant="outline" className="bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-900/60 text-[10px]">
               Modificado
             </Badge>
           )}

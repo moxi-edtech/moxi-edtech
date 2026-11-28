@@ -277,7 +277,7 @@ export default function NovoCentroFormacaoPage() {
                   active
                     ? "bg-emerald text-white"
                     : done
-                    ? "bg-emerald-500 text-white"
+                    ? "bg-emerald-50 dark:bg-emerald-950/300 text-white"
                     : "bg-muted text-muted-foreground"
                 }`}
               >
@@ -574,9 +574,9 @@ export default function NovoCentroFormacaoPage() {
             </Field>
 
             {result ? (
-              <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4">
-                <p className="text-sm font-semibold text-emerald-900">Provisionamento concluído com sucesso.</p>
-                <p className="mt-1 text-sm text-emerald-900">Escola/Tenant ID: {result.escolaId}</p>
+              <div className="rounded-xl border border-emerald-200 dark:border-emerald-900/60 bg-emerald-50 dark:bg-emerald-950/30 p-4">
+                <p className="text-sm font-semibold text-emerald-900 dark:text-emerald-200">Provisionamento concluído com sucesso.</p>
+                <p className="mt-1 text-sm text-emerald-900 dark:text-emerald-200">Escola/Tenant ID: {result.escolaId}</p>
                 <div className="mt-3 space-y-1 text-sm text-foreground">
                   {result.provisionados.map((member) => (
                     <p key={`${member.email}-${member.papel}`}>

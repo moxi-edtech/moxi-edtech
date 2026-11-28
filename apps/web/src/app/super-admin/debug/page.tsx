@@ -74,7 +74,7 @@ function SessionDebug() {
       </div>
 
       {loading && <div>Carregando…</div>}
-      {error && <div className="text-red-600">Erro: {error}</div>}
+      {error && <div className="text-red-600 dark:text-red-300">Erro: {error}</div>}
 
       {data && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

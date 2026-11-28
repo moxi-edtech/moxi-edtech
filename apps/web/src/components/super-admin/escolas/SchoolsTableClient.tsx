@@ -382,7 +382,7 @@ export default function SchoolsTableClient({
 
       <div className="w-full min-w-0">
         {/* Header + Status */}
-        <div className="rounded-xl bg-card ring-1 ring-border/10 p-4 sm:p-5">
+        <div className="rounded-xl bg-card ring-1 ring-border p-4 sm:p-5">
           <div className="flex flex-col gap-3">
             {errorMsg ? (
               <ErrorBanner errorMsg={errorMsg} loading={loading} onRetry={handleRetry} />
@@ -393,7 +393,7 @@ export default function SchoolsTableClient({
         </div>
 
         {/* Filters */}
-        <div className="mt-4 rounded-xl bg-card ring-1 ring-border/10 p-4 sm:p-5">
+        <div className="mt-4 rounded-xl bg-card ring-1 ring-border p-4 sm:p-5">
           <SchoolsFilters
               searchTerm={searchTerm}
               onSearchChange={setSearchTerm}
@@ -408,7 +408,7 @@ export default function SchoolsTableClient({
         </div>
 
         {/* Table */}
-        <div className="mt-4 rounded-xl bg-card ring-1 ring-border/10 overflow-hidden">
+        <div className="mt-4 rounded-xl bg-card ring-1 ring-border overflow-hidden">
           <SchoolsTable
             schools={paginatedSchools}
             progress={progress}
@@ -429,7 +429,7 @@ export default function SchoolsTableClient({
         </div>
 
         {/* Pagination */}
-        <div className="mt-4 rounded-xl bg-card ring-1 ring-border/10 p-3 sm:p-4">
+        <div className="mt-4 rounded-xl bg-card ring-1 ring-border p-3 sm:p-4">
           <SchoolsPagination currentPage={currentPage} totalPages={totalPages} onPageChange={handlePageChange} />
         </div>
       </div>
@@ -476,7 +476,7 @@ function ErrorBanner({
   onRetry: () => void;
 }) {
   return (
-    <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-red-700 dark:text-red-200 flex items-start justify-between gap-3">
+    <div className="rounded-xl border border-red-50 dark:border-red-900/600/30 bg-red-50 dark:bg-red-950/300/10 px-4 py-3 text-red-700 dark:text-red-200 flex items-start justify-between gap-3">
       <div className="min-w-0">
         <p className="font-semibold">Ocorreu um erro</p>
         <p className="mt-1 text-sm break-words text-red-700 dark:text-red-200">{errorMsg}</p>

@@ -321,7 +321,7 @@ export default function SuperAdminAfiliadosPage() {
                         )}
                       </div>
                     </div>
-                    <Badge className={af.ativo ? 'bg-emerald-100 text-emerald-700' : 'bg-muted text-muted-foreground'}>
+                    <Badge className={af.ativo ? 'bg-emerald-100 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-300' : 'bg-muted text-muted-foreground'}>
                       {af.ativo ? 'Ativo' : 'Inativo'}
                     </Badge>
                   </div>
@@ -489,12 +489,12 @@ export default function SuperAdminAfiliadosPage() {
                               <p className="text-xs text-muted-foreground">Actualizado em {new Date(member.updated_at).toLocaleDateString('pt-AO')}</p>
                             </div>
                             <div className="flex items-center gap-2">
-                              <Badge className={member.ativo ? 'bg-emerald-100 text-emerald-700' : 'bg-muted text-muted-foreground'}>
+                              <Badge className={member.ativo ? 'bg-emerald-100 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-300' : 'bg-muted text-muted-foreground'}>
                                 {member.ativo ? 'Ativo' : 'Inativo'}
                               </Badge>
                               <button
                                 onClick={() => removeMember(member)}
-                                className="p-2 hover:bg-rose-50 rounded-lg text-rose-400"
+                                className="p-2 hover:bg-rose-50 dark:hover:bg-rose-950/30 rounded-lg text-rose-400"
                                 title="Remover membro"
                               >
                                 <Trash2 size={16} />

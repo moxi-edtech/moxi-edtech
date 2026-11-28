@@ -296,7 +296,7 @@ function CriarUsuarioForm() {
                     number === currentStep
                       ? "bg-moxinexa-teal text-white border-moxinexa-teal shadow-lg scale-110"
                       : number < currentStep
-                      ? "bg-green-500 text-white border-green-500 shadow-md"
+                      ? "bg-green-50 dark:bg-green-950/300 text-white border-green-50 dark:border-green-900/600 shadow-md"
                       : "bg-card text-muted-foreground border-border"
                   }`}
                 >
@@ -522,14 +522,14 @@ function Step2({
           </select>
           
           {!escolasLoading && !escolasError && escolas.length === 0 && (
-            <p className="text-sm text-amber-600 mt-1 flex items-center gap-1">
+            <p className="text-sm text-amber-600 dark:text-amber-300 mt-1 flex items-center gap-1">
               <InformationCircleIcon className="w-4 h-4" />
               Nenhuma escola encontrada
             </p>
           )}
           
           {escolasError && (
-            <div className="text-sm text-red-600 mt-1 flex items-center gap-2 flex-wrap">
+            <div className="text-sm text-red-600 dark:text-red-300 mt-1 flex items-center gap-2 flex-wrap">
               <span className="inline-flex items-center gap-1">
                 <ExclamationTriangleIcon className="w-4 h-4" />
                 {escolasError}
@@ -537,7 +537,7 @@ function Step2({
               <button
                 type="button"
                 onClick={onRetryEscolas}
-                className="text-red-600 underline decoration-dotted hover:text-red-700 text-sm"
+                className="text-red-600 dark:text-red-300 underline decoration-dotted hover:text-red-700 dark:hover:text-red-300 text-sm"
               >
                 Tentar novamente
               </button>
@@ -741,8 +741,8 @@ function MessageAlert({ type, text }: Message) {
     <div
       className={`p-4 rounded-lg border flex items-center gap-3 animate-fadeIn ${
         type === "success"
-          ? "bg-green-50 text-green-800 border-green-200"
-          : "bg-red-50 text-red-800 border-red-200"
+          ? "bg-green-50 dark:bg-green-950/30 text-green-800 dark:text-green-200 border-green-200 dark:border-green-900/60"
+          : "bg-red-50 dark:bg-red-950/30 text-red-800 dark:text-red-200 border-red-200 dark:border-red-900/60"
       }`}
     >
       {type === "success" ? (
@@ -793,11 +793,11 @@ function PasswordStrength({ password }: { password: string }) {
   const score = rules.filter(rule => rule.ok).length;
   
   const strengthConfig = {
-    0: { label: 'Muito fraca', color: 'bg-red-500' },
-    1: { label: 'Muito fraca', color: 'bg-red-500' },
-    2: { label: 'Fraca', color: 'bg-amber-500' },
-    3: { label: 'Média', color: 'bg-yellow-500' },
-    4: { label: 'Forte', color: 'bg-green-500' },
+    0: { label: 'Muito fraca', color: 'bg-red-50 dark:bg-red-950/300' },
+    1: { label: 'Muito fraca', color: 'bg-red-50 dark:bg-red-950/300' },
+    2: { label: 'Fraca', color: 'bg-amber-50 dark:bg-amber-950/300' },
+    3: { label: 'Média', color: 'bg-yellow-50 dark:bg-yellow-950/300' },
+    4: { label: 'Forte', color: 'bg-green-50 dark:bg-green-950/300' },
     5: { label: 'Excelente', color: 'bg-moxinexa-teal' },
   };
 
@@ -826,12 +826,12 @@ function PasswordStrength({ password }: { password: string }) {
           <li
             key={index}
             className={`flex items-center gap-2 ${
-              rule.ok ? 'text-green-600' : 'text-muted-foreground'
+              rule.ok ? 'text-green-600 dark:text-green-300' : 'text-muted-foreground'
             }`}
           >
             <div
               className={`w-2 h-2 rounded-full transition-colors ${
-                rule.ok ? 'bg-green-500' : 'bg-muted'
+                rule.ok ? 'bg-green-50 dark:bg-green-950/300' : 'bg-muted'
               }`}
             />
             {rule.msg}

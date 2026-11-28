@@ -733,7 +733,7 @@ export default function EscolaMonitor({
                             : wahaStatus === "pending_qr"
                               ? "bg-amber/10 text-amber border-amber/20 animate-pulse"
                               : wahaStatus === "error" || wahaStatus === "disconnected"
-                                ? "bg-red-50 text-red-600 border-red-100"
+                                ? "bg-red-50 dark:bg-red-950/30 text-red-600 dark:text-red-300 border-red-100 dark:border-red-900/60"
                                 : "bg-muted text-muted-foreground border-border"
                         } font-semibold uppercase text-[9px] px-2.5 py-0.5 rounded-full border shrink-0`}>
                           {wahaStatus}
@@ -1034,7 +1034,7 @@ export default function EscolaMonitor({
                                             ? "bg-emerald/10 text-emerald border border-emerald/20"
                                             : isPending
                                             ? "bg-amber/10 text-amber border border-amber/20"
-                                            : "bg-red-50 text-red-600 border border-red-100"
+                                            : "bg-red-50 dark:bg-red-950/30 text-red-600 dark:text-red-300 border border-red-100 dark:border-red-900/60"
                                         }`}
                                       >
                                         {log.status}

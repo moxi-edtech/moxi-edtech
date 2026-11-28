@@ -13,9 +13,9 @@ interface SystemStatusProps {
 
 const getStatusColor = (status: string) => {
   switch (status) {
-    case 'healthy': return 'bg-green-100 text-green-800';
-    case 'degraded': return 'bg-yellow-100 text-yellow-800';
-    case 'critical': return 'bg-red-100 text-red-800';
+    case 'healthy': return 'bg-green-100 dark:bg-green-950/30 text-green-800 dark:text-green-200';
+    case 'degraded': return 'bg-yellow-100 dark:bg-yellow-950/30 text-yellow-800 dark:text-yellow-200';
+    case 'critical': return 'bg-red-100 dark:bg-red-950/30 text-red-800 dark:text-red-200';
     default: return 'bg-muted text-foreground';
   }
 };
@@ -36,8 +36,8 @@ export function SystemStatus({ systemHealth }: SystemStatusProps) {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Activity className={`h-6 w-6 ${
-              systemHealth.status === 'healthy' ? 'text-green-600' :
-              systemHealth.status === 'degraded' ? 'text-yellow-600' : 'text-red-600'
+              systemHealth.status === 'healthy' ? 'text-green-600 dark:text-green-300' :
+              systemHealth.status === 'degraded' ? 'text-yellow-600 dark:text-yellow-300' : 'text-red-600 dark:text-red-300'
             }`} />
             <CardTitle>Status do Sistema</CardTitle>
           </div>

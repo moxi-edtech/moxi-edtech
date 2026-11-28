@@ -89,9 +89,9 @@ export function InfraTab({
     : 0;
 
   const tone =
-    dbUsagePct >= 100 ? 'text-red-700' :
-    dbUsagePct >= 90 ? 'text-amber-700' :
-    'text-green-700';
+    dbUsagePct >= 100 ? 'text-red-700 dark:text-red-300' :
+    dbUsagePct >= 90 ? 'text-amber-700 dark:text-amber-300' :
+    'text-green-700 dark:text-green-300';
 
   async function loadMaintenanceWindow() {
     try {
@@ -425,7 +425,7 @@ export function InfraTab({
               onChange={(e) => setMaintenanceForm((current) => ({ ...current, title: e.target.value }))}
               placeholder="Ex: Manutenção programada"
             />
-            <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+            <div className="rounded-lg border border-amber-200 dark:border-amber-900/60 bg-amber-50 dark:bg-amber-950/30 px-4 py-3 text-sm text-amber-900 dark:text-amber-200">
               VACUUM FULL só executa dentro de uma janela activa com aviso global.
             </div>
             <div className="md:col-span-2">
@@ -434,7 +434,7 @@ export function InfraTab({
                 value={maintenanceForm.message}
                 onChange={(e) => setMaintenanceForm((current) => ({ ...current, message: e.target.value }))}
                 rows={3}
-                className="w-full rounded-lg border border-border p-3 transition-colors duration-200 focus:border-teal-500 focus:ring-teal-500"
+                className="w-full rounded-lg border border-border p-3 transition-colors duration-200 focus:border-teal-50 dark:focus:border-teal-900/600 focus:ring-teal-500"
                 placeholder="Manutenção em andamento. Alguns serviços podem ficar comprometidos durante esta janela."
               />
             </div>
@@ -483,8 +483,8 @@ export function InfraTab({
                   <span className="font-semibold text-foreground">{maintenanceWindow.title}</span>
                   <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${
                     maintenanceWindow.phase === 'active'
-                      ? 'bg-rose-100 text-rose-700'
-                      : 'bg-sky-100 text-sky-700'
+                      ? 'bg-rose-100 dark:bg-rose-950/30 text-rose-700 dark:text-rose-300'
+                      : 'bg-sky-100 dark:bg-sky-950/30 text-sky-700 dark:text-sky-300'
                   }`}>
                     {maintenanceWindow.phase === 'active' ? 'Activa' : 'Agendada'}
                   </span>
@@ -570,7 +570,7 @@ export function InfraTab({
                 <span className="text-muted-foreground">public.audit_logs</span>
                 <span className="font-semibold text-foreground">{infraMetrics.audit_logs_mb.toFixed(1)} MB</span>
               </div>
-              <div className="rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800">
+              <div className="rounded-lg bg-amber-50 dark:bg-amber-950/30 px-3 py-2 text-xs text-amber-800 dark:text-amber-200">
                 O maior risco atual é retenção excessiva de cron e logs, não dados académicos.
               </div>
             </div>
@@ -613,7 +613,7 @@ export function InfraTab({
                 <div className="rounded-lg bg-muted p-3">
                   <div className="text-muted-foreground">Runs de cron</div>
                   <div className="mt-1 text-xl font-semibold text-foreground">{infraMetrics.cron_runs_total.toLocaleString('pt-AO')}</div>
-                  <div className="text-xs text-rose-700">{infraMetrics.cron_failed_total.toLocaleString('pt-AO')} falhas</div>
+                  <div className="text-xs text-rose-700 dark:text-rose-300">{infraMetrics.cron_failed_total.toLocaleString('pt-AO')} falhas</div>
                 </div>
                 <div className="rounded-lg bg-muted p-3">
                   <div className="text-muted-foreground">Audit logs</div>
@@ -681,9 +681,9 @@ export function InfraTab({
               </div>
             </div>
 
-            <div className="rounded-xl border border-amber-200 bg-amber-50 p-4">
-              <div className="text-sm font-semibold text-amber-900">Fase 3 · Só se o tamanho continuar alto</div>
-              <div className="mt-2 text-sm text-amber-800">
+            <div className="rounded-xl border border-amber-200 dark:border-amber-900/60 bg-amber-50 dark:bg-amber-950/30 p-4">
+              <div className="text-sm font-semibold text-amber-900 dark:text-amber-200">Fase 3 · Só se o tamanho continuar alto</div>
+              <div className="mt-2 text-sm text-amber-800 dark:text-amber-200">
                 Avaliar <span className="font-mono">VACUUM FULL</span> e eventualmente <span className="font-mono">REINDEX</span> para <span className="font-mono">cron.job_run_details</span> e depois <span className="font-mono">public.audit_logs</span>. Isso exige janela de manutenção porque pode bloquear tabela.
               </div>
             </div>

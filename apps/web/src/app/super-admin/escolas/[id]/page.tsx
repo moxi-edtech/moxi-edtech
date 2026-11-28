@@ -42,7 +42,7 @@ export default function EscolaMonitoramentoPage() {
     return (
       <div className="min-h-[240px] flex items-center justify-center">
         <div className="text-center">
-          <Alert variant="destructive" className="max-w-md mx-auto bg-red-900/20 border-red-900 text-red-200">
+          <Alert variant="destructive" className="max-w-md mx-auto bg-destructive/10 border-destructive/40 text-foreground">
             <XCircle className="h-4 w-4" />
             <AlertTitle>Escola não encontrada</AlertTitle>
             <AlertDescription>

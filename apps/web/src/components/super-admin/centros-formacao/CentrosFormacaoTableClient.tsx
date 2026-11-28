@@ -61,7 +61,7 @@ function getSubscriptionBadge(item: CentroItem) {
   if (expired) {
     return {
       label: "Expirado",
-      className: "border-rose-200 bg-rose-50 text-rose-700",
+      className: "border-rose-200 dark:border-rose-900/60 bg-rose-50 dark:bg-rose-950/30 text-rose-700 dark:text-rose-300",
     };
   }
 
@@ -74,14 +74,14 @@ function getSubscriptionBadge(item: CentroItem) {
           : `Trial (${daysLeft} dia${daysLeft === 1 ? "" : "s"} restantes)`;
     return {
       label,
-      className: daysLeft !== null && daysLeft <= 2 ? "border-amber-200 bg-amber-50 text-amber-800" : "border-yellow-200 bg-yellow-50 text-yellow-800",
+      className: daysLeft !== null && daysLeft <= 2 ? "border-amber-200 dark:border-amber-900/60 bg-amber-50 dark:bg-amber-950/30 text-amber-800 dark:text-amber-200" : "border-yellow-200 dark:border-yellow-900/60 bg-yellow-50 dark:bg-yellow-950/30 text-yellow-800 dark:text-yellow-200",
     };
   }
 
   if (status === "active" || status === "lifetime") {
     return {
       label: status === "lifetime" ? "Lifetime" : "Activo",
-      className: "border-emerald-200 bg-emerald-50 text-emerald-700",
+      className: "border-emerald-200 dark:border-emerald-900/60 bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-300",
     };
   }
 
@@ -278,14 +278,14 @@ export default function CentrosFormacaoTableClient() {
           Trials a Expirar 48h ({trialStats.expiring})
         </FilterButton>
         {trialStats.expired > 0 ? (
-          <span className="rounded-full border border-rose-200 bg-rose-50 px-3 py-1.5 text-xs font-semibold text-rose-700">
+          <span className="rounded-full border border-rose-200 dark:border-rose-900/60 bg-rose-50 dark:bg-rose-950/30 px-3 py-1.5 text-xs font-semibold text-rose-700 dark:text-rose-300">
             {trialStats.expired} expirado{trialStats.expired === 1 ? "" : "s"}
           </span>
         ) : null}
       </div>
 
       {error ? (
-        <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+        <div className="rounded-xl border border-rose-200 dark:border-rose-900/60 bg-rose-50 dark:bg-rose-950/30 px-4 py-3 text-sm text-rose-700 dark:text-rose-300">
           {error}
         </div>
       ) : null}
@@ -393,7 +393,7 @@ export default function CentrosFormacaoTableClient() {
           </div>
 
           {teamError ? (
-            <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+            <div className="rounded-xl border border-rose-200 dark:border-rose-900/60 bg-rose-50 dark:bg-rose-950/30 px-4 py-3 text-sm text-rose-700 dark:text-rose-300">
               {teamError}
             </div>
           ) : null}
