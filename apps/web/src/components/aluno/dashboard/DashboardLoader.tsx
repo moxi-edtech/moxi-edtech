@@ -88,6 +88,7 @@ export default function DashboardLoader() {
     const controller = new AbortController();
     const load = async () => {
       const background = lastLoadedScope.current === drawerScope;
+      setRefreshing(true);
       if (!background) { setLoading(true); setScreen(null); }
       setError(null);
       try {
