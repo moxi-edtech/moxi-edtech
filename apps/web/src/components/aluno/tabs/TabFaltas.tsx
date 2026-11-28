@@ -112,7 +112,7 @@ export function TabFaltas() {
   };
 
   return (
-    <PortalPullToRefresh onRefresh={() => { setLoading(true); setRetry(value => value + 1); }} busy={loading} disabled={detailOpen || sending || Boolean(reason.trim())} role="region" className="space-y-6" aria-labelledby="aluno-faltas-heading" data-testid="aluno-faltas">
+    <PortalPullToRefresh as="section" onRefresh={() => { setLoading(true); setRetry(value => value + 1); }} busy={loading} disabled={detailOpen || sending || Boolean(reason.trim())} className="space-y-6" aria-labelledby="aluno-faltas-heading" data-testid="aluno-faltas">
       <header className="space-y-1">
         <h2 id="aluno-faltas-heading" className="text-xl font-semibold text-foreground">As minhas faltas</h2>
         {safeData?.context?.anoLetivoLabel && <p className="text-xs text-muted-foreground">Ano letivo {safeData.context.anoLetivoLabel}</p>}
