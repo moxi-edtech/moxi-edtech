@@ -1,4 +1,6 @@
 "use client";
+import { PortalPullToRefresh } from "@/components/portal/ui/PortalPullToRefresh";
+
 
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
@@ -70,6 +72,7 @@ export function TabNotas({ embedded = false, onOpenDocuments }: { embedded?: boo
   const [paymentBusy, setPaymentBusy] = useState(false);
   const [paymentError, setPaymentError] = useState<string | null>(null);
   const [refreshVersion, setRefreshVersion] = useState(0);
+  const [curriculumRefresh, setCurriculumRefresh] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
   const [downloading, setDownloading] = useState(false);
   const [downloadError, setDownloadError] = useState<string | null>(null);
@@ -342,7 +345,7 @@ export function TabNotas({ embedded = false, onOpenDocuments }: { embedded?: boo
       }
     })();
     return () => { active = false; controller.abort(); };
-  }, [bulletinQuery]);
+  }, [bulletinQuery, curriculumRefresh]);
 
   // Fail closed synchronously on student/year change, before effects clear prior state.
   const safeIsLiberado = loadedScope === bulletinQuery && isLiberado;
@@ -417,7 +420,7 @@ export function TabNotas({ embedded = false, onOpenDocuments }: { embedded?: boo
   };
   const focus = "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2";
   return (
-    <div className={embedded ? "mx-auto min-w-0 max-w-4xl space-y-5 pb-3 text-foreground" : "mx-auto min-w-0 max-w-4xl space-y-6 pb-6 text-foreground"} data-testid="aluno-pauta-editorial">
+    <PortalPullToRefresh onRefresh={() => { setRefreshing(true); setCurriculumLoading(true); setRefreshVersion(value => value + 1); setCurriculumRefresh(value => value + 1); }} busy={loading || refreshing || curriculumLoading} disabled={paymentOpen || paymentBusy || downloading || Boolean(reapreciacaoDisc || melhoriaDisc) || reapreciacaoSaving || melhoriaSaving} className={embedded ? "mx-auto min-w-0 max-w-4xl space-y-5 pb-3 text-foreground" : "mx-auto min-w-0 max-w-4xl space-y-6 pb-6 text-foreground"} data-testid="aluno-pauta-editorial">
       {!embedded && <header className="space-y-3">
         <p className="text-sm font-medium text-primary">KLASSE / Portal do aluno</p>
         <h1 className="text-2xl font-semibold tracking-tight text-primary sm:text-3xl">As tuas notas</h1>
@@ -560,6 +563,6 @@ export function TabNotas({ embedded = false, onOpenDocuments }: { embedded?: boo
             </div>
         </AcademicRequestPanel>
       )}
-    </div>
+    </PortalPullToRefresh>
   );
 }
