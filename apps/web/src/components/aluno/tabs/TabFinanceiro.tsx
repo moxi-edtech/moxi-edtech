@@ -1,4 +1,6 @@
 "use client";
+import { PortalPullToRefresh } from "@/components/portal/ui/PortalPullToRefresh";
+
 
 import { useContext, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
@@ -225,7 +227,7 @@ function FinanceiroScope({ studentId, onOpenDocuments }: { studentId: string | n
   };
 
   return (
-    <div className="space-y-6">
+    <PortalPullToRefresh onRefresh={() => refresh()} busy={loading || refreshing} disabled={filterOpen || detailOpen || paymentOpen || paymentLock.current} className="space-y-6">
       <div hidden={Boolean(navigation && paymentOpen)} className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-2">
         {!navigation && <h1 className="text-2xl font-semibold tracking-tight text-primary">Financeiro</h1>}
@@ -473,6 +475,6 @@ function FinanceiroScope({ studentId, onOpenDocuments }: { studentId: string | n
         onUploaded={(ids) => { paymentLock.current = false; refreshAfterPayment(); setRows((prev) => prev.map((r) => (ids.includes(r.id) ? { ...r, status: "em_verificacao" } : r))); setSelectedIds(prev => prev.filter(id => !ids.includes(id))); }}
         studentId={studentId}
       />
-    </div>
+    </PortalPullToRefresh>
   );
 }
