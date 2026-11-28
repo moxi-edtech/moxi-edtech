@@ -81,10 +81,12 @@ function ModalPortalSheet({ open, onClose, title, description, size = "medium", 
     preference.addEventListener("change", changed);
     return () => { window.clearTimeout(fallback); preference.removeEventListener("change", changed); };
   }, [open, retained]);
+  const dismissGesture = useRef<{ id: number; x: number; y: number } | null>(null);
   const previousNavigation = useRef({ open, navigationKey });
   useLayoutEffect(() => {
     const previous = previousNavigation.current;
     previousNavigation.current = { open, navigationKey };
+    dismissGesture.current = null;
     if (open && previous.open && navigationKey && previous.navigationKey !== navigationKey) header.current?.focus({ preventScroll: true });
   }, [open, navigationKey]);
   const requestClose = () => {
@@ -127,7 +129,28 @@ function ModalPortalSheet({ open, onClose, title, description, size = "medium", 
         }}
         onFocusOutside={event => { event.preventDefault(); if (busy || closing) header.current?.focus({ preventScroll: true }); }}
         onInteractOutside={event => { if (busy || closing) event.preventDefault(); }}>
-        <header className="shrink-0 border-b border-border px-4 pb-3 pt-3">
+        <header data-portal-dismiss-handle="true" className="shrink-0 border-b border-border px-4 pb-3 pt-3 touch-pan-x md:touch-auto"
+          onPointerDown={event => {
+            dismissGesture.current = null;
+            if (!open || busy || closing || event.pointerType !== "touch" || !event.isPrimary ||
+                !window.matchMedia("(pointer: coarse) and (max-width: 767px)").matches ||
+                (event.target instanceof Element && event.target.closest("button, a, input, textarea, select"))) return;
+            dismissGesture.current = { id: event.pointerId, x: event.clientX, y: event.clientY };
+          }}
+          onPointerMove={event => {
+            const gesture = dismissGesture.current;
+            if (!gesture || gesture.id !== event.pointerId) return;
+            const dx = event.clientX - gesture.x, dy = event.clientY - gesture.y;
+            if (dy < -8 || Math.abs(dx) > Math.max(12, dy)) dismissGesture.current = null;
+          }}
+          onPointerCancel={() => { dismissGesture.current = null; }}
+          onPointerUp={event => {
+            const gesture = dismissGesture.current;
+            dismissGesture.current = null;
+            if (!gesture || gesture.id !== event.pointerId) return;
+            const dx = event.clientX - gesture.x, dy = event.clientY - gesture.y;
+            if (dy >= 72 && dy > Math.abs(dx) * 1.5) requestClose();
+          }}>
           <div aria-hidden="true" className={`mx-auto mb-3 h-1 w-8 rounded-full bg-muted-foreground/30 ${desktopPresentation === "centered" ? "md:hidden" : navigationKey ? "lg:hidden" : ""}`} />
           <div className="flex items-start justify-between gap-3">
             {onBack && <button type="button" onClick={onBack} aria-label="Voltar" disabled={busy || closing} className="klasse-portal-press flex min-h-11 min-w-11 shrink-0 items-center justify-center gap-1 rounded-xl px-2 text-sm font-semibold text-primary focus-visible:ring-2 focus-visible:ring-ring"><ArrowLeft size={18} aria-hidden="true" /><span className="sr-only sm:not-sr-only">Voltar</span></button>}
