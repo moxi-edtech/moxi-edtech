@@ -44,12 +44,12 @@ function EmailPreviewClient() {
   const meta = data?.meta
 
   return (
-    <div className="max-w-5xl mx-auto p-6 space-y-6">
+    <div className="min-w-0 space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">Preview de E-mail • Onboarding</h1>
       </div>
 
-      <div className="bg-white rounded-lg shadow p-4 space-y-4">
+      <div className="bg-card rounded-lg shadow p-4 space-y-4">
         <div className="grid sm:grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium mb-1">Escola ID *</label>
@@ -82,18 +82,18 @@ function EmailPreviewClient() {
             </a>
           )}
         </div>
-        {err && <div className="text-red-600">Erro: {err}</div>}
+        {err && <div className="text-red-600 dark:text-red-300">Erro: {err}</div>}
       </div>
 
       {data?.ok && (
         <div className="grid md:grid-cols-2 gap-4">
-          <div className="bg-white rounded-lg shadow p-4 space-y-3">
+          <div className="bg-card rounded-lg shadow p-4 space-y-3">
             <div className="font-semibold">Subject</div>
             <div className="font-mono text-sm break-words">{subject}</div>
             <div className="font-semibold">Texto</div>
-            <pre className="text-xs bg-slate-50 rounded p-3 overflow-auto max-h-96 whitespace-pre-wrap">{text}</pre>
+            <pre className="text-xs bg-muted rounded p-3 overflow-auto max-h-96 whitespace-pre-wrap">{text}</pre>
           </div>
-          <div className="bg-white rounded-lg shadow p-4 space-y-3">
+          <div className="bg-card rounded-lg shadow p-4 space-y-3">
             <div className="font-semibold">HTML</div>
             <div className="border rounded overflow-hidden">
               <iframe title="preview" className="w-full h-96" sandbox="allow-same-origin" srcDoc={html}></iframe>

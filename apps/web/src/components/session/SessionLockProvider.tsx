@@ -56,6 +56,8 @@ export default function SessionLockProvider({ children }: { children: ReactNode 
   const [busy, setBusy] = useState(false);
   const [showConfig, setShowConfig] = useState(false);
   const lastActivityRef = useRef(Date.now());
+  const presenceAttemptRef = useRef<{ userId: string; time: number } | null>(null);
+  const presenceInFlightRef = useRef(false);
   const excluded = isLockExcludedPath(pathname);
 
   const autoLockMs = useMemo(() => {
@@ -196,6 +198,24 @@ export default function SessionLockProvider({ children }: { children: ReactNode 
       if (locked) return;
       const now = Date.now();
       lastActivityRef.current = now;
+      // Reuse the existing activity listener; no heartbeat timer or Realtime channel.
+      if (document.visibilityState === "visible" && !presenceInFlightRef.current) {
+        const key = `klasse:presence:v1:${user.id}`;
+        let last = presenceAttemptRef.current?.userId === user.id ? presenceAttemptRef.current.time : 0;
+        if (now - last >= 120_000) {
+          try { last = Math.max(last, Number(localStorage.getItem(key)) || 0); } catch {}
+          if (now - last < 120_000) presenceAttemptRef.current = { userId: user.id, time: last };
+        }
+        if (now - last >= 120_000) {
+          presenceAttemptRef.current = { userId: user.id, time: now };
+          try { localStorage.setItem(key, String(now)); } catch {}
+          presenceInFlightRef.current = true;
+          void (async () => {
+            try { await supabase.rpc("klasse_touch_presence"); } catch { /* telemetry must not block work */ }
+            finally { presenceInFlightRef.current = false; }
+          })();
+        }
+      }
       try {
         localStorage.setItem(LAST_ACTIVITY_KEY, String(now));
       } catch {}
@@ -218,7 +238,7 @@ export default function SessionLockProvider({ children }: { children: ReactNode 
       ACTIVITY_EVENTS.forEach((eventName) => window.removeEventListener(eventName, markActivity));
       window.clearInterval(interval);
     };
-  }, [excluded, lock, locked, user, autoLockMs]);
+  }, [excluded, lock, locked, user, autoLockMs, supabase]);
 
   async function handleUnlock(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();

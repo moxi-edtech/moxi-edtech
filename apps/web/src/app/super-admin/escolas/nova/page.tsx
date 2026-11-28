@@ -1,5 +1,6 @@
 "use client";
 
+import { useSuperAdminWorkspace, useWorkspaceNavigate, useWorkspaceGuard } from "@/components/super-admin/workspace-navigation";
 import React, { useState, useEffect, useCallback, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/Button";
@@ -43,7 +44,7 @@ export default function NovaEscolaPage() {
     <Suspense fallback={
       <div className="flex flex-col items-center justify-center min-h-[400px] gap-4">
         <Loader2 className="w-8 h-8 animate-spin text-emerald" />
-        <p className="text-sm font-bold text-slate-500 uppercase tracking-widest">A carregar formulário...</p>
+        <p className="text-sm font-bold text-muted-foreground uppercase tracking-widest">A carregar formulário...</p>
       </div>
     }>
       <NovaEscolaContent />
@@ -55,7 +56,7 @@ function NovaEscolaContent() {
   return (
     <>
       <AuditPageView portal="super_admin" acao="PAGE_VIEW" entity="escola_create" />
-      <div className="bg-slate-50 p-6">
+      <div className="min-w-0">
         <CriarEscolaForm />
       </div>
     </>
@@ -65,6 +66,8 @@ function NovaEscolaContent() {
 function CriarEscolaForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const workspace = useSuperAdminWorkspace();
+  const navigate = useWorkspaceNavigate();
   const supabase = createClient();
 
   const [formData, setFormData] = useState({
@@ -86,6 +89,7 @@ function CriarEscolaForm() {
   const [msg, setMsg] = useState<null | { type: "ok" | "err"; text: string }>(null);
   const [creationResult, setCreationResult] = useState<any>(null);
   const [currentStep, setCurrentStep] = useState(1);
+  useWorkspaceGuard("new-school", loading, !creationResult && (currentStep > 1 || Boolean(formData.nome.trim())));
 
   // Carregar pedidos de onboarding pendentes para o Pre-fill
   useEffect(() => {
@@ -169,6 +173,7 @@ function CriarEscolaForm() {
       }
 
       setCreationResult(data);
+      workspace?.markChanged();
       setMsg({
         type: "ok",
         text: `Escola "${formData.nome}" criada com sucesso!`,
@@ -185,17 +190,17 @@ function CriarEscolaForm() {
   const isNifValid = formData.nif.length === 0 || formData.nif.length === 9;
 
   return (
-    <div className="max-w-3xl mx-auto space-y-8 animate-klasse-fade-up">
+    <div className="min-w-0 space-y-8 animate-klasse-fade-up">
       
       {/* Header */}
       <div className="text-center space-y-3">
         <div className="inline-flex items-center justify-center w-16 h-16 bg-emerald rounded-3xl shadow-xl shadow-emerald/20 mb-2">
           <Building2 className="w-8 h-8 text-white" />
         </div>
-        <h1 className="text-3xl font-black text-slate-900 tracking-tight font-sora">
+        <h1 className="text-3xl font-black text-foreground tracking-tight font-sora">
           Criar Nova Escola
         </h1>
-        <p className="text-slate-500 font-medium max-w-md mx-auto">
+        <p className="text-muted-foreground font-medium max-w-md mx-auto">
           Configure uma nova instância dedicada para a instituição e seu administrador principal.
         </p>
       </div>
@@ -209,20 +214,20 @@ function CriarEscolaForm() {
                 step === currentStep
                   ? "bg-emerald text-white border-emerald shadow-lg shadow-emerald/20"
                   : step < currentStep
-                  ? "bg-emerald-500 text-white border-emerald-500"
-                  : "bg-white text-slate-300 border-slate-100"
+                  ? "bg-emerald-50 dark:bg-emerald-950/300 text-white border-emerald-50 dark:border-emerald-900/600"
+                  : "bg-card text-muted-foreground border-border"
               }`}
             >
               {step < currentStep ? <CheckCircle2 size={20} /> : step}
             </div>
-            <span className={`text-[10px] mt-2 font-black uppercase tracking-widest ${step === currentStep ? "text-emerald" : "text-slate-400"}`}>
+            <span className={`text-[10px] mt-2 font-black uppercase tracking-widest ${step === currentStep ? "text-emerald" : "text-muted-foreground"}`}>
               {step === 1 && "Instituição"}
               {step === 2 && "Administrador"}
               {step === 3 && "Sucesso"}
             </span>
           </div>
         ))}
-        <div className="absolute top-5 left-0 right-0 h-0.5 bg-slate-100 -z-0" />
+        <div className="absolute top-5 left-0 right-0 h-0.5 bg-muted -z-0" />
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
@@ -232,13 +237,13 @@ function CriarEscolaForm() {
           <div className="space-y-6 animate-klasse-fade-up">
             
             {/* Pre-fill Selector */}
-            <div className="bg-amber-50 border border-amber-100 rounded-3xl p-6 space-y-4">
+            <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-100 dark:border-amber-900/60 rounded-3xl p-6 space-y-4">
               <div className="flex items-center gap-3">
-                <div className="p-2 bg-amber-100 rounded-xl text-amber-700">
+                <div className="p-2 bg-amber-100 dark:bg-amber-950/30 rounded-xl text-amber-700 dark:text-amber-300">
                   <Sparkles size={18} />
                 </div>
                 <div>
-                  <h3 className="text-sm font-bold text-amber-900">Preencher via Onboarding</h3>
+                  <h3 className="text-sm font-bold text-amber-900 dark:text-amber-200">Preencher via Onboarding</h3>
                   <p className="text-xs text-amber-700/70 font-medium">Use dados já submetidos por uma escola.</p>
                 </div>
               </div>
@@ -246,7 +251,7 @@ function CriarEscolaForm() {
                 value={selectedOnboardingId}
                 onChange={(e) => handlePreFill(e.target.value)}
                 disabled={loadingOnboarding}
-                className="w-full bg-white border-amber-200 rounded-xl text-sm font-bold text-slate-700 focus:ring-amber-500 focus:border-amber-500"
+                className="w-full bg-card border-amber-200 dark:border-amber-900/60 rounded-xl text-sm font-bold text-foreground focus:ring-amber-500 focus:border-amber-50 dark:focus:border-amber-900/600"
               >
                 <option value="">Seleccionar pedido pendente...</option>
                 {onboardingRequests.map(r => (
@@ -255,8 +260,8 @@ function CriarEscolaForm() {
               </select>
             </div>
 
-            <Card className="rounded-3xl border-slate-200 shadow-sm overflow-hidden">
-              <CardHeader className="bg-slate-50/50 border-b border-slate-100">
+            <Card className="rounded-3xl border-border shadow-sm overflow-hidden">
+              <CardHeader className="bg-muted/50 border-b border-border">
                 <CardTitle className="text-lg font-bold flex items-center gap-2">
                   <Layout size={18} className="text-emerald" /> Informações da Escola
                 </CardTitle>
@@ -264,9 +269,9 @@ function CriarEscolaForm() {
               <CardContent className="p-6 space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-1.5">
-                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest px-1">Nome da Escola *</label>
+                    <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest px-1">Nome da Escola *</label>
                     <input
-                      className="w-full border border-slate-200 rounded-xl p-3 text-sm focus:ring-4 focus:ring-emerald/5 focus:border-emerald outline-none transition-all"
+                      className="w-full border border-border rounded-xl p-3 text-sm focus:ring-4 focus:ring-emerald/5 focus:border-emerald outline-none transition-all"
                       placeholder="Ex: Colégio Horizonte"
                       value={formData.nome}
                       onChange={(e) => handleInputChange('nome', e.target.value)}
@@ -274,9 +279,9 @@ function CriarEscolaForm() {
                     />
                   </div>
                   <div className="space-y-1.5">
-                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest px-1">NIF *</label>
+                    <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest px-1">NIF *</label>
                     <input
-                      className={`w-full border rounded-xl p-3 text-sm focus:ring-4 focus:ring-emerald/5 outline-none transition-all ${!isNifValid ? 'border-rose-300' : 'border-slate-200 focus:border-emerald'}`}
+                      className={`w-full border rounded-xl p-3 text-sm focus:ring-4 focus:ring-emerald/5 outline-none transition-all ${!isNifValid ? 'border-rose-300 dark:border-rose-900/60' : 'border-border focus:border-emerald'}`}
                       placeholder="9 dígitos"
                       value={formData.nif}
                       onChange={(e) => handleInputChange('nif', e.target.value.replace(/\D/g, '').slice(0, 9))}
@@ -287,9 +292,9 @@ function CriarEscolaForm() {
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest px-1">Endereço</label>
+                  <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest px-1">Endereço</label>
                   <input
-                    className="w-full border border-slate-200 rounded-xl p-3 text-sm focus:ring-4 focus:ring-emerald/5 focus:border-emerald outline-none transition-all"
+                    className="w-full border border-border rounded-xl p-3 text-sm focus:ring-4 focus:ring-emerald/5 focus:border-emerald outline-none transition-all"
                     placeholder="Ex: Luanda, Viana..."
                     value={formData.endereco}
                     onChange={(e) => handleInputChange('endereco', e.target.value)}
@@ -297,9 +302,9 @@ function CriarEscolaForm() {
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest px-1">Plano Base</label>
+                  <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest px-1">Plano Base</label>
                   <select
-                    className="w-full border border-slate-200 rounded-xl p-3 text-sm focus:ring-4 focus:ring-emerald/5 focus:border-emerald outline-none transition-all appearance-none bg-white"
+                    className="w-full border border-border rounded-xl p-3 text-sm focus:ring-4 focus:ring-emerald/5 focus:border-emerald outline-none transition-all appearance-none bg-card"
                     value={formData.plano}
                     onChange={(e) => handleInputChange("plano", e.target.value)}
                   >
@@ -327,22 +332,22 @@ function CriarEscolaForm() {
         {/* Step 2: Administrator Information */}
         {currentStep === 2 && (
           <div className="space-y-6 animate-klasse-fade-up">
-            <Card className="rounded-3xl border-slate-200 shadow-sm overflow-hidden">
-              <CardHeader className="bg-slate-50/50 border-b border-slate-100">
+            <Card className="rounded-3xl border-border shadow-sm overflow-hidden">
+              <CardHeader className="bg-muted/50 border-b border-border">
                 <CardTitle className="text-lg font-bold flex items-center gap-2">
                   <UserPlus size={18} className="text-amber" /> Administrador Principal
                 </CardTitle>
               </CardHeader>
               <CardContent className="p-6 space-y-4">
-                <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4 flex gap-3 text-slate-800 text-xs font-medium leading-relaxed">
+                <div className="bg-muted border border-border rounded-2xl p-4 flex gap-3 text-foreground text-xs font-medium leading-relaxed">
                   <Info size={16} className="shrink-0" />
                   Este utilizador terá acesso total e será responsável por configurar a escola.
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest px-1">Nome Completo *</label>
+                  <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest px-1">Nome Completo *</label>
                   <input
-                    className="w-full border border-slate-200 rounded-xl p-3 text-sm focus:ring-4 focus:ring-emerald/5 focus:border-emerald outline-none transition-all"
+                    className="w-full border border-border rounded-xl p-3 text-sm focus:ring-4 focus:ring-emerald/5 focus:border-emerald outline-none transition-all"
                     placeholder="Nome do gestor principal"
                     value={formData.adminNome}
                     onChange={(e) => handleInputChange('adminNome', e.target.value)}
@@ -352,10 +357,10 @@ function CriarEscolaForm() {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-1.5">
-                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest px-1">Email do Administrador *</label>
+                    <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest px-1">Email do Administrador *</label>
                     <input
                       type="email"
-                      className="w-full border border-slate-200 rounded-xl p-3 text-sm focus:ring-4 focus:ring-emerald/5 focus:border-emerald outline-none transition-all"
+                      className="w-full border border-border rounded-xl p-3 text-sm focus:ring-4 focus:ring-emerald/5 focus:border-emerald outline-none transition-all"
                       placeholder="email@escola.com"
                       value={formData.adminEmail}
                       onChange={(e) => handleInputChange('adminEmail', e.target.value)}
@@ -363,9 +368,9 @@ function CriarEscolaForm() {
                     />
                   </div>
                   <div className="space-y-1.5">
-                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest px-1">Telefone do Administrador</label>
+                    <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest px-1">Telefone do Administrador</label>
                     <input
-                      className="w-full border border-slate-200 rounded-xl p-3 text-sm focus:ring-4 focus:ring-emerald/5 focus:border-emerald outline-none transition-all"
+                      className="w-full border border-border rounded-xl p-3 text-sm focus:ring-4 focus:ring-emerald/5 focus:border-emerald outline-none transition-all"
                       placeholder="9XXXXXXXX"
                       value={formData.adminTelefone}
                       onChange={(e) => handleInputChange('adminTelefone', e.target.value.replace(/\D/g, ''))}
@@ -375,9 +380,9 @@ function CriarEscolaForm() {
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest px-1">Papel Inicial</label>
+                  <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest px-1">Papel Inicial</label>
                   <select
-                    className="w-full border border-slate-200 rounded-xl p-3 text-sm focus:ring-4 focus:ring-emerald/5 focus:border-emerald outline-none transition-all appearance-none bg-white"
+                    className="w-full border border-border rounded-xl p-3 text-sm focus:ring-4 focus:ring-emerald/5 focus:border-emerald outline-none transition-all appearance-none bg-card"
                     value={formData.adminPapel}
                     onChange={(e) => handleInputChange('adminPapel', e.target.value)}
                   >
@@ -390,7 +395,7 @@ function CriarEscolaForm() {
             </Card>
 
             <div className="flex items-center justify-between">
-              <Button type="button" variant="outline" onClick={() => setCurrentStep(1)} className="rounded-xl font-bold border-slate-200">
+              <Button type="button" variant="outline" onClick={() => setCurrentStep(1)} className="rounded-xl font-bold border-border">
                 <ArrowLeft size={16} className="mr-2" /> Voltar
               </Button>
               <Button 
@@ -408,25 +413,25 @@ function CriarEscolaForm() {
         {/* Step 3: Success Confirmation */}
         {currentStep === 3 && creationResult && (
           <div className="space-y-6 animate-klasse-fade-up">
-            <div className="bg-emerald-50 border-2 border-emerald-100 rounded-[2rem] p-8 text-center space-y-4">
+            <div className="bg-emerald-50 dark:bg-emerald-950/30 border-2 border-emerald-100 dark:border-emerald-900/60 rounded-[2rem] p-8 text-center space-y-4">
               <div className="w-20 h-20 bg-emerald-500 rounded-full flex items-center justify-center mx-auto shadow-xl shadow-emerald-200">
                 <CheckCircle2 size={40} className="text-white" />
               </div>
-              <h2 className="text-2xl font-black text-emerald-900 font-sora">Escola Criada!</h2>
-              <p className="text-emerald-700 font-medium">O ambiente para <strong className="text-emerald-900">{formData.nome}</strong> está pronto.</p>
+              <h2 className="text-2xl font-black text-emerald-900 dark:text-emerald-200 font-sora">Escola Criada!</h2>
+              <p className="text-emerald-700 dark:text-emerald-300 font-medium">O ambiente para <strong className="text-emerald-900 dark:text-emerald-200">{formData.nome}</strong> está pronto.</p>
             </div>
 
-            <Card className="rounded-3xl border-slate-200 shadow-xl overflow-hidden bg-white">
+            <Card className="rounded-3xl border-border shadow-xl overflow-hidden bg-card">
               <CardContent className="p-8 space-y-6">
                 <div>
-                  <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4">Credenciais do Administrador</h4>
-                  <div className="grid md:grid-cols-2 gap-6 bg-slate-50 p-6 rounded-2xl border border-slate-100">
+                  <h4 className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-4">Credenciais do Administrador</h4>
+                  <div className="grid md:grid-cols-2 gap-6 bg-muted p-6 rounded-2xl border border-border">
                     <div className="space-y-1">
-                      <p className="text-[10px] font-bold text-slate-400 uppercase">Utilizador / Email</p>
-                      <p className="font-bold text-slate-900 break-all">{creationResult.adminEmail}</p>
+                      <p className="text-[10px] font-bold text-muted-foreground uppercase">Utilizador / Email</p>
+                      <p className="font-bold text-foreground break-all">{creationResult.adminEmail}</p>
                     </div>
                     <div className="space-y-1">
-                      <p className="text-[10px] font-bold text-slate-400 uppercase">Senha Temporária</p>
+                      <p className="text-[10px] font-bold text-muted-foreground uppercase">Senha Temporária</p>
                       <p className="font-mono font-black text-emerald text-lg tracking-wider">
                         {creationResult.adminPassword || "Já existente"}
                       </p>
@@ -443,8 +448,8 @@ function CriarEscolaForm() {
                   </Button>
                   <Button
                     variant="outline"
-                    className="flex-1 border-slate-200 rounded-xl font-bold text-slate-600 py-6"
-                    onClick={() => router.push('/super-admin/escolas')}
+                    className="flex-1 border-border rounded-xl font-bold text-muted-foreground py-6"
+                    onClick={() => navigate('/super-admin/escolas')}
                   >
                     Voltar p/ Lista
                   </Button>

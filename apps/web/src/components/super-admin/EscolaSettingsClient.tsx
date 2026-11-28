@@ -1,5 +1,6 @@
 "use client"
 
+import { useSuperAdminWorkspace, useWorkspaceGuard } from "@/components/super-admin/workspace-navigation";
 import { useState } from "react"
 import { Button } from "@/components/ui/Button"
 import { PLAN_NAMES, type PlanTier } from "@/config/plans"
@@ -15,6 +16,9 @@ export default function EscolaSettingsClient({ escolaId, initialAlunoPortalEnabl
   const [plano, setPlano] = useState<PlanTier>(initialPlano)
   const [saving, setSaving] = useState(false)
   const [msg, setMsg] = useState('')
+  const workspace = useSuperAdminWorkspace()
+  const [saved, setSaved] = useState({ plano: initialPlano, enabled: initialAlunoPortalEnabled })
+  useWorkspaceGuard('school-settings', saving, plano !== saved.plano || alunoPortalEnabled !== saved.enabled)
 
   return (
     <section className="rounded-xl border border-border bg-card p-4 text-foreground shadow-sm">
@@ -47,6 +51,7 @@ export default function EscolaSettingsClient({ escolaId, initialAlunoPortalEnabl
             const res = await fetch(`/api/super-admin/escolas/${escolaId}/update`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ aluno_portal_enabled: alunoPortalEnabled, plano }) })
             const data = await res.json(); if (!res.ok) throw new Error(data?.error || 'Falha ao salvar')
             setMsg('Configurações salvas com sucesso.')
+            setSaved({ plano, enabled: alunoPortalEnabled }); workspace?.markChanged()
           } catch (e: any) { setMsg(e?.message || 'Erro ao salvar') } finally { setSaving(false) }
         }} tone="gold">{saving ? 'Salvando...' : 'Salvar alterações'}</Button>
         {msg && <span className="ml-3 text-sm text-muted-foreground">{msg}</span>}

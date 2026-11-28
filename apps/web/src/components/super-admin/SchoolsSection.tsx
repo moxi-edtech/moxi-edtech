@@ -1,5 +1,6 @@
 "use client";
 
+import { WorkspaceLink as Link } from "@/components/super-admin/workspace-navigation";
 import { ArrowRight, Check, CircleDashed } from "lucide-react";
 import { WidgetEmpty, WidgetSkeleton } from "@/components/super-admin/WidgetStates";
 
@@ -69,7 +70,7 @@ export default function SchoolsSection({ escolas, isLoading = false }: Props) {
               </div>
 
               <div className="flex items-center justify-between gap-3 md:w-1/4 md:justify-end">
-                <p className="text-sm text-muted-foreground">Alunos: {escola.alunos_ativos.toLocaleString()}</p>
+                <p className="text-sm text-muted-foreground">Alunos: {escola.alunos_ativos?.toLocaleString("pt-AO") ?? "—"}</p>
 
                 <span
                   className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-sm ${
@@ -80,10 +81,10 @@ export default function SchoolsSection({ escolas, isLoading = false }: Props) {
                   {escola.onboarding_finalizado ? "Concluído" : "Em curso"}
                 </span>
 
-                <button className="inline-flex items-center gap-2 rounded-xl border border-border px-3 py-2 text-sm text-foreground transition hover:ring-1 hover:ring-amber/25">
+                <Link href={"/super-admin/escolas/" + encodeURIComponent(escola.id)} prefetch={false} className="inline-flex items-center gap-2 rounded-xl border border-border px-3 py-2 text-sm text-foreground transition hover:ring-1 hover:ring-amber/25">
                   Ver escola
                   <ArrowRight className="h-4 w-4" />
-                </button>
+                </Link>
               </div>
             </article>
           ))

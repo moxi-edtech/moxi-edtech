@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import { WorkspaceLink as Link } from "@/components/super-admin/workspace-navigation";
 import { AlertTriangle, ArrowRightLeft, BarChart3, Layers3, Shield, Wallet } from "lucide-react";
 import { useEffect, useState } from "react";
 

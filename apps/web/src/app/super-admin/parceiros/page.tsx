@@ -281,47 +281,47 @@ export default function SuperAdminAfiliadosPage() {
     `https://wa.me/?text=${encodeURIComponent(message)}`;
 
   return (
-    <div className="min-h-screen bg-slate-50 p-6 font-sans">
-      <div className="max-w-6xl mx-auto space-y-6">
+    <div className="min-w-0">
+      <div className="min-w-0 space-y-6">
         <div className="flex justify-between items-center">
           <div>
-            <nav className="flex items-center gap-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">
+            <nav className="flex items-center gap-2 text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-2">
               <span>Super Admin</span>
               <ChevronRight size={10} />
               <span className="text-emerald">Gestão de Parceiros</span>
             </nav>
-            <h1 className="text-2xl font-black text-slate-900 tracking-tight">Parcerias e Escritórios</h1>
-            <p className="text-sm text-slate-500 font-medium">Controle quem tem acesso aos portais de parcerias.</p>
+            <h1 className="text-2xl font-black text-foreground tracking-tight">Parcerias e Escritórios</h1>
+            <p className="text-sm text-muted-foreground font-medium">Controle quem tem acesso aos portais de parcerias.</p>
           </div>
-          <Button onClick={() => setShowModal(true)} className="bg-slate-900 hover:bg-slate-800 text-white rounded-xl gap-2 font-bold px-6">
+          <Button onClick={() => setShowModal(true)} className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl gap-2 font-bold px-6">
             <Plus size={18} />
             CADASTRAR PARCEIRO
           </Button>
         </div>
 
         {loading ? (
-          <div className="flex items-center justify-center p-20 bg-white rounded-3xl border border-slate-200">
+          <div className="flex items-center justify-center p-20 bg-card rounded-3xl border border-border">
             <Loader2 className="w-8 h-8 animate-spin text-emerald" />
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {afiliados.map(af => (
-              <Card key={af.id} className="rounded-2xl border-slate-200 overflow-hidden bg-white shadow-sm">
+              <Card key={af.id} className="rounded-2xl border-border overflow-hidden bg-card shadow-sm">
                 <CardContent className="p-5 space-y-4">
                   <div className="flex justify-between items-start">
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-slate-400">
+                      <div className="w-10 h-10 rounded-xl bg-muted flex items-center justify-center text-muted-foreground">
                         <Users size={20} />
                       </div>
                       <div>
-                        <h4 className="font-bold text-slate-900 leading-tight">{af.nome}</h4>
+                        <h4 className="font-bold text-foreground leading-tight">{af.nome}</h4>
                         <p className="text-[10px] font-black text-amber uppercase tracking-tighter">{af.codigo}</p>
                         {af.email && (
-                          <p className="text-xs text-slate-500 mt-1">{af.email}</p>
+                          <p className="text-xs text-muted-foreground mt-1">{af.email}</p>
                         )}
                       </div>
                     </div>
-                    <Badge className={af.ativo ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'}>
+                    <Badge className={af.ativo ? 'bg-emerald-100 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-300' : 'bg-muted text-muted-foreground'}>
                       {af.ativo ? 'Ativo' : 'Inativo'}
                     </Badge>
                   </div>
@@ -331,7 +331,7 @@ export default function SuperAdminAfiliadosPage() {
                       size="sm"
                       variant="outline"
                       onClick={() => sendInvite(af)}
-                      className="flex-1 rounded-lg text-[11px] font-bold gap-2 border-slate-200"
+                      className="flex-1 rounded-lg text-[11px] font-bold gap-2 border-border"
                     >
                       <MessageSquare size={14} className="text-emerald-500" />
                       WHATSAPP
@@ -340,14 +340,14 @@ export default function SuperAdminAfiliadosPage() {
                       size="sm"
                       variant="outline"
                       onClick={() => loadMembers(af)}
-                      className="flex-1 rounded-lg text-[11px] font-bold gap-2 border-slate-200"
+                      className="flex-1 rounded-lg text-[11px] font-bold gap-2 border-border"
                     >
                       <ShieldCheck size={14} className="text-emerald" />
                       MEMBROS
                     </Button>
                     <button 
                       onClick={() => toggleStatus(af.id, af.ativo)}
-                      className="p-2 hover:bg-slate-100 rounded-lg text-slate-400"
+                      className="p-2 hover:bg-muted rounded-lg text-muted-foreground"
                     >
                       {af.ativo ? <X size={16} /> : <Check size={16} />}
                     </button>
@@ -360,20 +360,20 @@ export default function SuperAdminAfiliadosPage() {
 
         {showModal && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-6 backdrop-blur-sm">
-            <div className="bg-white rounded-[32px] w-full max-w-md overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200">
+            <div className="bg-card rounded-[32px] w-full max-w-md overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200">
               <div className="p-8 space-y-6">
                 <div className="flex justify-between items-center">
-                  <h3 className="text-xl font-black text-slate-900 leading-tight">Novo Parceiro</h3>
-                  <button onClick={() => setShowModal(false)} className="text-slate-400 hover:text-slate-600"><X /></button>
+                  <h3 className="text-xl font-black text-foreground leading-tight">Novo Parceiro</h3>
+                  <button onClick={() => setShowModal(false)} className="text-muted-foreground hover:text-muted-foreground"><X /></button>
                 </div>
 
                 <form onSubmit={handleSave} className="space-y-4">
                   <div className="space-y-1.5">
-                    <label className="text-[10px] font-bold uppercase text-slate-400">Nome do Parceiro/Escritório</label>
+                    <label className="text-[10px] font-bold uppercase text-muted-foreground">Nome do Parceiro/Escritório</label>
                     <input 
                       required
                       placeholder="Ex: Eduardo Santos"
-                      className="w-full p-3 rounded-xl border border-slate-200 text-sm outline-none focus:border-emerald"
+                      className="w-full p-3 rounded-xl border border-border text-sm outline-none focus:border-emerald"
                       value={formData.nome}
                       onChange={e => setFormData({ ...formData, nome: e.target.value })}
                     />
@@ -381,56 +381,56 @@ export default function SuperAdminAfiliadosPage() {
 
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-1.5 col-span-2">
-                      <label className="text-[10px] font-bold uppercase text-slate-400">E-mail</label>
+                      <label className="text-[10px] font-bold uppercase text-muted-foreground">E-mail</label>
                       <div className="relative">
-                        <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-300" size={16} />
+                        <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={16} />
                         <input
                           required
                           type="email"
                           placeholder="nome@dominio.com"
-                          className="w-full p-3 pl-10 rounded-xl border border-slate-200 text-sm outline-none focus:border-emerald"
+                          className="w-full p-3 pl-10 rounded-xl border border-border text-sm outline-none focus:border-emerald"
                           value={formData.email}
                           onChange={e => setFormData({ ...formData, email: e.target.value })}
                         />
                       </div>
                     </div>
                     <div className="space-y-1.5">
-                      <label className="text-[10px] font-bold uppercase text-slate-400">Código (Cupão)</label>
+                      <label className="text-[10px] font-bold uppercase text-muted-foreground">Código (Cupão)</label>
                       <input 
                         required
                         placeholder="EDUARDO10"
-                        className="w-full p-3 rounded-xl border border-slate-200 text-sm outline-none focus:border-emerald font-bold uppercase"
+                        className="w-full p-3 rounded-xl border border-border text-sm outline-none focus:border-emerald font-bold uppercase"
                         value={formData.codigo}
                         onChange={e => setFormData({ ...formData, codigo: e.target.value })}
                       />
                     </div>
                     <div className="space-y-1.5">
-                      <label className="text-[10px] font-bold uppercase text-slate-400">PIN de Acesso</label>
+                      <label className="text-[10px] font-bold uppercase text-muted-foreground">PIN de Acesso</label>
                       <input 
                         required
                         type="password"
                         placeholder="****"
                         maxLength={4}
-                        className="w-full p-3 rounded-xl border border-slate-200 text-sm outline-none focus:border-emerald text-center tracking-[0.5em]"
+                        className="w-full p-3 rounded-xl border border-border text-sm outline-none focus:border-emerald text-center tracking-[0.5em]"
                         value={formData.pin}
                         onChange={e => setFormData({ ...formData, pin: e.target.value })}
                       />
                     </div>
                   </div>
 
-                  <label className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                  <label className="flex items-center gap-3 rounded-2xl border border-border bg-muted px-4 py-3">
                     <input
                       type="checkbox"
                       checked={openWhatsappAfterSave}
                       onChange={e => setOpenWhatsappAfterSave(e.target.checked)}
-                      className="rounded border-slate-300"
+                      className="rounded border-border"
                     />
-                    <span className="text-sm text-slate-600 font-medium">
+                    <span className="text-sm text-muted-foreground font-medium">
                       Abrir WhatsApp com código e PIN após cadastrar
                     </span>
                   </label>
 
-                  <Button type="submit" disabled={saving} className="w-full py-4 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-black text-sm mt-4">
+                  <Button type="submit" disabled={saving} className="w-full py-4 bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl font-black text-sm mt-4">
                     {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : 'CONFIRMAR CADASTRO'}
                   </Button>
                 </form>
@@ -441,11 +441,11 @@ export default function SuperAdminAfiliadosPage() {
 
         {selectedAfiliado && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-6 backdrop-blur-sm">
-            <div className="bg-white rounded-[32px] w-full max-w-2xl overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200">
+            <div className="bg-card rounded-[32px] w-full max-w-2xl overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200">
               <div className="p-8 space-y-6">
                 <div className="flex justify-between items-center gap-4">
                   <div>
-                    <h3 className="text-xl font-black text-slate-900 leading-tight">{selectedAfiliado.nome}</h3>
+                    <h3 className="text-xl font-black text-foreground leading-tight">{selectedAfiliado.nome}</h3>
                     <p className="text-xs font-bold uppercase tracking-widest text-amber">{selectedAfiliado.codigo}</p>
                   </div>
                   <button
@@ -454,7 +454,7 @@ export default function SuperAdminAfiliadosPage() {
                       setSelectedMembers([]);
                       setMemberForm({ nome: '', pin: '' });
                     }}
-                    className="text-slate-400 hover:text-slate-600"
+                    className="text-muted-foreground hover:text-muted-foreground"
                   >
                     <X />
                   </button>
@@ -464,44 +464,44 @@ export default function SuperAdminAfiliadosPage() {
                   <div className="space-y-4">
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Membros do parceiro</p>
-                        <p className="text-sm text-slate-500">Use membros separados para rastrear acessos e uploads.</p>
+                        <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Membros do parceiro</p>
+                        <p className="text-sm text-muted-foreground">Use membros separados para rastrear acessos e uploads.</p>
                       </div>
-                      <Badge className="bg-slate-100 text-slate-700">
+                      <Badge className="bg-muted text-foreground">
                         {selectedMembers.length} membro(s)
                       </Badge>
                     </div>
 
                     {loadingMembers ? (
-                      <div className="flex items-center justify-center rounded-2xl border border-slate-200 bg-slate-50 p-10">
+                      <div className="flex items-center justify-center rounded-2xl border border-border bg-muted p-10">
                         <Loader2 className="w-6 h-6 animate-spin text-emerald" />
                       </div>
                     ) : selectedMembers.length === 0 ? (
-                      <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-6 text-center">
-                        <p className="text-sm font-medium text-slate-500">Nenhum membro adicional cadastrado.</p>
+                      <div className="rounded-2xl border border-dashed border-border bg-muted p-6 text-center">
+                        <p className="text-sm font-medium text-muted-foreground">Nenhum membro adicional cadastrado.</p>
                       </div>
                     ) : (
                       <div className="space-y-3">
                         {selectedMembers.map((member) => (
-                          <div key={member.id} className="flex items-center justify-between rounded-2xl border border-slate-200 p-4">
+                          <div key={member.id} className="flex items-center justify-between rounded-2xl border border-border p-4">
                             <div>
-                              <p className="font-bold text-slate-900">{member.nome}</p>
-                              <p className="text-xs text-slate-500">Actualizado em {new Date(member.updated_at).toLocaleDateString('pt-AO')}</p>
+                              <p className="font-bold text-foreground">{member.nome}</p>
+                              <p className="text-xs text-muted-foreground">Actualizado em {new Date(member.updated_at).toLocaleDateString('pt-AO')}</p>
                             </div>
                             <div className="flex items-center gap-2">
-                              <Badge className={member.ativo ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'}>
+                              <Badge className={member.ativo ? 'bg-emerald-100 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-300' : 'bg-muted text-muted-foreground'}>
                                 {member.ativo ? 'Ativo' : 'Inativo'}
                               </Badge>
                               <button
                                 onClick={() => removeMember(member)}
-                                className="p-2 hover:bg-rose-50 rounded-lg text-rose-400"
+                                className="p-2 hover:bg-rose-50 dark:hover:bg-rose-950/30 rounded-lg text-rose-400"
                                 title="Remover membro"
                               >
                                 <Trash2 size={16} />
                               </button>
                               <button
                                 onClick={() => toggleMemberStatus(member)}
-                                className="p-2 hover:bg-slate-100 rounded-lg text-slate-400"
+                                className="p-2 hover:bg-muted rounded-lg text-muted-foreground"
                                 title={member.ativo ? 'Inativar membro' : 'Reativar membro'}
                               >
                                 {member.ativo ? <X size={16} /> : <Check size={16} />}
@@ -513,33 +513,33 @@ export default function SuperAdminAfiliadosPage() {
                     )}
                   </div>
 
-                  <div className="rounded-3xl border border-slate-200 bg-slate-50 p-5">
+                  <div className="rounded-3xl border border-border bg-muted p-5">
                     <div className="flex items-center gap-2 mb-4">
                       <UserPlus size={16} className="text-emerald" />
-                      <h4 className="text-sm font-black text-slate-900">Adicionar membro</h4>
+                      <h4 className="text-sm font-black text-foreground">Adicionar membro</h4>
                     </div>
                     <form onSubmit={handleCreateMember} className="space-y-4">
                       <div className="space-y-1.5">
-                        <label className="text-[10px] font-bold uppercase text-slate-400">Nome do membro</label>
+                        <label className="text-[10px] font-bold uppercase text-muted-foreground">Nome do membro</label>
                         <input
                           required
                           placeholder="Ex: Operador Comercial"
-                          className="w-full p-3 rounded-xl border border-slate-200 text-sm outline-none focus:border-emerald bg-white"
+                          className="w-full p-3 rounded-xl border border-border text-sm outline-none focus:border-emerald bg-card"
                           value={memberForm.nome}
                           onChange={e => setMemberForm({ ...memberForm, nome: e.target.value })}
                         />
-                        <p className="text-[11px] text-slate-500">
+                        <p className="text-[11px] text-muted-foreground">
                           Use o nome operacional do membro. E-mail não é aceite neste campo.
                         </p>
                       </div>
                       <div className="space-y-1.5">
-                        <label className="text-[10px] font-bold uppercase text-slate-400">PIN pessoal</label>
+                        <label className="text-[10px] font-bold uppercase text-muted-foreground">PIN pessoal</label>
                         <input
                           required
                           type="password"
                           minLength={4}
                           placeholder="PIN do membro"
-                          className="w-full p-3 rounded-xl border border-slate-200 text-sm outline-none focus:border-emerald bg-white text-center tracking-[0.4em]"
+                          className="w-full p-3 rounded-xl border border-border text-sm outline-none focus:border-emerald bg-card text-center tracking-[0.4em]"
                           value={memberForm.pin}
                           onChange={e => setMemberForm({ ...memberForm, pin: e.target.value })}
                         />
@@ -547,7 +547,7 @@ export default function SuperAdminAfiliadosPage() {
                       <Button
                         type="submit"
                         disabled={savingMember}
-                        className="w-full py-4 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-black text-sm"
+                        className="w-full py-4 bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl font-black text-sm"
                       >
                         {savingMember ? <Loader2 className="w-4 h-4 animate-spin" /> : 'CRIAR MEMBRO'}
                       </Button>

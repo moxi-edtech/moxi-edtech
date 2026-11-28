@@ -422,11 +422,11 @@ export default function SubscricoesCockpitClient() {
       </section>
 
       <section className="grid gap-6 xl:grid-cols-[1fr_420px]">
-        <div className="rounded-2xl border border-slate-200 bg-white shadow-sm">
-          <div className="flex flex-col gap-4 border-b border-slate-100 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="rounded-2xl border border-border bg-card shadow-sm">
+          <div className="flex flex-col gap-4 border-b border-border px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <h2 className="text-base font-bold text-slate-950">Cockpit comercial</h2>
-              <p className="text-xs text-slate-500">Ações rápidas para trials e conversão de centros.</p>
+              <h2 className="text-base font-bold text-foreground">Cockpit comercial</h2>
+              <p className="text-xs text-muted-foreground">Ações rápidas para trials e conversão de centros.</p>
             </div>
             <div className="flex items-center gap-2">
               <Button variant="secondary" size="sm" onClick={load} disabled={loading}>
@@ -435,20 +435,20 @@ export default function SubscricoesCockpitClient() {
             </div>
           </div>
 
-          <div className="flex flex-col gap-3 border-b border-slate-100 bg-slate-50/50 px-5 py-3 sm:flex-row sm:items-center">
+          <div className="flex flex-col gap-3 border-b border-border bg-muted/50 px-5 py-3 sm:flex-row sm:items-center">
             <div className="relative flex-1">
               <input
                 type="text"
                 placeholder="Buscar centro, email ou sigla..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-emerald focus:ring-1 focus:ring-emerald/20"
+                className="w-full rounded-xl border border-border bg-card px-3 py-2 text-sm outline-none focus:border-emerald focus:ring-1 focus:ring-emerald/20"
               />
             </div>
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-emerald"
+              className="rounded-xl border border-border bg-card px-3 py-2 text-sm outline-none focus:border-emerald"
             >
               <option value="all">Todos os estados</option>
               <option value="trial">Em Trial</option>
@@ -459,7 +459,7 @@ export default function SubscricoesCockpitClient() {
             <select
               value={provinceFilter}
               onChange={(e) => setProvinceFilter(e.target.value)}
-              className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-emerald"
+              className="rounded-xl border border-border bg-card px-3 py-2 text-sm outline-none focus:border-emerald"
             >
               <option value="all">Todas províncias</option>
               {provinces.map((province) => (
@@ -474,7 +474,7 @@ export default function SubscricoesCockpitClient() {
 
           <div className="overflow-x-auto">
             <table className="min-w-full text-sm">
-              <thead className="bg-slate-50 text-left text-slate-600">
+              <thead className="bg-muted text-left text-muted-foreground">
                 <tr>
                   <th className="px-4 py-3 font-semibold">
                     <input
@@ -499,12 +499,12 @@ export default function SubscricoesCockpitClient() {
               </thead>
               <tbody>
                 {loading ? (
-                  <tr><td className="px-4 py-5 text-slate-500" colSpan={6}>A carregar subscrições...</td></tr>
+                  <tr><td className="px-4 py-5 text-muted-foreground" colSpan={6}>A carregar subscrições...</td></tr>
                 ) : filteredItems.length === 0 ? (
-                  <tr><td className="px-4 py-5 text-center text-slate-500" colSpan={6}>Nenhum centro encontrado para os filtros aplicados.</td></tr>
+                  <tr><td className="px-4 py-5 text-center text-muted-foreground" colSpan={6}>Nenhum centro encontrado para os filtros aplicados.</td></tr>
                 ) : (
                   filteredItems.map((item) => (
-                    <tr key={item.id} className="border-t border-slate-100 hover:bg-slate-50/50">
+                    <tr key={item.id} className="border-t border-border hover:bg-muted/50">
                       <td className="px-4 py-3">
                         <input
                           type="checkbox"
@@ -519,38 +519,38 @@ export default function SubscricoesCockpitClient() {
                         />
                       </td>
                       <td className="px-4 py-3">
-                        <p className="font-semibold text-slate-900">{item.nome}</p>
-                        <p className="text-xs text-slate-500">{item.abrev || item.escola_id}</p>
+                        <p className="font-semibold text-foreground">{item.nome}</p>
+                        <p className="text-xs text-muted-foreground">{item.abrev || item.escola_id}</p>
                         {item.commercial_notes ? (
-                          <p className="mt-1 max-w-[260px] truncate text-[11px] text-slate-500">Nota: {item.commercial_notes}</p>
+                          <p className="mt-1 max-w-[260px] truncate text-[11px] text-muted-foreground">Nota: {item.commercial_notes}</p>
                         ) : null}
                       </td>
                       <td className="px-4 py-3">
                         <span className={`rounded-full border px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider ${
-                          getStatus(item) === 'active' ? 'border-green-200 bg-green-50 text-green-700' :
-                          getStatus(item) === 'expired' ? 'border-rose-200 bg-rose-50 text-rose-700' :
-                          'border-slate-200 bg-slate-50 text-slate-700'
+                          getStatus(item) === 'active' ? 'border-green-200 dark:border-green-900/60 bg-green-50 dark:bg-green-950/30 text-green-700 dark:text-green-300' :
+                          getStatus(item) === 'expired' ? 'border-rose-200 dark:border-rose-900/60 bg-rose-50 dark:bg-rose-950/30 text-rose-700 dark:text-rose-300' :
+                          'border-border bg-muted text-foreground'
                         }`}>
                           {statusLabel(item)}
                         </span>
-                        <p className="mt-1 text-xs text-slate-500">Plano {item.plano}</p>
+                        <p className="mt-1 text-xs text-muted-foreground">Plano {item.plano}</p>
                       </td>
                       <td className="px-4 py-3">
                         {item.billing ? (
                           <>
                             <div className="flex items-center gap-1.5">
                               <span className={`h-1.5 w-1.5 rounded-full ${
-                                item.billing.last_payment_status === 'confirmado' ? 'bg-green-500' :
-                                item.billing.last_payment_status === 'pendente' ? 'bg-amber-500' :
-                                'bg-slate-300'
+                                item.billing.last_payment_status === 'confirmado' ? 'bg-green-50 dark:bg-green-950/300' :
+                                item.billing.last_payment_status === 'pendente' ? 'bg-amber-50 dark:bg-amber-950/300' :
+                                'bg-muted'
                               }`} />
-                              <span className="font-semibold text-slate-900">
+                              <span className="font-semibold text-foreground">
                                 {item.billing.last_payment_status === 'confirmado' ? 'Pago' : 
                                  item.billing.last_payment_status === 'pendente' ? 'Pendente' : 'Sem prova'}
                               </span>
                             </div>
                             <div className="mt-1 flex flex-col gap-1">
-                              <p className="text-[10px] text-slate-500 uppercase tracking-tight">
+                              <p className="text-[10px] text-muted-foreground uppercase tracking-tight">
                                 Renova: {new Date(item.billing.data_renovacao).toLocaleDateString()}
                               </p>
                               {item.billing.comprovativo_url && (
@@ -566,19 +566,19 @@ export default function SubscricoesCockpitClient() {
                             </div>
                           </>
                         ) : (
-                          <span className="text-xs italic text-slate-400">Sem subscrição</span>
+                          <span className="text-xs italic text-muted-foreground">Sem subscrição</span>
                         )}
                       </td>
-                      <td className="px-4 py-3 text-slate-700">
+                      <td className="px-4 py-3 text-foreground">
                         <p className="max-w-[180px] truncate">{item.email || "sem email"}</p>
-                        <p className="text-xs text-slate-500">{item.telefone || "sem telefone"}</p>
+                        <p className="text-xs text-muted-foreground">{item.telefone || "sem telefone"}</p>
                         {item.last_automated_reminder_at && (
-                          <p className="mt-1 text-[9px] font-bold uppercase text-blue-600">
+                          <p className="mt-1 text-[9px] font-bold uppercase text-blue-600 dark:text-blue-300">
                             Auto-lembrete: {new Date(item.last_automated_reminder_at).toLocaleDateString()}
                           </p>
                         )}
                         {item.last_commercial_contact_at && (
-                          <p className="mt-1 text-[9px] font-bold uppercase text-slate-500">
+                          <p className="mt-1 text-[9px] font-bold uppercase text-muted-foreground">
                             Último contacto: {new Date(item.last_commercial_contact_at).toLocaleDateString()}
                           </p>
                         )}
@@ -590,7 +590,7 @@ export default function SubscricoesCockpitClient() {
                               <Button size="sm" onClick={() => handleConfirmPayment(item)} disabled={busyId === item.escola_id} className="bg-emerald hover:bg-emerald/90">
                                 <CheckCircle2 className="h-3 w-3 mr-1" /> Confirmar
                               </Button>
-                              <Button size="sm" variant="secondary" onClick={() => handleRejectPayment(item)} disabled={busyId === item.escola_id} className="border-rose-200 text-rose-700 hover:bg-rose-50">
+                              <Button size="sm" variant="secondary" onClick={() => handleRejectPayment(item)} disabled={busyId === item.escola_id} className="border-rose-200 dark:border-rose-900/60 text-rose-700 dark:text-rose-300 hover:bg-rose-50 dark:hover:bg-rose-950/30">
                                 <XCircle className="h-3 w-3 mr-1" /> Rejeitar
                               </Button>
                             </>
@@ -618,7 +618,7 @@ export default function SubscricoesCockpitClient() {
                           </Button>
                         </div>
                         {notesEditingId === item.escola_id ? (
-                          <div className="mt-3 min-w-[280px] rounded-xl border border-slate-200 bg-white p-3">
+                          <div className="mt-3 min-w-[280px] rounded-xl border border-border bg-card p-3">
                             <textarea
                               className={`${inputClass} min-h-20 resize-y`}
                               value={notesDraft}
@@ -640,14 +640,14 @@ export default function SubscricoesCockpitClient() {
           </div>
         </div>
 
-        <aside className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+        <aside className="rounded-2xl border border-border bg-card p-5 shadow-sm">
           <div className="flex items-start justify-between gap-3">
             <div>
-              <h2 className="flex items-center gap-2 text-base font-bold text-slate-950">
-                <Settings2 className="h-4 w-4 text-slate-500" />
+              <h2 className="flex items-center gap-2 text-base font-bold text-foreground">
+                <Settings2 className="h-4 w-4 text-muted-foreground" />
                 Configuração comercial
               </h2>
-              <p className="mt-1 text-xs leading-5 text-slate-500">Dados usados em lembretes, emails e instruções de pagamento.</p>
+              <p className="mt-1 text-xs leading-5 text-muted-foreground">Dados usados em lembretes, emails e instruções de pagamento.</p>
             </div>
             <Link href="/super-admin/cobrancas" className="text-xs font-semibold text-emerald hover:underline">Cobranças</Link>
           </div>
@@ -655,22 +655,22 @@ export default function SubscricoesCockpitClient() {
           {previewOpen ? (
             <div className="mt-4 rounded-xl border border-emerald/20 bg-emerald/5 p-4">
               <p className="text-[10px] font-bold uppercase tracking-widest text-emerald">Preview do lembrete</p>
-              <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-700">{previewMessage}</p>
+              <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-foreground">{previewMessage}</p>
             </div>
           ) : null}
 
           <div className="mt-6 space-y-4">
-            <div className="rounded-xl border border-slate-100 bg-slate-50/50 p-4">
+            <div className="rounded-xl border border-border bg-muted/50 p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-xs font-bold text-slate-900">Automação de Lembretes</p>
-                  <p className="text-[10px] text-slate-500">Trial, onboarding incompleto e centros sem acesso recente.</p>
+                  <p className="text-xs font-bold text-foreground">Automação de Lembretes</p>
+                  <p className="text-[10px] text-muted-foreground">Trial, onboarding incompleto e centros sem acesso recente.</p>
                 </div>
                 <input 
                   type="checkbox" 
                   checked={settings.auto_reminders_enabled} 
                   onChange={(e) => setSettings(p => ({ ...p, auto_reminders_enabled: e.target.checked }))}
-                  className="h-4 w-4 rounded border-slate-300 text-emerald focus:ring-emerald"
+                  className="h-4 w-4 rounded border-border text-emerald focus:ring-emerald"
                 />
               </div>
             </div>
@@ -683,7 +683,7 @@ export default function SubscricoesCockpitClient() {
             <Field label="IBAN"><input className={inputClass} value={settings.iban} onChange={(e) => setSettings((p) => ({ ...p, iban: e.target.value.toUpperCase() }))} /></Field>
             <Field label="Chave Kwik"><input className={inputClass} value={settings.kwik_chave} onChange={(e) => setSettings((p) => ({ ...p, kwik_chave: e.target.value }))} /></Field>
             
-            <div className="h-px bg-slate-100" />
+            <div className="h-px bg-muted" />
             
             <Field label="E-mail comercial"><input className={inputClass} value={settings.email_comercial} onChange={(e) => setSettings((p) => ({ ...p, email_comercial: e.target.value }))} /></Field>
             <div className="grid grid-cols-2 gap-3">
@@ -713,12 +713,12 @@ export default function SubscricoesCockpitClient() {
   );
 }
 
-const inputClass = "w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm outline-none focus:border-emerald focus:bg-white";
+const inputClass = "w-full rounded-xl border border-border bg-muted px-3 py-2 text-sm outline-none focus:border-emerald focus:bg-card";
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <label className="block space-y-1.5">
-      <span className="ml-1 text-[10px] font-bold uppercase tracking-widest text-slate-500">{label}</span>
+      <span className="ml-1 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{label}</span>
       {children}
     </label>
   );
@@ -727,13 +727,13 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 function Stat({ label, value, tone }: { label: string; value: number; tone: "gold" | "amber" | "rose" | "green" }) {
   const colors = {
     gold: "text-amber",
-    amber: "text-amber-700",
-    rose: "text-rose-700",
+    amber: "text-amber-700 dark:text-amber-300",
+    rose: "text-rose-700 dark:text-rose-300",
     green: "text-emerald",
   };
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-      <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">{label}</p>
+    <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
+      <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{label}</p>
       <p className={`mt-2 text-3xl font-black ${colors[tone]}`}>{value}</p>
     </div>
   );

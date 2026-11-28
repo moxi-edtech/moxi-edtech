@@ -6,8 +6,9 @@
  * Tokens KLASSE: superfícies semânticas light/dark.
  */
 
+import { useSuperAdminWorkspace, useWorkspaceGuard } from "@/components/super-admin/workspace-navigation";
 import { useEffect, useState } from "react";
-import Link from "next/link";
+import { WorkspaceLink as Link } from "@/components/super-admin/workspace-navigation";
 import { Check, Filter, Mail, Pencil, Plus, Search, Shield, Trash2, X } from "lucide-react";
 import { useToast, useConfirm } from "@/components/feedback/FeedbackSystem";
 
@@ -153,6 +154,8 @@ export function SuperAdminUsuariosListClient() {
 // ─── Componente Principal ─────────────────────────────────────────────────────
 
 function ListaUsuarios() {
+  const workspace = useSuperAdminWorkspace();
+  const revision = workspace?.revision ?? 0;
   const { success, error: notifyError } = useToast();
   const confirm = useConfirm();
   const [usuarios, setUsuarios]   = useState<Usuario[]>([]);
@@ -172,6 +175,8 @@ function ListaUsuarios() {
   const [resetMustChange,   setResetMustChange]   = useState(true);
   const [resetError,        setResetError]        = useState<string | null>(null);
   const [resetLoading,      setResetLoading]      = useState(false);
+
+  useWorkspaceGuard("users-reset", resetLoading || Boolean(saving), Boolean((resetUser && resetPassword) || editingId));
 
   // ── Fetch ──────────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -210,7 +215,7 @@ function ListaUsuarios() {
         setLoading(false);
       }
     })();
-  }, []);
+  }, [revision]);
 
   // ── Handlers ────────────────────────────────────────────────────────────────
   const handleEdit = (u: Usuario) => {
@@ -272,6 +277,7 @@ function ListaUsuarios() {
       });
       if (!res.ok) throw new Error("Falha ao revogar.");
       setUsuarios(prev => prev.filter(u => u.id !== uid));
+      workspace?.markChanged();
       success("Acesso revogado", "O utilizador foi removido do sistema com sucesso.");
     } catch (e) {
       setErro(e instanceof Error ? e.message : "Erro ao eliminar.");
@@ -291,6 +297,7 @@ function ListaUsuarios() {
       });
       if (!res.ok) throw new Error("A API rejeitou a nova credencial.");
       setResetUser(null);
+      workspace?.markChanged();
     } catch (e) {
       setResetError(e instanceof Error ? e.message : "Erro de sistema.");
     } finally { setResetLoading(false); }
@@ -326,9 +333,10 @@ function ListaUsuarios() {
   return (
     <div className="min-h-full bg-background text-foreground font-sora selection:bg-amber/20">
 
+      <div hidden={Boolean(workspace && resetUser)}>
       {/* ── Top Bar ── */}
       <header className="sticky top-0 z-20 border-b border-border bg-card/80 backdrop-blur-md">
-        <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
+        <div className="min-w-0 flex flex-wrap items-center justify-between gap-3 py-3">
           <div className="flex items-center gap-4">
             <div className="flex h-3 w-3 rounded-full bg-emerald ring-4 ring-emerald/10" />
             <div>
@@ -360,7 +368,7 @@ function ListaUsuarios() {
       </header>
 
       {/* ── Main Content ── */}
-      <main className="max-w-7xl mx-auto px-6 py-8">
+      <div className="min-w-0 py-4">
         
         {erro && (
           <div className="mb-6 flex items-center gap-3 p-4 rounded-xl bg-red-50 border border-red-200 text-red-600 text-sm font-geist">
@@ -532,11 +540,12 @@ function ListaUsuarios() {
             </table>
           </div>
         </div>
-      </main>
+      </div>
 
+      </div>
       {/* ── Modal Reset Senha (Isolado e Crítico) ── */}
       {resetUser && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+        <div className={workspace ? "flex justify-center py-4" : "fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4"}>
           <div className="w-full max-w-sm bg-card border border-border rounded-2xl shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
             
             <div className="p-5 border-b border-border flex justify-between items-center bg-muted/50">
@@ -547,7 +556,7 @@ function ListaUsuarios() {
                 </h3>
                 <p className="text-[10px] text-muted-foreground mt-1">{resetUser.email}</p>
               </div>
-              <button onClick={() => setResetUser(null)} className="text-muted-foreground hover:text-foreground/80 transition-colors">
+              <button disabled={resetLoading} onClick={() => setResetUser(null)} className="text-muted-foreground hover:text-foreground/80 transition-colors">
                 <X className="w-5 h-5" />
               </button>
             </div>

@@ -51,7 +51,8 @@ test("administrative payments and destructive dialogs remain usable on small vie
     assert.match(component, /overflow-y-auto/, path);
   }
   for (const path of ["super-admin/ConfirmActionModal.tsx", "super-admin/SchoolBillingModal.tsx"]) {
-    assert.match(load(path), /aria-modal="true"/, path);
+    assert.match(load(path), /aria-modal=\{workspace \? undefined : true\}/, path);
+    assert.match(load(path), /role=\{workspace \? "region" : "dialog"\}/, path);
   }
 });
 

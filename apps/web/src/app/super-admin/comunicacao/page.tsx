@@ -100,10 +100,10 @@ export default function ComunicacaoPage() {
   };
 
   return (
-    <div className="mx-auto max-w-4xl space-y-6 pb-16">
+    <div className="min-w-0 space-y-6 pb-16">
       <div className="flex flex-col gap-2">
         <h1 className="text-3xl font-bold tracking-tight">Comunicador</h1>
-        <p className="text-slate-500">Envie e-mails customizados ou utilize templates pré-definidos.</p>
+        <p className="text-muted-foreground">Envie e-mails customizados ou utilize templates pré-definidos.</p>
       </div>
 
       <Card className="border-amber/20 bg-amber/[0.02]">
@@ -141,7 +141,7 @@ export default function ComunicacaoPage() {
                 <Label htmlFor="to">Para (To) <span className="text-red-500">*</span></Label>
                 <input
                   id="to" 
-                  className="w-full p-3 border rounded-lg transition-colors duration-200 border-gray-300 focus:ring-teal-500 focus:border-teal-500"
+                  className="w-full p-3 border rounded-lg transition-colors duration-200 border-border focus:ring-teal-500 focus:border-teal-50 dark:focus:border-teal-900/600"
                   placeholder="email@exemplo.com, outro@exemplo.com" 
                   value={formData.to}
                   onChange={(e) => setFormData({ ...formData, to: e.target.value })}
@@ -151,7 +151,7 @@ export default function ComunicacaoPage() {
                 <Label htmlFor="cc">Cópia (CC)</Label>
                 <input
                   id="cc" 
-                  className="w-full p-3 border rounded-lg transition-colors duration-200 border-gray-300 focus:ring-teal-500 focus:border-teal-500"
+                  className="w-full p-3 border rounded-lg transition-colors duration-200 border-border focus:ring-teal-500 focus:border-teal-50 dark:focus:border-teal-900/600"
                   placeholder="copia@exemplo.com" 
                   value={formData.cc}
                   onChange={(e) => setFormData({ ...formData, cc: e.target.value })}
@@ -163,7 +163,7 @@ export default function ComunicacaoPage() {
               <Label htmlFor="subject">Assunto <span className="text-red-500">*</span></Label>
               <input
                 id="subject" 
-                className="w-full p-3 border rounded-lg transition-colors duration-200 border-gray-300 focus:ring-teal-500 focus:border-teal-500"
+                className="w-full p-3 border rounded-lg transition-colors duration-200 border-border focus:ring-teal-500 focus:border-teal-50 dark:focus:border-teal-900/600"
                 placeholder="Assunto da mensagem" 
                 value={formData.subject}
                 onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
@@ -174,7 +174,7 @@ export default function ComunicacaoPage() {
               <Label htmlFor="message">Mensagem <span className="text-red-500">*</span></Label>
               <textarea
                 id="message"
-                className="flex min-h-[300px] w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm ring-offset-white placeholder:text-slate-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-950 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 font-mono"
+                className="flex min-h-[300px] w-full rounded-md border border-border bg-card px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 font-mono"
                 placeholder="Escreva sua mensagem aqui (suporta HTML)..."
                 value={formData.message}
                 onChange={(e) => setFormData({ ...formData, message: e.target.value })}
@@ -205,7 +205,7 @@ export default function ComunicacaoPage() {
               {files.length > 0 && (
                 <div className="mt-2 flex flex-wrap gap-2">
                   {files.map((file, index) => (
-                    <div key={index} className="flex items-center gap-2 bg-slate-100 px-3 py-1 rounded-full text-xs text-slate-700">
+                    <div key={index} className="flex items-center gap-2 bg-muted px-3 py-1 rounded-full text-xs text-foreground">
                       <span>{file.name}</span>
                       <button type="button" onClick={() => removeFile(index)} className="hover:text-red-500">
                         <X className="h-3 w-3" />
@@ -217,7 +217,7 @@ export default function ComunicacaoPage() {
             </div>
 
             <div className="pt-4 flex justify-end">
-              <Button type="submit" disabled={loading} className="gap-2 bg-amber hover:bg-amber/90 text-slate-900">
+              <Button type="submit" disabled={loading} className="gap-2 bg-amber hover:bg-amber/90 text-foreground">
                 {loading ? <Spinner className="h-4 w-4" /> : <Send className="h-4 w-4" />}
                 Enviar Mensagem
               </Button>

@@ -1,5 +1,7 @@
 "use client";
 
+import { useSuperAdminWorkspace, useWorkspaceGuard } from "@/components/super-admin/workspace-navigation";
+import { type ReactNode } from "react";
 import { useEffect, useState, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { 
@@ -33,10 +35,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Dialog,
   DialogContent,
-  DialogHeader,
   DialogTitle,
   DialogDescription,
-  DialogFooter,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
@@ -121,28 +121,28 @@ interface ExistingSchoolOption {
 
 // ─── Helpers Visuais ──────────────────────────────────────────────────────────
 const STATUS_META = {
-  pendente:       { label: "Pendente",      color: "bg-amber-100 text-amber-700 border-amber-200", dot: "bg-amber-500" },
-  em_configuracao: { label: "Configuração",  color: "bg-slate-100 text-slate-700 border-slate-200",    dot: "bg-slate-500" },
-  activo:         { label: "Activo",        color: "bg-emerald-100 text-emerald-700 border-emerald-200", dot: "bg-emerald-500" },
-  cancelado:      { label: "Cancelado",     color: "bg-slate-100 text-slate-600 border-slate-200",  dot: "bg-slate-400" },
+  pendente:       { label: "Pendente",      color: "bg-amber-100 dark:bg-amber-950/30 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-900/60", dot: "bg-amber-50 dark:bg-amber-950/300" },
+  em_configuracao: { label: "Configuração",  color: "bg-muted text-foreground border-border",    dot: "bg-muted" },
+  activo:         { label: "Activo",        color: "bg-emerald-100 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-900/60", dot: "bg-emerald-50 dark:bg-emerald-950/300" },
+  cancelado:      { label: "Cancelado",     color: "bg-muted text-muted-foreground border-border",  dot: "bg-muted" },
 };
 
 const LEAD_STATUS_META = {
-  'NOVO': { label: "Novo", color: "bg-blue-100 text-blue-700 border-blue-200", dot: "bg-blue-500" },
-  'EM_CONTACTO': { label: "Em Contacto", color: "bg-amber-100 text-amber-700 border-amber-200", dot: "bg-amber-500" },
-  'CONVERTIDO': { label: "Convertido", color: "bg-emerald-100 text-emerald-700 border-emerald-200", dot: "bg-emerald-500" },
-  'PERDIDO': { label: "Perdido", color: "bg-slate-100 text-slate-500 border-slate-200", dot: "bg-slate-400" },
+  'NOVO': { label: "Novo", color: "bg-blue-100 dark:bg-blue-950/30 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-900/60", dot: "bg-blue-50 dark:bg-blue-950/300" },
+  'EM_CONTACTO': { label: "Em Contacto", color: "bg-amber-100 dark:bg-amber-950/30 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-900/60", dot: "bg-amber-50 dark:bg-amber-950/300" },
+  'CONVERTIDO': { label: "Convertido", color: "bg-emerald-100 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-900/60", dot: "bg-emerald-50 dark:bg-emerald-950/300" },
+  'PERDIDO': { label: "Perdido", color: "bg-muted text-muted-foreground border-border", dot: "bg-muted" },
 };
 
 const PLAN_META: Record<string, { label: string; color: string }> = {
-  essencial: { label: "Essencial", color: "bg-slate-100 text-slate-700 border-slate-200" },
-  profissional: { label: "Profissional", color: "bg-amber-100 text-amber-700 border-amber-200" },
-  premium: { label: "Premium", color: "bg-emerald-100 text-emerald-700 border-emerald-200" },
+  essencial: { label: "Essencial", color: "bg-muted text-foreground border-border" },
+  profissional: { label: "Profissional", color: "bg-amber-100 dark:bg-amber-950/30 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-900/60" },
+  premium: { label: "Premium", color: "bg-emerald-100 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-900/60" },
 };
 
 const getPlanMeta = (financeiro: any) => {
   const key = String(financeiro?.plano_interesse || "").toLowerCase();
-  return PLAN_META[key] || { label: financeiro?.plano_interesse_label || "Sem plano", color: "bg-slate-100 text-slate-500 border-slate-200" };
+  return PLAN_META[key] || { label: financeiro?.plano_interesse_label || "Sem plano", color: "bg-muted text-muted-foreground border-border" };
 };
 
 const getInfluencerCode = (financeiro: any) => {
@@ -197,6 +197,7 @@ const fmtKz = (v: number) => {
 };
 
 export default function SuperAdminOnboardingPage() {
+  const workspace = useSuperAdminWorkspace();
   const [requests, setRequests] = useState<OnboardingRequest[]>([]);
   const [mLeads, setMLeads] = useState<MarketingLead[]>([]);
   const [uploads, setUploads] = useState<OnboardingUpload[]>([]);
@@ -217,6 +218,7 @@ export default function SuperAdminOnboardingPage() {
   // Provision modal states
   const [provisionModalOpen, setProvisionModalOpen] = useState(false);
   const [provisioning, setProvisioning] = useState(false);
+  useWorkspaceGuard("onboarding-provision", provisioning, provisionModalOpen);
   const [provisionTab, setProvisionTab] = useState<'existente' | 'nova'>('existente');
   const [existingSchools, setExistingSchools] = useState<ExistingSchoolOption[]>([]);
   const [loadingSchools, setLoadingSchools] = useState(false);
@@ -439,6 +441,7 @@ export default function SuperAdminOnboardingPage() {
 
       toast.success("Escola provisionada com sucesso!");
       setProvisionModalOpen(false);
+      workspace?.markChanged();
       loadData();
     } catch (err: any) {
       toast.error(err.message);
@@ -486,6 +489,7 @@ export default function SuperAdminOnboardingPage() {
 
       toast.success("Escola criada e provisionada com sucesso!");
       setProvisionModalOpen(false);
+      workspace?.markChanged();
       loadData();
     } catch (err: any) {
       toast.error(err.message);
@@ -603,37 +607,37 @@ export default function SuperAdminOnboardingPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 p-6 font-sans">
-      <div className="max-w-7xl mx-auto space-y-6">
+    <div className="min-w-0">
+      <div hidden={Boolean(workspace && provisionModalOpen)} className="min-w-0 space-y-6">
         
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
-            <nav className="flex items-center gap-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">
+            <nav className="flex items-center gap-2 text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-2">
               <span>Super Admin</span>
               <ChevronRight size={10} />
               <span className="text-emerald">Gestão de Onboarding</span>
             </nav>
-            <h1 className="text-2xl font-black text-slate-900 tracking-tight">Pipeline de Entrada</h1>
-            <p className="text-sm text-slate-500 font-medium">Controlo de leads, diagnósticos e novas escolas.</p>
+            <h1 className="text-2xl font-black text-foreground tracking-tight">Pipeline de Entrada</h1>
+            <p className="text-sm text-muted-foreground font-medium">Controlo de leads, diagnósticos e novas escolas.</p>
           </div>
           
           <div className="flex items-center gap-3">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground w-4 h-4" />
               <input 
                 type="text"
                 placeholder="Buscar escola ou nome..."
                 value={searchTerm}
                 onChange={e => setSearchTerm(e.target.value)}
-                className="pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-sm focus:ring-4 focus:ring-emerald/5 focus:border-emerald/30 outline-none w-64 transition-all"
+                className="pl-9 pr-4 py-2 bg-card border border-border rounded-xl text-sm focus:ring-4 focus:ring-emerald/5 focus:border-emerald/30 outline-none w-64 transition-all"
               />
             </div>
             {activeTab === 'candidaturas' && (
               <select 
                 value={filter}
                 onChange={e => setFilter(e.target.value)}
-                className="bg-white border border-slate-200 rounded-xl text-xs font-bold uppercase tracking-wider px-4 py-2 outline-none focus:ring-4 focus:ring-emerald/5"
+                className="bg-card border border-border rounded-xl text-xs font-bold uppercase tracking-wider px-4 py-2 outline-none focus:ring-4 focus:ring-emerald/5"
               >
                 <option value="todos">Todos os Status</option>
                 <option value="pendente">Pendentes</option>
@@ -645,7 +649,7 @@ export default function SuperAdminOnboardingPage() {
               <select
                 value={uploadFilter}
                 onChange={e => setUploadFilter(e.target.value as typeof uploadFilter)}
-                className="bg-white border border-slate-200 rounded-xl text-xs font-bold uppercase tracking-wider px-4 py-2 outline-none focus:ring-4 focus:ring-emerald/5"
+                className="bg-card border border-border rounded-xl text-xs font-bold uppercase tracking-wider px-4 py-2 outline-none focus:ring-4 focus:ring-emerald/5"
               >
                 <option value="todos">Todos os Uploads</option>
                 <option value="pendente">Pendentes</option>
@@ -658,17 +662,17 @@ export default function SuperAdminOnboardingPage() {
         </div>
 
         <Tabs defaultValue="candidaturas" value={activeTab} onValueChange={(value) => setActiveTab(value as 'candidaturas' | 'leads' | 'uploads' | 'relatorios')} className="w-full">
-          <TabsList className="bg-slate-200/50 p-1 rounded-xl mb-6">
-            <TabsTrigger value="candidaturas" className="rounded-lg font-bold text-xs uppercase tracking-widest px-6 data-[state=active]:bg-white data-[state=active]:text-emerald shadow-none">
+          <TabsList className="bg-muted/50 p-1 rounded-xl mb-6">
+            <TabsTrigger value="candidaturas" className="rounded-lg font-bold text-xs uppercase tracking-widest px-6 data-[state=active]:bg-card data-[state=active]:text-emerald shadow-none">
               Candidaturas ({requests.length})
             </TabsTrigger>
-            <TabsTrigger value="leads" className="rounded-lg font-bold text-xs uppercase tracking-widest px-6 data-[state=active]:bg-white data-[state=active]:text-emerald shadow-none">
+            <TabsTrigger value="leads" className="rounded-lg font-bold text-xs uppercase tracking-widest px-6 data-[state=active]:bg-card data-[state=active]:text-emerald shadow-none">
               Leads Diagnóstico ({mLeads.length})
             </TabsTrigger>
-            <TabsTrigger value="uploads" className="rounded-lg font-bold text-xs uppercase tracking-widest px-6 data-[state=active]:bg-white data-[state=active]:text-emerald shadow-none">
+            <TabsTrigger value="uploads" className="rounded-lg font-bold text-xs uppercase tracking-widest px-6 data-[state=active]:bg-card data-[state=active]:text-emerald shadow-none">
               Uploads ({uploads.length})
             </TabsTrigger>
-            <TabsTrigger value="relatorios" className="rounded-lg font-bold text-xs uppercase tracking-widest px-6 data-[state=active]:bg-white data-[state=active]:text-emerald shadow-none">
+            <TabsTrigger value="relatorios" className="rounded-lg font-bold text-xs uppercase tracking-widest px-6 data-[state=active]:bg-card data-[state=active]:text-emerald shadow-none">
               Relatórios
             </TabsTrigger>
           </TabsList>
@@ -678,17 +682,17 @@ export default function SuperAdminOnboardingPage() {
             {/* Lista */}
             <div className={activeTab === 'relatorios' ? "lg:col-span-3 space-y-4" : "lg:col-span-2 space-y-4"}>
               {loading ? (
-                <div className="flex flex-col items-center justify-center p-20 bg-white border border-slate-200 rounded-3xl space-y-4">
+                <div className="flex flex-col items-center justify-center p-20 bg-card border border-border rounded-3xl space-y-4">
                   <Loader2 className="w-8 h-8 animate-spin text-emerald" />
-                  <p className="text-sm font-bold text-slate-400 uppercase tracking-widest">Carregando dados...</p>
+                  <p className="text-sm font-bold text-muted-foreground uppercase tracking-widest">Carregando dados...</p>
                 </div>
               ) : (
                 <>
                 <TabsContent value="candidaturas" className="m-0 space-y-4">
                   {filteredRequests.length === 0 ? (
-                    <div className="p-20 text-center bg-white border border-slate-200 rounded-3xl">
-                      <School className="w-12 h-12 mx-auto text-slate-200 mb-4" />
-                      <p className="text-slate-500 font-medium">Nenhuma candidatura encontrada.</p>
+                    <div className="p-20 text-center bg-card border border-border rounded-3xl">
+                      <School className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
+                      <p className="text-muted-foreground font-medium">Nenhuma candidatura encontrada.</p>
                     </div>
                   ) : (
                     filteredRequests.map(req => {
@@ -698,20 +702,20 @@ export default function SuperAdminOnboardingPage() {
                       return (
                         <Card 
                           key={req.id} 
-                          className={`cursor-pointer transition-all hover:shadow-md border-slate-200 rounded-2xl overflow-hidden ${selectedId === req.id ? 'ring-2 ring-emerald border-transparent bg-emerald/5' : 'bg-white'}`}
+                          className={`cursor-pointer transition-all hover:shadow-md border-border rounded-2xl overflow-hidden ${selectedId === req.id ? 'ring-2 ring-emerald border-transparent bg-emerald/5' : 'bg-card'}`}
                           onClick={() => setSelectedId(req.id)}
                         >
                           <CardContent className="p-5">
                             <div className="flex items-start justify-between gap-4">
                               <div className="flex items-center gap-4">
-                                <div className="w-12 h-12 rounded-xl bg-slate-100 flex items-center justify-center text-xl font-bold text-slate-400 uppercase">
+                                <div className="w-12 h-12 rounded-xl bg-muted flex items-center justify-center text-xl font-bold text-muted-foreground uppercase">
                                   {req.escola_nome.charAt(0)}
                                 </div>
                                 <div>
-                                  <h3 className="font-bold text-slate-900">{req.escola_nome}</h3>
-                                  <div className="flex items-center gap-3 mt-1 text-xs text-slate-500">
+                                  <h3 className="font-bold text-foreground">{req.escola_nome}</h3>
+                                  <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
                                     <span className="flex items-center gap-1"><Clock size={12} /> {format(new Date(req.created_at), "dd MMM, HH:mm", { locale: pt })}</span>
-                                    <span className="text-slate-200">•</span>
+                                    <span className="text-muted-foreground">•</span>
                                     <span className="font-bold text-emerald">{fmtKz(calcEstimativa(req.faixa_propina, req.financeiro?.total_alunos))} /mês est.</span>
                                   </div>
                                   <div className="mt-2 flex flex-wrap items-center gap-2">
@@ -719,7 +723,7 @@ export default function SuperAdminOnboardingPage() {
                                       Plano: {plan.label}
                                     </Badge>
                                     {influencerCode && (
-                                      <Badge className="bg-purple-100 text-purple-700 border-purple-200 border font-bold uppercase text-[9px] px-2.5 py-0.5 rounded-full">
+                                      <Badge className="bg-purple-100 dark:bg-purple-950/30 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-900/60 border font-bold uppercase text-[9px] px-2.5 py-0.5 rounded-full">
                                         Ref: {influencerCode}
                                       </Badge>
                                     )}
@@ -740,31 +744,31 @@ export default function SuperAdminOnboardingPage() {
 
                 <TabsContent value="leads" className="m-0 space-y-4">
                   {filteredLeads.length === 0 ? (
-                    <div className="p-20 text-center bg-white border border-slate-200 rounded-3xl">
-                      <BarChart3 className="w-12 h-12 mx-auto text-slate-200 mb-4" />
-                      <p className="text-slate-500 font-medium">Nenhum lead de diagnóstico encontrado.</p>
+                    <div className="p-20 text-center bg-card border border-border rounded-3xl">
+                      <BarChart3 className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
+                      <p className="text-muted-foreground font-medium">Nenhum lead de diagnóstico encontrado.</p>
                     </div>
                   ) : (
                     filteredLeads.map(lead => {
                       const meta = LEAD_STATUS_META[lead.status as keyof typeof LEAD_STATUS_META] || LEAD_STATUS_META.NOVO;
-                      const scoreColor = lead.score >= 15 ? 'text-emerald-600' : lead.score >= 10 ? 'text-amber-600' : 'text-rose-600';
+                      const scoreColor = lead.score >= 15 ? 'text-emerald-600 dark:text-emerald-300' : lead.score >= 10 ? 'text-amber-600 dark:text-amber-300' : 'text-rose-600 dark:text-rose-300';
                       return (
                         <Card 
                           key={lead.id} 
-                          className={`cursor-pointer transition-all hover:shadow-md border-slate-200 rounded-2xl overflow-hidden ${selectedId === lead.id ? 'ring-2 ring-emerald border-transparent bg-emerald/5' : 'bg-white'}`}
+                          className={`cursor-pointer transition-all hover:shadow-md border-border rounded-2xl overflow-hidden ${selectedId === lead.id ? 'ring-2 ring-emerald border-transparent bg-emerald/5' : 'bg-card'}`}
                           onClick={() => setSelectedId(lead.id)}
                         >
                           <CardContent className="p-5">
                             <div className="flex items-start justify-between gap-4">
                               <div className="flex items-center gap-4">
-                                <div className="w-12 h-12 rounded-xl bg-slate-100 flex items-center justify-center text-xl font-bold text-slate-400 uppercase">
+                                <div className="w-12 h-12 rounded-xl bg-muted flex items-center justify-center text-xl font-bold text-muted-foreground uppercase">
                                   {lead.escola.charAt(0)}
                                 </div>
                                 <div>
-                                  <h3 className="font-bold text-slate-900">{lead.escola}</h3>
-                                  <div className="flex items-center gap-3 mt-1 text-xs text-slate-500">
+                                  <h3 className="font-bold text-foreground">{lead.escola}</h3>
+                                  <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
                                     <span className="flex items-center gap-1"><Clock size={12} /> {format(new Date(lead.created_at), "dd MMM, HH:mm", { locale: pt })}</span>
-                                    <span className="text-slate-200">•</span>
+                                    <span className="text-muted-foreground">•</span>
                                     <span className={`font-black ${scoreColor}`}>Score: {lead.score}/20</span>
                                   </div>
                                 </div>
@@ -783,25 +787,25 @@ export default function SuperAdminOnboardingPage() {
 
                 <TabsContent value="uploads" className="m-0 space-y-4">
                   {filteredUploads.length === 0 ? (
-                    <div className="p-20 text-center bg-white border border-slate-200 rounded-3xl">
-                      <UploadCloud className="w-12 h-12 mx-auto text-slate-200 mb-4" />
-                      <p className="text-slate-500 font-medium">Nenhum upload encontrado.</p>
+                    <div className="p-20 text-center bg-card border border-border rounded-3xl">
+                      <UploadCloud className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
+                      <p className="text-muted-foreground font-medium">Nenhum upload encontrado.</p>
                     </div>
                   ) : (
                     filteredUploads.map(upload => {
                       const escolaNome = upload.onboarding_requests?.escola_nome || 'Escola não identificada';
                       const token = upload.onboarding_requests?.tracking_token || 'Sem token';
                       const uploadMeta = {
-                        pendente: { label: 'Pendente', color: 'bg-amber-100 text-amber-700 border-amber-200', dot: 'bg-amber-500' },
-                        processando: { label: 'Processando', color: 'bg-blue-100 text-blue-700 border-blue-200', dot: 'bg-blue-500' },
-                        aprovado: { label: 'Aprovado', color: 'bg-emerald-100 text-emerald-700 border-emerald-200', dot: 'bg-emerald-500' },
-                        rejeitado: { label: 'Rejeitado', color: 'bg-rose-100 text-rose-700 border-rose-200', dot: 'bg-rose-500' },
+                        pendente: { label: 'Pendente', color: 'bg-amber-100 dark:bg-amber-950/30 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-900/60', dot: 'bg-amber-50 dark:bg-amber-950/300' },
+                        processando: { label: 'Processando', color: 'bg-blue-100 dark:bg-blue-950/30 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-900/60', dot: 'bg-blue-50 dark:bg-blue-950/300' },
+                        aprovado: { label: 'Aprovado', color: 'bg-emerald-100 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-900/60', dot: 'bg-emerald-50 dark:bg-emerald-950/300' },
+                        rejeitado: { label: 'Rejeitado', color: 'bg-rose-100 dark:bg-rose-950/30 text-rose-700 dark:text-rose-300 border-rose-200 dark:border-rose-900/60', dot: 'bg-rose-50 dark:bg-rose-950/300' },
                       }[upload.status];
 
                       return (
                         <Card
                           key={upload.id}
-                          className={`cursor-pointer transition-all hover:shadow-md border-slate-200 rounded-2xl overflow-hidden ${selectedId === upload.id ? 'ring-2 ring-emerald border-transparent bg-emerald/5' : 'bg-white'}`}
+                          className={`cursor-pointer transition-all hover:shadow-md border-border rounded-2xl overflow-hidden ${selectedId === upload.id ? 'ring-2 ring-emerald border-transparent bg-emerald/5' : 'bg-card'}`}
                           onClick={() => {
                             setSelectedId(upload.id);
                             setRejectionReason(upload.rejection_reason || '');
@@ -810,21 +814,21 @@ export default function SuperAdminOnboardingPage() {
                           <CardContent className="p-5">
                             <div className="flex items-start justify-between gap-4">
                               <div className="flex items-center gap-4 min-w-0">
-                                <div className="w-12 h-12 rounded-xl bg-slate-100 flex items-center justify-center text-slate-400">
+                                <div className="w-12 h-12 rounded-xl bg-muted flex items-center justify-center text-muted-foreground">
                                   <FileText size={20} />
                                 </div>
                                 <div className="min-w-0">
-                                  <h3 className="font-bold text-slate-900 truncate">{escolaNome}</h3>
-                                  <div className="flex flex-wrap items-center gap-3 mt-1 text-xs text-slate-500">
+                                  <h3 className="font-bold text-foreground truncate">{escolaNome}</h3>
+                                  <div className="flex flex-wrap items-center gap-3 mt-1 text-xs text-muted-foreground">
                                     <span className="flex items-center gap-1"><Clock size={12} /> {format(new Date(upload.created_at), "dd MMM, HH:mm", { locale: pt })}</span>
-                                    <span className="text-slate-200">•</span>
+                                    <span className="text-muted-foreground">•</span>
                                     <span className="font-bold uppercase">{upload.step_code}</span>
                                   </div>
                                   <div className="mt-2 flex flex-wrap items-center gap-2">
-                                    <Badge className="bg-slate-100 text-slate-700 border-slate-200 border font-bold uppercase text-[9px] px-2.5 py-0.5 rounded-full">
+                                    <Badge className="bg-muted text-foreground border-border border font-bold uppercase text-[9px] px-2.5 py-0.5 rounded-full">
                                       {upload.author_display || (upload.created_by === 'escola' ? 'Enviado pela Escola' : 'Enviado pelo Parceiro')}
                                     </Badge>
-                                    <Badge className="bg-slate-100 text-slate-600 border-slate-200 border font-mono text-[9px] px-2.5 py-0.5 rounded-full">
+                                    <Badge className="bg-muted text-muted-foreground border-border border font-mono text-[9px] px-2.5 py-0.5 rounded-full">
                                       {token}
                                     </Badge>
                                   </div>
@@ -845,9 +849,9 @@ export default function SuperAdminOnboardingPage() {
                 <TabsContent value="relatorios" className="m-0 space-y-6">
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                     {/* Gargalos por Responsável */}
-                    <Card className="border-slate-200 bg-white rounded-3xl p-6 shadow-sm">
+                    <Card className="border-border bg-card rounded-3xl p-6 shadow-sm">
                       <CardHeader className="p-0 pb-4">
-                        <CardTitle className="text-sm font-bold text-slate-800 uppercase tracking-wider flex items-center gap-2">
+                        <CardTitle className="text-sm font-bold text-foreground uppercase tracking-wider flex items-center gap-2">
                           <BarChart3 className="text-emerald w-4 h-4" />
                           Gargalos por Responsável
                         </CardTitle>
@@ -856,18 +860,18 @@ export default function SuperAdminOnboardingPage() {
                       <CardContent className="p-0 space-y-4">
                         {calculateBottlenecks().map((b, idx) => (
                           <div key={idx} className="space-y-1">
-                            <div className="flex justify-between text-xs font-bold text-slate-600">
+                            <div className="flex justify-between text-xs font-bold text-muted-foreground">
                               <span>{b.owner}</span>
                               <span>{b.pending} pendentes</span>
                             </div>
-                            <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
+                            <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
                               <div 
                                 className="h-full bg-emerald rounded-full"
                                 style={{ width: `${b.pending ? Math.min(100, (b.pending / (allOnboardingSteps.length || 1)) * 100) : 0}%` }}
                               />
                             </div>
                             {b.overdue > 0 && (
-                              <p className="text-[10px] text-rose-600 font-bold flex items-center gap-1">
+                              <p className="text-[10px] text-rose-600 dark:text-rose-300 font-bold flex items-center gap-1">
                                 ⚠️ {b.overdue} etapa{b.overdue > 1 ? 's' : ''} em atraso
                               </p>
                             )}
@@ -877,9 +881,9 @@ export default function SuperAdminOnboardingPage() {
                     </Card>
 
                     {/* Tempo Médio por Etapa */}
-                    <Card className="border-slate-200 bg-white rounded-3xl p-6 shadow-sm md:col-span-2">
+                    <Card className="border-border bg-card rounded-3xl p-6 shadow-sm md:col-span-2">
                       <CardHeader className="p-0 pb-4">
-                        <CardTitle className="text-sm font-bold text-slate-800 uppercase tracking-wider flex items-center gap-2">
+                        <CardTitle className="text-sm font-bold text-foreground uppercase tracking-wider flex items-center gap-2">
                           <Clock className="text-emerald w-4 h-4" />
                           Tempo Médio de Resolução (Fases Concluídas)
                         </CardTitle>
@@ -887,18 +891,18 @@ export default function SuperAdminOnboardingPage() {
                       </CardHeader>
                       <CardContent className="p-0">
                         {calculateAvgTimes().length === 0 ? (
-                          <p className="text-xs font-bold text-slate-400 text-center py-6">Sem dados de etapas concluídas ainda.</p>
+                          <p className="text-xs font-bold text-muted-foreground text-center py-6">Sem dados de etapas concluídas ainda.</p>
                         ) : (
                           <div className="space-y-3">
                             {calculateAvgTimes().map((t, idx) => (
-                              <div key={idx} className="flex items-center justify-between text-xs p-2 rounded-xl bg-slate-50 border border-slate-100">
+                              <div key={idx} className="flex items-center justify-between text-xs p-2 rounded-xl bg-muted border border-border">
                                 <div className="min-w-0">
-                                  <p className="font-bold text-slate-900 truncate">{t.title}</p>
-                                  <p className="text-[9px] text-slate-400 font-mono uppercase">{t.code}</p>
+                                  <p className="font-bold text-foreground truncate">{t.title}</p>
+                                  <p className="text-[9px] text-muted-foreground font-mono uppercase">{t.code}</p>
                                 </div>
                                 <div className="text-right">
-                                  <p className="font-black text-slate-800">{t.avg_hours} horas</p>
-                                  <p className="text-[9px] text-slate-400">baseado em {t.count} amostra{t.count > 1 ? 's' : ''}</p>
+                                  <p className="font-black text-foreground">{t.avg_hours} horas</p>
+                                  <p className="text-[9px] text-muted-foreground">baseado em {t.count} amostra{t.count > 1 ? 's' : ''}</p>
                                 </div>
                               </div>
                             ))}
@@ -909,9 +913,9 @@ export default function SuperAdminOnboardingPage() {
                   </div>
 
                   {/* Conversão por Parceiro */}
-                  <Card className="border-slate-200 bg-white rounded-3xl p-6 shadow-sm">
+                  <Card className="border-border bg-card rounded-3xl p-6 shadow-sm">
                     <CardHeader className="p-0 pb-4">
-                      <CardTitle className="text-sm font-bold text-slate-800 uppercase tracking-wider flex items-center gap-2">
+                      <CardTitle className="text-sm font-bold text-foreground uppercase tracking-wider flex items-center gap-2">
                         <ShieldCheck className="text-emerald w-4 h-4" />
                         Desempenho de Conversão por Parceiro
                       </CardTitle>
@@ -921,24 +925,24 @@ export default function SuperAdminOnboardingPage() {
                       <div className="overflow-x-auto">
                         <table className="w-full text-left border-collapse">
                           <thead>
-                            <tr className="border-b border-slate-100 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                            <tr className="border-b border-border text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
                               <th className="py-3 px-4">Parceiro</th>
                               <th className="py-3 px-4 text-center">Total Indicado</th>
                               <th className="py-3 px-4 text-center">Ativos (Live)</th>
                               <th className="py-3 px-4 text-right">Taxa de Conclusão</th>
                             </tr>
                           </thead>
-                          <tbody className="divide-y divide-slate-50 text-xs">
+                          <tbody className="divide-y divide-border text-xs">
                             {calculatePartnerRates().map((pr, idx) => (
-                              <tr key={idx} className="hover:bg-slate-50/50">
-                                <td className="py-3 px-4 font-bold text-slate-900">{pr.partner}</td>
-                                <td className="py-3 px-4 text-center text-slate-600 font-bold">{pr.total}</td>
-                                <td className="py-3 px-4 text-center text-slate-600 font-bold">{pr.active}</td>
+                              <tr key={idx} className="hover:bg-muted/50">
+                                <td className="py-3 px-4 font-bold text-foreground">{pr.partner}</td>
+                                <td className="py-3 px-4 text-center text-muted-foreground font-bold">{pr.total}</td>
+                                <td className="py-3 px-4 text-center text-muted-foreground font-bold">{pr.active}</td>
                                 <td className="py-3 px-4 text-right">
                                   <span className={`inline-block px-2.5 py-0.5 rounded-full font-black text-[10px] ${
-                                    pr.rate >= 75 ? 'bg-emerald-100 text-emerald-800' :
-                                    pr.rate >= 40 ? 'bg-amber-100 text-amber-800' :
-                                    'bg-slate-100 text-slate-800'
+                                    pr.rate >= 75 ? 'bg-emerald-100 dark:bg-emerald-950/30 text-emerald-800 dark:text-emerald-200' :
+                                    pr.rate >= 40 ? 'bg-amber-100 dark:bg-amber-950/30 text-amber-800 dark:text-amber-200' :
+                                    'bg-muted text-foreground'
                                   }`}>
                                     {pr.rate}%
                                   </span>
@@ -958,11 +962,11 @@ export default function SuperAdminOnboardingPage() {
             {/* Detalhes do Item Seleccionado */}
             <div className="lg:col-span-1">
               {activeTab === 'candidaturas' && selectedRequest && (
-                <Card className="border-slate-200 rounded-3xl overflow-hidden shadow-xl sticky top-24 bg-white animate-klasse-fade-in">
-                  <CardHeader className="bg-slate-50/50 border-b border-slate-100 p-6">
+                <Card className="border-border rounded-3xl overflow-hidden shadow-xl sticky top-24 bg-card animate-klasse-fade-in">
+                  <CardHeader className="bg-muted/50 border-b border-border p-6">
                     <div className="flex justify-between items-start">
-                      <CardTitle className="text-xl font-bold text-slate-900">{selectedRequest.escola_nome}</CardTitle>
-                      <button onClick={() => setSelectedId(null)} className="text-slate-400 hover:text-slate-600">×</button>
+                      <CardTitle className="text-xl font-bold text-foreground">{selectedRequest.escola_nome}</CardTitle>
+                      <button onClick={() => setSelectedId(null)} className="text-muted-foreground hover:text-muted-foreground">×</button>
                     </div>
                     <CardDescription>Resumo dos dados de Onboarding</CardDescription>
                   </CardHeader>
@@ -971,16 +975,16 @@ export default function SuperAdminOnboardingPage() {
                       const plan = getPlanMeta(selectedRequest.financeiro);
                       const influencerCode = getInfluencerCode(selectedRequest.financeiro);
                       return (
-                        <div className="rounded-2xl border border-emerald-100 bg-emerald-50 p-4">
-                          <h4 className="mb-3 text-[10px] font-bold text-emerald-700 uppercase tracking-widest">Contexto Comercial</h4>
+                        <div className="rounded-2xl border border-emerald-100 dark:border-emerald-900/60 bg-emerald-50 dark:bg-emerald-950/30 p-4">
+                          <h4 className="mb-3 text-[10px] font-bold text-emerald-700 dark:text-emerald-300 uppercase tracking-widest">Contexto Comercial</h4>
                           <div className="grid grid-cols-2 gap-4">
                             <div>
-                              <p className="text-[9px] font-bold text-emerald-600 uppercase">Plano Escolhido</p>
-                              <p className="text-sm font-black text-slate-900">{plan.label}</p>
+                              <p className="text-[9px] font-bold text-emerald-600 dark:text-emerald-300 uppercase">Plano Escolhido</p>
+                              <p className="text-sm font-black text-foreground">{plan.label}</p>
                             </div>
                             <div>
-                              <p className="text-[9px] font-bold text-emerald-600 uppercase">Influencer</p>
-                              <p className="text-sm font-black text-slate-900">{influencerCode || "Direto"}</p>
+                              <p className="text-[9px] font-bold text-emerald-600 dark:text-emerald-300 uppercase">Influencer</p>
+                              <p className="text-sm font-black text-foreground">{influencerCode || "Direto"}</p>
                             </div>
                           </div>
                         </div>
@@ -989,88 +993,88 @@ export default function SuperAdminOnboardingPage() {
                     
                     {/* Info Escola */}
                     <div className="space-y-3">
-                      <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Informações Fiscais</h4>
+                      <h4 className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Informações Fiscais</h4>
                       <div className="grid grid-cols-2 gap-4">
                         <div>
-                          <p className="text-[9px] font-bold text-slate-400 uppercase">NIF</p>
-                          <p className="text-sm font-bold text-slate-700 font-mono">{selectedRequest.escola_nif || 'Não informado'}</p>
+                          <p className="text-[9px] font-bold text-muted-foreground uppercase">NIF</p>
+                          <p className="text-sm font-bold text-foreground font-mono">{selectedRequest.escola_nif || 'Não informado'}</p>
                         </div>
                         <div>
-                          <p className="text-[9px] font-bold text-slate-400 uppercase">Província</p>
-                          <p className="text-sm font-bold text-slate-700">{selectedRequest.escola_provincia}</p>
+                          <p className="text-[9px] font-bold text-muted-foreground uppercase">Província</p>
+                          <p className="text-sm font-bold text-foreground">{selectedRequest.escola_provincia}</p>
                         </div>
                       </div>
                     </div>
 
                     {/* Info Director */}
                     <div className="space-y-3">
-                      <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Contacto do Director</h4>
+                      <h4 className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Contacto do Director</h4>
                       <div className="space-y-2">
-                        <div className="flex items-center gap-3 text-sm text-slate-600">
+                        <div className="flex items-center gap-3 text-sm text-muted-foreground">
                           <ShieldCheck size={14} className="text-emerald" />
                           <span className="font-bold">{selectedRequest.director_nome}</span>
                         </div>
-                        <div className="flex items-center gap-3 text-sm text-slate-600">
-                          <Phone size={14} className="text-slate-400" />
+                        <div className="flex items-center gap-3 text-sm text-muted-foreground">
+                          <Phone size={14} className="text-muted-foreground" />
                           <span>{selectedRequest.escola_tel}</span>
                         </div>
-                        <div className="flex items-center gap-3 text-sm text-slate-600">
-                          <Mail size={14} className="text-slate-400" />
+                        <div className="flex items-center gap-3 text-sm text-muted-foreground">
+                          <Mail size={14} className="text-muted-foreground" />
                           <span className="truncate">{selectedRequest.escola_email}</span>
                         </div>
                       </div>
                     </div>
 
                     {/* Resumo Académico */}
-                    <div className="bg-slate-50 rounded-2xl p-4 space-y-3 border border-slate-100">
-                      <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Perfil Académico & Potencial</h4>
+                    <div className="bg-muted rounded-2xl p-4 space-y-3 border border-border">
+                      <h4 className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Perfil Académico & Potencial</h4>
                       <div className="grid grid-cols-2 gap-4">
                         <div>
-                          <p className="text-[9px] font-bold text-slate-400 uppercase">Estimativa Alunos</p>
-                          <p className="text-sm font-bold text-slate-700">{selectedRequest.financeiro?.total_alunos || 0}</p>
+                          <p className="text-[9px] font-bold text-muted-foreground uppercase">Estimativa Alunos</p>
+                          <p className="text-sm font-bold text-foreground">{selectedRequest.financeiro?.total_alunos || 0}</p>
                         </div>
                         <div>
-                          <p className="text-[9px] font-bold text-slate-400 uppercase">Faturação Est.</p>
+                          <p className="text-[9px] font-bold text-muted-foreground uppercase">Faturação Est.</p>
                           <p className="text-sm font-black text-[#1F6B3B]">{fmtKz(calcEstimativa(selectedRequest.faixa_propina, selectedRequest.financeiro?.total_alunos))}</p>
                         </div>
                       </div>
                     </div>
 
-                    <div className="rounded-2xl border border-slate-100 bg-white p-4 space-y-3">
+                    <div className="rounded-2xl border border-border bg-card p-4 space-y-3">
                       <div className="flex items-center justify-between">
-                        <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Prontidão para Provisionamento</h4>
+                        <h4 className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Prontidão para Provisionamento</h4>
                         {loadingSelectedSteps ? (
-                          <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase text-slate-400">
+                          <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase text-muted-foreground">
                             <Loader2 className="w-3 h-3 animate-spin" />
                             Carregando
                           </span>
                         ) : canProvisionSelectedRequest ? (
-                          <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200 border font-bold uppercase text-[9px] px-2.5 py-0.5 rounded-full">
+                          <Badge className="bg-emerald-100 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-900/60 border font-bold uppercase text-[9px] px-2.5 py-0.5 rounded-full">
                             Pronto
                           </Badge>
                         ) : (
-                          <Badge className="bg-amber-100 text-amber-700 border-amber-200 border font-bold uppercase text-[9px] px-2.5 py-0.5 rounded-full">
+                          <Badge className="bg-amber-100 dark:bg-amber-950/30 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-900/60 border font-bold uppercase text-[9px] px-2.5 py-0.5 rounded-full">
                             Pendente
                           </Badge>
                         )}
                       </div>
 
                       {selectedRequestSteps.length === 0 && !loadingSelectedSteps ? (
-                        <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
-                          <p className="text-xs font-medium text-amber-700">
+                        <div className="rounded-2xl border border-amber-200 dark:border-amber-900/60 bg-amber-50 dark:bg-amber-950/30 p-4">
+                          <p className="text-xs font-medium text-amber-700 dark:text-amber-300">
                             Este pedido ainda não possui etapas carregadas. O provisionamento fica bloqueado até que o workflow esteja configurado.
                           </p>
                         </div>
                       ) : pendingSelectedRequestSteps.length > 0 ? (
                         <div className="space-y-2">
-                          <p className="text-xs font-medium text-slate-500">
+                          <p className="text-xs font-medium text-muted-foreground">
                             O provisionamento só será liberado quando todas as etapas estiverem concluídas.
                           </p>
                           <div className="flex flex-wrap gap-2">
                             {pendingSelectedRequestSteps.map(step => (
                               <Badge
                                 key={step.id}
-                                className="bg-amber-50 text-amber-700 border-amber-200 border font-bold uppercase text-[9px] px-2.5 py-0.5 rounded-full"
+                                className="bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-900/60 border font-bold uppercase text-[9px] px-2.5 py-0.5 rounded-full"
                               >
                                 {step.title}
                               </Badge>
@@ -1078,20 +1082,20 @@ export default function SuperAdminOnboardingPage() {
                           </div>
                         </div>
                       ) : (
-                        <p className="text-xs font-medium text-emerald-700">
+                        <p className="text-xs font-medium text-emerald-700 dark:text-emerald-300">
                           Todas as etapas do onboarding estão concluídas. O pedido está elegível para provisionamento.
                         </p>
                       )}
                     </div>
 
                     {/* Acções de Status */}
-                    <div className="pt-4 border-t border-slate-100 space-y-3">
-                      <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Acções Administrativas</h4>
+                    <div className="pt-4 border-t border-border space-y-3">
+                      <h4 className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Acções Administrativas</h4>
                       <div className="grid grid-cols-2 gap-2">
                         <Button 
                           variant="outline" 
                           size="sm" 
-                          className="rounded-xl text-xs font-bold border-slate-200"
+                          className="rounded-xl text-xs font-bold border-border"
                           onClick={() => updateStatus(selectedRequest.id, 'em_configuracao')}
                           disabled={selectedRequest.status === 'em_configuracao'}
                         >
@@ -1100,7 +1104,7 @@ export default function SuperAdminOnboardingPage() {
                         <Button 
                           variant="outline" 
                           size="sm" 
-                          className="rounded-xl text-xs font-bold border-slate-200 text-rose-600 hover:bg-rose-50"
+                          className="rounded-xl text-xs font-bold border-border text-rose-600 dark:text-rose-300 hover:bg-rose-50 dark:hover:bg-rose-950/30"
                           onClick={() => updateStatus(selectedRequest.id, 'cancelado')}
                         >
                           Cancelar Pedido
@@ -1116,7 +1120,7 @@ export default function SuperAdminOnboardingPage() {
                         PROVISIONAR ESCOLA
                       </Button>
                       {!canProvisionSelectedRequest && (
-                        <p className="text-xs font-medium text-amber-700 leading-relaxed">
+                        <p className="text-xs font-medium text-amber-700 dark:text-amber-300 leading-relaxed">
                           Provisionamento bloqueado. Conclua todas as etapas pendentes antes de transformar este pedido em uma escola operacional.
                         </p>
                       )}
@@ -1126,11 +1130,11 @@ export default function SuperAdminOnboardingPage() {
               )}
 
               {activeTab === 'leads' && selectedLead && (
-                <Card className="border-slate-200 rounded-3xl overflow-hidden shadow-xl sticky top-24 bg-white animate-klasse-fade-in">
-                  <CardHeader className="bg-slate-50/50 border-b border-slate-100 p-6">
+                <Card className="border-border rounded-3xl overflow-hidden shadow-xl sticky top-24 bg-card animate-klasse-fade-in">
+                  <CardHeader className="bg-muted/50 border-b border-border p-6">
                     <div className="flex justify-between items-start">
-                      <CardTitle className="text-xl font-bold text-slate-900">{selectedLead.escola}</CardTitle>
-                      <button onClick={() => setSelectedId(null)} className="text-slate-400 hover:text-slate-600">×</button>
+                      <CardTitle className="text-xl font-bold text-foreground">{selectedLead.escola}</CardTitle>
+                      <button onClick={() => setSelectedId(null)} className="text-muted-foreground hover:text-muted-foreground">×</button>
                     </div>
                     <CardDescription>Dados do Lead de Diagnóstico</CardDescription>
                   </CardHeader>
@@ -1139,38 +1143,38 @@ export default function SuperAdminOnboardingPage() {
                     {/* Info Contacto */}
                     <div className="space-y-3">
                       <div className="flex items-center justify-between">
-                        <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Contacto Directo</h4>
+                        <h4 className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Contacto Directo</h4>
                         {selectedLead.afiliado_codigo && (
-                          <Badge className="bg-purple-100 text-purple-700 border-purple-200 font-bold uppercase text-[9px]">
+                          <Badge className="bg-purple-100 dark:bg-purple-950/30 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-900/60 font-bold uppercase text-[9px]">
                             Ref: {selectedLead.afiliado_codigo}
                           </Badge>
                         )}
                       </div>
                       <div className="space-y-2">
-                        <div className="flex items-center gap-3 text-sm text-slate-600">
+                        <div className="flex items-center gap-3 text-sm text-muted-foreground">
                           <CheckCircle2 size={14} className="text-blue-500" />
                           <span className="font-bold">{selectedLead.nome}</span>
                         </div>
-                        <div className="flex items-center gap-3 text-sm text-slate-600">
-                          <Phone size={14} className="text-slate-400" />
+                        <div className="flex items-center gap-3 text-sm text-muted-foreground">
+                          <Phone size={14} className="text-muted-foreground" />
                           <span>{selectedLead.whatsapp}</span>
                         </div>
-                        <div className="flex items-center gap-3 text-sm text-slate-600">
-                          <Mail size={14} className="text-slate-400" />
+                        <div className="flex items-center gap-3 text-sm text-muted-foreground">
+                          <Mail size={14} className="text-muted-foreground" />
                           <span className="truncate">{selectedLead.email}</span>
                         </div>
                       </div>
                     </div>
 
                     {/* Resultado Diagnóstico */}
-                    <div className="bg-slate-50 rounded-2xl p-4 space-y-3 border border-slate-100">
-                      <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Performance no Diagnóstico</h4>
+                    <div className="bg-muted rounded-2xl p-4 space-y-3 border border-border">
+                      <h4 className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Performance no Diagnóstico</h4>
                       <div className="flex items-end justify-between">
                         <div>
-                          <p className="text-[9px] font-bold text-slate-400 uppercase">Score Obtido</p>
-                          <p className={`text-2xl font-black ${selectedLead.score >= 15 ? 'text-emerald-600' : 'text-amber-600'}`}>{selectedLead.score}/20</p>
+                          <p className="text-[9px] font-bold text-muted-foreground uppercase">Score Obtido</p>
+                          <p className={`text-2xl font-black ${selectedLead.score >= 15 ? 'text-emerald-600 dark:text-emerald-300' : 'text-amber-600 dark:text-amber-300'}`}>{selectedLead.score}/20</p>
                         </div>
-                        <Badge className={`${selectedLead.score >= 15 ? 'bg-emerald-100 text-emerald-700 border-emerald-200' : 'bg-amber-100 text-amber-700 border-amber-200'} font-bold uppercase text-[9px] px-2.5 py-0.5 rounded-full border`}>
+                        <Badge className={`${selectedLead.score >= 15 ? 'bg-emerald-100 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-900/60' : 'bg-amber-100 dark:bg-amber-950/30 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-900/60'} font-bold uppercase text-[9px] px-2.5 py-0.5 rounded-full border`}>
                           {selectedLead.score >= 15 ? 'Avançado' : selectedLead.score >= 10 ? 'Intermédio' : 'Crítico'}
                         </Badge>
                       </div>
@@ -1178,11 +1182,11 @@ export default function SuperAdminOnboardingPage() {
 
                     {/* Respostas Detalhadas */}
                     <div className="space-y-3">
-                      <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Mapeamento de Dores</h4>
+                      <h4 className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Mapeamento de Dores</h4>
                       <div className="grid gap-2">
                         {selectedLead.respostas_json && Object.entries(selectedLead.respostas_json).map(([key, value]: [string, any]) => (
-                          <div key={key} className="flex justify-between items-center p-2 rounded-lg bg-slate-50 border border-slate-100">
-                            <span className="text-[10px] font-bold text-slate-500 uppercase">{key}</span>
+                          <div key={key} className="flex justify-between items-center p-2 rounded-lg bg-muted border border-border">
+                            <span className="text-[10px] font-bold text-muted-foreground uppercase">{key}</span>
                             <Badge variant="outline" className="text-[9px] font-bold uppercase">{value}/4</Badge>
                           </div>
                         ))}
@@ -1190,13 +1194,13 @@ export default function SuperAdminOnboardingPage() {
                     </div>
 
                     {/* Acções de Follow-up */}
-                    <div className="pt-4 border-t border-slate-100 space-y-3">
-                      <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Gestão de Lead</h4>
+                    <div className="pt-4 border-t border-border space-y-3">
+                      <h4 className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Gestão de Lead</h4>
                       <div className="grid grid-cols-2 gap-2">
                         <Button 
                           variant="outline" 
                           size="sm" 
-                          className="rounded-xl text-xs font-bold border-slate-200"
+                          className="rounded-xl text-xs font-bold border-border"
                           onClick={() => updateStatus(selectedLead.id, 'EM_CONTACTO')}
                           disabled={selectedLead.status === 'EM_CONTACTO'}
                         >
@@ -1205,7 +1209,7 @@ export default function SuperAdminOnboardingPage() {
                         <Button 
                           variant="outline" 
                           size="sm" 
-                          className="rounded-xl text-xs font-bold border-slate-200"
+                          className="rounded-xl text-xs font-bold border-border"
                           onClick={() => updateStatus(selectedLead.id, 'PERDIDO')}
                         >
                           Arquivar
@@ -1227,66 +1231,66 @@ export default function SuperAdminOnboardingPage() {
               )}
 
               {activeTab === 'uploads' && selectedUpload && (
-                <Card className="border-slate-200 rounded-3xl overflow-hidden shadow-xl sticky top-24 bg-white animate-klasse-fade-in">
-                  <CardHeader className="bg-slate-50/50 border-b border-slate-100 p-6">
+                <Card className="border-border rounded-3xl overflow-hidden shadow-xl sticky top-24 bg-card animate-klasse-fade-in">
+                  <CardHeader className="bg-muted/50 border-b border-border p-6">
                     <div className="flex justify-between items-start">
-                      <CardTitle className="text-xl font-bold text-slate-900">{selectedUpload.onboarding_requests?.escola_nome || 'Upload de onboarding'}</CardTitle>
-                      <button onClick={() => setSelectedId(null)} className="text-slate-400 hover:text-slate-600">×</button>
+                      <CardTitle className="text-xl font-bold text-foreground">{selectedUpload.onboarding_requests?.escola_nome || 'Upload de onboarding'}</CardTitle>
+                      <button onClick={() => setSelectedId(null)} className="text-muted-foreground hover:text-muted-foreground">×</button>
                     </div>
                     <CardDescription>Fila de revisão documental</CardDescription>
                   </CardHeader>
                   <CardContent className="p-6 space-y-6">
-                    <div className="rounded-2xl border border-slate-100 bg-slate-50 p-4 space-y-3">
+                    <div className="rounded-2xl border border-border bg-muted p-4 space-y-3">
                       <div className="grid grid-cols-2 gap-4 text-sm">
                         <div>
-                          <p className="text-[9px] font-bold text-slate-400 uppercase">Token</p>
-                          <p className="font-mono font-bold text-slate-700">{selectedUpload.onboarding_requests?.tracking_token || 'Sem token'}</p>
+                          <p className="text-[9px] font-bold text-muted-foreground uppercase">Token</p>
+                          <p className="font-mono font-bold text-foreground">{selectedUpload.onboarding_requests?.tracking_token || 'Sem token'}</p>
                         </div>
                         <div>
-                          <p className="text-[9px] font-bold text-slate-400 uppercase">Etapa</p>
-                          <p className="font-bold text-slate-700 uppercase">{selectedUpload.step_code}</p>
+                          <p className="text-[9px] font-bold text-muted-foreground uppercase">Etapa</p>
+                          <p className="font-bold text-foreground uppercase">{selectedUpload.step_code}</p>
                         </div>
                         <div>
-                          <p className="text-[9px] font-bold text-slate-400 uppercase">Origem</p>
-                          <p className="font-bold text-slate-700">{selectedUpload.author_type_label || (selectedUpload.created_by === 'escola' ? 'Escola' : 'Parceiro')}</p>
+                          <p className="text-[9px] font-bold text-muted-foreground uppercase">Origem</p>
+                          <p className="font-bold text-foreground">{selectedUpload.author_type_label || (selectedUpload.created_by === 'escola' ? 'Escola' : 'Parceiro')}</p>
                         </div>
                         <div>
-                          <p className="text-[9px] font-bold text-slate-400 uppercase">Quem enviou</p>
-                          <p className="font-bold text-slate-700">{selectedUpload.author_display || 'Não identificado'}</p>
+                          <p className="text-[9px] font-bold text-muted-foreground uppercase">Quem enviou</p>
+                          <p className="font-bold text-foreground">{selectedUpload.author_display || 'Não identificado'}</p>
                         </div>
                         <div>
-                          <p className="text-[9px] font-bold text-slate-400 uppercase">Recebido em</p>
-                          <p className="font-bold text-slate-700">{format(new Date(selectedUpload.created_at), "dd MMM yyyy, HH:mm", { locale: pt })}</p>
+                          <p className="text-[9px] font-bold text-muted-foreground uppercase">Recebido em</p>
+                          <p className="font-bold text-foreground">{format(new Date(selectedUpload.created_at), "dd MMM yyyy, HH:mm", { locale: pt })}</p>
                         </div>
                       </div>
                     </div>
 
                     <div className="space-y-3">
-                      <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Arquivo</h4>
-                      <div className="rounded-2xl border border-slate-200 bg-white p-4">
-                        <p className="text-sm font-mono break-all text-slate-700">{selectedUpload.file_path}</p>
+                      <h4 className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Arquivo</h4>
+                      <div className="rounded-2xl border border-border bg-card p-4">
+                        <p className="text-sm font-mono break-all text-foreground">{selectedUpload.file_path}</p>
                       </div>
                     </div>
 
                     <div className="space-y-3">
-                      <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Motivo de rejeição</h4>
+                      <h4 className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Motivo de rejeição</h4>
                       <textarea
                         value={rejectionReason}
                         onChange={e => setRejectionReason(e.target.value)}
                         placeholder="Descreva por que o documento foi rejeitado..."
-                        className="min-h-[110px] w-full rounded-2xl border border-slate-200 p-4 text-sm text-slate-700 outline-none transition-all focus:border-emerald/40 focus:ring-4 focus:ring-emerald/5"
+                        className="min-h-[110px] w-full rounded-2xl border border-border p-4 text-sm text-foreground outline-none transition-all focus:border-emerald/40 focus:ring-4 focus:ring-emerald/5"
                       />
                     </div>
 
                     {selectedUpload.rejection_reason && (
-                      <div className="rounded-2xl border border-rose-100 bg-rose-50 p-4">
+                      <div className="rounded-2xl border border-rose-100 dark:border-rose-900/60 bg-rose-50 dark:bg-rose-950/30 p-4">
                         <p className="text-[10px] font-bold text-rose-500 uppercase tracking-widest mb-1">Última rejeição</p>
-                        <p className="text-sm font-medium text-rose-700">{selectedUpload.rejection_reason}</p>
+                        <p className="text-sm font-medium text-rose-700 dark:text-rose-300">{selectedUpload.rejection_reason}</p>
                       </div>
                     )}
 
-                    <div className="pt-4 border-t border-slate-100 space-y-3">
-                      <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Ações de revisão</h4>
+                    <div className="pt-4 border-t border-border space-y-3">
+                      <h4 className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Ações de revisão</h4>
                       <div className="grid grid-cols-2 gap-2">
                         <Button
                           onClick={() => reviewUpload(selectedUpload.id, 'aprovado')}
@@ -1300,7 +1304,7 @@ export default function SuperAdminOnboardingPage() {
                           variant="outline"
                           onClick={() => reviewUpload(selectedUpload.id, 'rejeitado')}
                           disabled={reviewingUpload}
-                          className="rounded-xl text-xs font-bold border-rose-200 text-rose-600 hover:bg-rose-50 gap-2"
+                          className="rounded-xl text-xs font-bold border-rose-200 dark:border-rose-900/60 text-rose-600 dark:text-rose-300 hover:bg-rose-50 dark:hover:bg-rose-950/30 gap-2"
                         >
                           {reviewingUpload ? <Loader2 className="w-3 h-3 animate-spin" /> : <X size={14} />}
                           Rejeitar
@@ -1312,9 +1316,9 @@ export default function SuperAdminOnboardingPage() {
               )}
 
               {!selectedId && (
-                <div className="h-64 flex flex-col items-center justify-center border-2 border-dashed border-slate-200 rounded-3xl p-8 text-center bg-white/50">
-                  <Eye size={32} className="text-slate-200 mb-2" />
-                  <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Seleccione um item para ver detalhes</p>
+                <div className="h-64 flex flex-col items-center justify-center border-2 border-dashed border-border rounded-3xl p-8 text-center bg-card/50">
+                  <Eye size={32} className="text-muted-foreground mb-2" />
+                  <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Seleccione um item para ver detalhes</p>
                 </div>
               )}
             </div>
@@ -1323,26 +1327,26 @@ export default function SuperAdminOnboardingPage() {
         </Tabs>
       </div>
 
-      <Dialog open={provisionModalOpen} onOpenChange={setProvisionModalOpen}>
-        <DialogContent className="sm:max-w-[550px] rounded-3xl border-slate-100 bg-white shadow-2xl p-6">
-          <DialogHeader className="space-y-1.5">
-            <DialogTitle className="text-xl font-black text-slate-900 tracking-tight flex items-center gap-2">
+      <ProvisionSurface embedded={Boolean(workspace)} open={provisionModalOpen} onOpenChange={(open) => { if (!provisioning) setProvisionModalOpen(open); }}>
+        <ProvisionContent embedded={Boolean(workspace)}>
+          <div className="space-y-1.5">
+            <ProvisionTitle embedded={Boolean(workspace)}>
               <Database className="w-5 h-5 text-emerald" />
               Provisionar Escola
-            </DialogTitle>
-            <DialogDescription className="text-xs font-medium text-slate-500">
+            </ProvisionTitle>
+            <ProvisionDescription embedded={Boolean(workspace)}>
               Vincule esta candidatura de onboarding a uma escola existente ou crie uma nova escola.
-            </DialogDescription>
-          </DialogHeader>
+            </ProvisionDescription>
+          </div>
 
           {/* Tab selectors */}
-          <div className="flex bg-slate-100 p-1 rounded-xl my-4">
+          <div className="flex bg-muted p-1 rounded-xl my-4">
             <button
               onClick={() => setProvisionTab('existente')}
               className={`flex-1 py-2 rounded-lg font-bold text-xs uppercase tracking-wider transition-all ${
                 provisionTab === 'existente'
-                  ? 'bg-white text-emerald shadow-sm'
-                  : 'text-slate-500 hover:text-slate-900'
+                  ? 'bg-card text-emerald shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground'
               }`}
             >
               Vincular Existente
@@ -1351,8 +1355,8 @@ export default function SuperAdminOnboardingPage() {
               onClick={() => setProvisionTab('nova')}
               className={`flex-1 py-2 rounded-lg font-bold text-xs uppercase tracking-wider transition-all ${
                 provisionTab === 'nova'
-                  ? 'bg-white text-emerald shadow-sm'
-                  : 'text-slate-500 hover:text-slate-900'
+                  ? 'bg-card text-emerald shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground'
               }`}
             >
               Criar Nova Escola
@@ -1364,11 +1368,11 @@ export default function SuperAdminOnboardingPage() {
               {loadingSchools ? (
                 <div className="flex flex-col items-center justify-center p-8 space-y-2">
                   <Loader2 className="w-6 h-6 animate-spin text-emerald" />
-                  <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Buscando escolas...</p>
+                  <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Buscando escolas...</p>
                 </div>
               ) : existingSchools.length === 0 ? (
                 <div className="text-center py-6">
-                  <p className="text-sm font-medium text-slate-500">Nenhuma escola disponível encontrada.</p>
+                  <p className="text-sm font-medium text-muted-foreground">Nenhuma escola disponível encontrada.</p>
                 </div>
               ) : (
                 <div className="space-y-3">
@@ -1383,38 +1387,38 @@ export default function SuperAdminOnboardingPage() {
                     }))}
                   />
                   {selectedExistingSchool && (
-                    <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 space-y-3">
+                    <div className="rounded-2xl border border-border bg-muted p-4 space-y-3">
                       <div className="flex items-start justify-between gap-3">
                         <div>
-                          <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Escola destino</p>
-                          <p className="text-sm font-black text-slate-900">{selectedExistingSchool.nome || 'Escola sem nome'}</p>
+                          <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Escola destino</p>
+                          <p className="text-sm font-black text-foreground">{selectedExistingSchool.nome || 'Escola sem nome'}</p>
                         </div>
-                        <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200 border font-bold uppercase text-[9px] px-2.5 py-0.5 rounded-full">
+                        <Badge className="bg-emerald-100 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-900/60 border font-bold uppercase text-[9px] px-2.5 py-0.5 rounded-full">
                           Elegível
                         </Badge>
                       </div>
                       <div className="grid grid-cols-2 gap-3 text-xs">
                         <div>
-                          <p className="font-bold uppercase tracking-widest text-slate-400">Status</p>
-                          <p className="mt-1 font-semibold text-slate-700">{getSchoolStatusLabel(selectedExistingSchool.status)}</p>
+                          <p className="font-bold uppercase tracking-widest text-muted-foreground">Status</p>
+                          <p className="mt-1 font-semibold text-foreground">{getSchoolStatusLabel(selectedExistingSchool.status)}</p>
                         </div>
                         <div>
-                          <p className="font-bold uppercase tracking-widest text-slate-400">Plano</p>
-                          <p className="mt-1 font-semibold text-slate-700">
+                          <p className="font-bold uppercase tracking-widest text-muted-foreground">Plano</p>
+                          <p className="mt-1 font-semibold text-foreground">
                             {selectedExistingSchool.plano ? PLAN_NAMES[selectedExistingSchool.plano] : 'Sem plano'}
                           </p>
                         </div>
                         <div className="col-span-2">
-                          <p className="font-bold uppercase tracking-widest text-slate-400">Localização</p>
-                          <p className="mt-1 font-semibold text-slate-700">
+                          <p className="font-bold uppercase tracking-widest text-muted-foreground">Localização</p>
+                          <p className="mt-1 font-semibold text-foreground">
                             {[selectedExistingSchool.cidade, selectedExistingSchool.estado].filter(Boolean).join(', ') || 'Não informado'}
                           </p>
                         </div>
                       </div>
                     </div>
                   )}
-                  <div className="rounded-xl bg-amber-50 border border-amber-200 p-3 mt-4">
-                    <p className="text-xs font-medium text-amber-700 leading-relaxed">
+                  <div className="rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/60 p-3 mt-4">
+                    <p className="text-xs font-medium text-amber-700 dark:text-amber-300 leading-relaxed">
                       <strong>Atenção:</strong> A lista acima já exclui escolas suspensas, inactivas, canceladas e excluídas. O provisionamento irá configurar ano lectivo, classes e turmas diretamente no destino escolhido.
                     </p>
                   </div>
@@ -1458,8 +1462,8 @@ export default function SuperAdminOnboardingPage() {
                 />
               </div>
 
-              <div className="border-t border-slate-100 pt-3">
-                <h4 className="text-xs font-black text-slate-800 uppercase tracking-widest mb-3">Administrador Principal</h4>
+              <div className="border-t border-border pt-3">
+                <h4 className="text-xs font-black text-foreground uppercase tracking-widest mb-3">Administrador Principal</h4>
                 <div className="space-y-4">
                   <Input
                     label="Nome do Administrador"
@@ -1488,7 +1492,7 @@ export default function SuperAdminOnboardingPage() {
             </div>
           )}
 
-          <DialogFooter className="border-t border-slate-100 pt-4 mt-6">
+          <div className="flex flex-wrap justify-end gap-2 border-t border-border pt-4 mt-6">
             <Button
               variant="outline"
               onClick={() => setProvisionModalOpen(false)}
@@ -1516,9 +1520,25 @@ export default function SuperAdminOnboardingPage() {
                 Criar e Provisionar
               </Button>
             )}
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          </div>
+        </ProvisionContent>
+      </ProvisionSurface>
     </div>
   );
+}
+
+function ProvisionSurface({ embedded, open, onOpenChange, children }: { embedded: boolean; open: boolean; onOpenChange: (open: boolean) => void; children: ReactNode }) {
+  return embedded ? (open ? <>{children}</> : null) : <Dialog open={open} onOpenChange={onOpenChange}>{children}</Dialog>;
+}
+function ProvisionContent({ embedded, children }: { embedded: boolean; children: ReactNode }) {
+  const className = "space-y-4 rounded-xl border border-border bg-card p-6";
+  return embedded ? <section className={className}>{children}</section> : <DialogContent className={"sm:max-w-[550px] " + className}>{children}</DialogContent>;
+}
+function ProvisionTitle({ embedded, children }: { embedded: boolean; children: ReactNode }) {
+  const className = "text-xl font-semibold text-foreground flex items-center gap-2";
+  return embedded ? <h2 className={className}>{children}</h2> : <DialogTitle className={className}>{children}</DialogTitle>;
+}
+function ProvisionDescription({ embedded, children }: { embedded: boolean; children: ReactNode }) {
+  const className = "text-xs text-muted-foreground";
+  return embedded ? <p className={className}>{children}</p> : <DialogDescription className={className}>{children}</DialogDescription>;
 }

@@ -1,5 +1,6 @@
 "use client"
 
+import { useSuperAdminWorkspace, useWorkspaceGuard } from "@/components/super-admin/workspace-navigation";
 import { useState } from "react"
 import { Button } from "@/components/ui/Button"
 import { useToast } from "@/components/feedback/FeedbackSystem"
@@ -14,9 +15,11 @@ export default function SchoolBillingModal({ escolaId, onClose }: Props) {
   const [vencimento, setVencimento] = useState("")
   const [sending, setSending] = useState(false)
   const { success, error } = useToast()
+  const workspace = useSuperAdminWorkspace()
+  useWorkspaceGuard("school-billing", sending, Boolean(valor || vencimento))
 
   return (
-    <div role="dialog" aria-modal="true" aria-label="Enviar cobrança" className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/50 p-4">
+    <div role={workspace ? "region" : "dialog"} aria-modal={workspace ? undefined : true} aria-label="Enviar cobrança" className={workspace ? "flex justify-center py-4" : "fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/50 p-4"}>
       <div className="max-h-[calc(100dvh-2rem)] w-full max-w-md overflow-y-auto rounded-xl border border-border bg-card p-4 text-card-foreground shadow-xl sm:p-5">
         <h3 className="text-lg font-semibold text-foreground mb-2">Enviar cobrança</h3>
         <div className="space-y-3">
@@ -39,7 +42,7 @@ export default function SchoolBillingModal({ escolaId, onClose }: Props) {
           />
         </div>
         <div className="mt-4 flex items-center justify-end gap-2">
-          <Button onClick={onClose} variant="outline" tone="gray" size="sm">Cancelar</Button>
+          <Button disabled={sending} onClick={onClose} variant="outline" tone="gray" size="sm">Cancelar</Button>
           <Button
             disabled={sending}
             onClick={async ()=>{
@@ -49,6 +52,7 @@ export default function SchoolBillingModal({ escolaId, onClose }: Props) {
                 const json = await res.json()
                 if (!res.ok || !json?.ok) throw new Error(json?.error || 'Falha ao enviar cobrança')
                 success('Cobrança enviada')
+                workspace?.markChanged()
                 onClose()
               } catch (e) {
                 const m = e instanceof Error ? e.message : String(e)

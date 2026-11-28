@@ -1,5 +1,6 @@
 "use client";
 
+import { useSuperAdminWorkspace, useWorkspaceNavigate, useWorkspaceGuard } from "@/components/super-admin/workspace-navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
@@ -48,6 +49,9 @@ export default function SchoolsTableClient({
   fallbackSource,
 }: SchoolsTableProps) {
   const router = useRouter();
+  const workspace = useSuperAdminWorkspace();
+  const navigate = useWorkspaceNavigate();
+  const embedded = Boolean(workspace);
   const searchParams = useSearchParams();
   const pathname = usePathname();
 
@@ -68,7 +72,7 @@ export default function SchoolsTableClient({
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [planFilter, setPlanFilter] = useState<PlanFilter>("all");
-  const [onboardingFilter, setOnboardingFilter] = useState<OnboardingFilter>("all");
+  const [onboardingFilter, setOnboardingFilter] = useState<OnboardingFilter>(() => workspace?.route?.href.includes("onboarding=in_progress") ? "in_progress" : "all");
 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<EditForm>({});
@@ -86,9 +90,11 @@ export default function SchoolsTableClient({
 
   const itemsPerPage = 10;
 
+  useWorkspaceGuard("school-list", Boolean(savingId), Boolean(editingId));
+
   // Read initial page from query
   const initialPage = useMemo(() => {
-    const raw = searchParams?.get("page");
+    const raw = embedded ? null : searchParams?.get("page");
     const n = raw ? Number(raw) : 1;
     return Number.isFinite(n) && n > 0 ? Math.floor(n) : 1;
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -218,6 +224,10 @@ export default function SchoolsTableClient({
     [filteredSchools.length]
   );
 
+  const revision = workspace?.revision ?? 0;
+  const observedRevision = useRef(revision);
+  useEffect(() => { if (observedRevision.current !== revision) { observedRevision.current = revision; void reload(); } }, [revision, reload]);
+
   // Keep currentPage in range if filters shrink
   useEffect(() => {
     setCurrentPage((p) => clamp(p, 1, totalPages));
@@ -251,6 +261,7 @@ export default function SchoolsTableClient({
 
   const syncPageToUrl = useCallback(
     (page: number) => {
+      if (embedded) return;
       try {
         const sp = new URLSearchParams(searchParams?.toString());
         if (page === 1) sp.delete("page");
@@ -262,7 +273,7 @@ export default function SchoolsTableClient({
         // noop
       }
     },
-    [router, pathname, searchParams]
+    [router, pathname, searchParams, embedded]
   );
 
   const handlePageChange = (page: number) => {
@@ -272,7 +283,7 @@ export default function SchoolsTableClient({
   };
 
   // Navigation
-  const viewSchoolDetails = (schoolId: string) => router.push(`/super-admin/escolas/${schoolId}/edit`);
+  const viewSchoolDetails = (schoolId: string) => navigate(`/super-admin/escolas/${schoolId}/edit`);
   const enterSchoolPortal = (schoolId: string) => router.push(`/escola/${schoolId}/admin/dashboard`);
 
   // Admin repair
@@ -350,6 +361,7 @@ export default function SchoolsTableClient({
       setEditingId(null);
       setEditForm({});
       toast.success("Escola atualizada com sucesso!");
+      workspace?.markChanged();
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       setErrorMsg(msg);
@@ -377,12 +389,13 @@ export default function SchoolsTableClient({
   const closeConfirm = () => setConfirm((c) => ({ ...c, open: false }));
 
   return (
-    <div className="min-h-screen bg-slate-950">
+    <div className="min-w-0 rounded-xl bg-background">
+      <div hidden={embedded && (billingOpen || confirm.open)}>
       <ConfigHealthBanner />
 
-      <div className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+      <div className="w-full min-w-0">
         {/* Header + Status */}
-        <div className="rounded-xl bg-slate-900 ring-1 ring-white/10 p-4 sm:p-5">
+        <div className="rounded-xl bg-card ring-1 ring-border p-4 sm:p-5">
           <div className="flex flex-col gap-3">
             {errorMsg ? (
               <ErrorBanner errorMsg={errorMsg} loading={loading} onRetry={handleRetry} />
@@ -393,7 +406,7 @@ export default function SchoolsTableClient({
         </div>
 
         {/* Filters */}
-        <div className="mt-4 rounded-xl bg-slate-900 ring-1 ring-white/10 p-4 sm:p-5">
+        <div className="mt-4 rounded-xl bg-card ring-1 ring-border p-4 sm:p-5">
           <SchoolsFilters
               searchTerm={searchTerm}
               onSearchChange={setSearchTerm}
@@ -408,7 +421,7 @@ export default function SchoolsTableClient({
         </div>
 
         {/* Table */}
-        <div className="mt-4 rounded-xl bg-slate-900 ring-1 ring-white/10 overflow-hidden">
+        <div className="mt-4 rounded-xl bg-card ring-1 ring-border overflow-hidden">
           <SchoolsTable
             schools={paginatedSchools}
             progress={progress}
@@ -429,11 +442,12 @@ export default function SchoolsTableClient({
         </div>
 
         {/* Pagination */}
-        <div className="mt-4 rounded-xl bg-slate-900 ring-1 ring-white/10 p-3 sm:p-4">
+        <div className="mt-4 rounded-xl bg-card ring-1 ring-border p-3 sm:p-4">
           <SchoolsPagination currentPage={currentPage} totalPages={totalPages} onPageChange={handlePageChange} />
         </div>
       </div>
 
+      </div>
       {/* Billing modal */}
       {billingOpen && billingSchoolId ? (
         <BillingModal
@@ -453,6 +467,7 @@ export default function SchoolsTableClient({
           escolaNome={confirm.escolaNome}
           onClose={closeConfirm}
           onChanged={(newStatus) => {
+            workspace?.markChanged();
             const escolaId = confirm.escolaId!;
             if (confirm.action === "delete") {
               setSchools((prev) => prev.filter((s) => String(s.id) !== escolaId));
@@ -476,10 +491,10 @@ function ErrorBanner({
   onRetry: () => void;
 }) {
   return (
-    <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-red-100 flex items-start justify-between gap-3">
+    <div className="rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-red-700 dark:text-red-200 flex items-start justify-between gap-3">
       <div className="min-w-0">
         <p className="font-semibold">Ocorreu um erro</p>
-        <p className="mt-1 text-sm break-words text-red-100/90">{errorMsg}</p>
+        <p className="mt-1 text-sm break-words text-red-700 dark:text-red-200">{errorMsg}</p>
       </div>
 
       <button

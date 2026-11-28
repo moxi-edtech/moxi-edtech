@@ -89,9 +89,9 @@ export function InfraTab({
     : 0;
 
   const tone =
-    dbUsagePct >= 100 ? 'text-red-700' :
-    dbUsagePct >= 90 ? 'text-amber-700' :
-    'text-green-700';
+    dbUsagePct >= 100 ? 'text-red-700 dark:text-red-300' :
+    dbUsagePct >= 90 ? 'text-amber-700 dark:text-amber-300' :
+    'text-green-700 dark:text-green-300';
 
   async function loadMaintenanceWindow() {
     try {
@@ -425,16 +425,16 @@ export function InfraTab({
               onChange={(e) => setMaintenanceForm((current) => ({ ...current, title: e.target.value }))}
               placeholder="Ex: Manutenção programada"
             />
-            <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+            <div className="rounded-lg border border-amber-200 dark:border-amber-900/60 bg-amber-50 dark:bg-amber-950/30 px-4 py-3 text-sm text-amber-900 dark:text-amber-200">
               VACUUM FULL só executa dentro de uma janela activa com aviso global.
             </div>
             <div className="md:col-span-2">
-              <label className="mb-1.5 block text-sm font-medium text-gray-700">Mensagem global</label>
+              <label className="mb-1.5 block text-sm font-medium text-foreground">Mensagem global</label>
               <textarea
                 value={maintenanceForm.message}
                 onChange={(e) => setMaintenanceForm((current) => ({ ...current, message: e.target.value }))}
                 rows={3}
-                className="w-full rounded-lg border border-gray-300 p-3 transition-colors duration-200 focus:border-teal-500 focus:ring-teal-500"
+                className="w-full rounded-lg border border-border p-3 transition-colors duration-200 focus:border-teal-50 dark:focus:border-teal-900/600 focus:ring-teal-500"
                 placeholder="Manutenção em andamento. Alguns serviços podem ficar comprometidos durante esta janela."
               />
             </div>
@@ -476,15 +476,15 @@ export function InfraTab({
             </Button>
           </div>
 
-          <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+          <div className="rounded-xl border border-border bg-muted p-4">
             {maintenanceWindow ? (
-              <div className="space-y-2 text-sm text-slate-700">
+              <div className="space-y-2 text-sm text-foreground">
                 <div className="flex flex-wrap items-center gap-2">
-                  <span className="font-semibold text-slate-900">{maintenanceWindow.title}</span>
+                  <span className="font-semibold text-foreground">{maintenanceWindow.title}</span>
                   <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${
                     maintenanceWindow.phase === 'active'
-                      ? 'bg-rose-100 text-rose-700'
-                      : 'bg-sky-100 text-sky-700'
+                      ? 'bg-rose-100 dark:bg-rose-950/30 text-rose-700 dark:text-rose-300'
+                      : 'bg-sky-100 dark:bg-sky-950/30 text-sky-700 dark:text-sky-300'
                   }`}>
                     {maintenanceWindow.phase === 'active' ? 'Activa' : 'Agendada'}
                   </span>
@@ -495,7 +495,7 @@ export function InfraTab({
                 </div>
               </div>
             ) : (
-              <div className="text-sm text-slate-600">
+              <div className="text-sm text-muted-foreground">
                 Sem janela activa ou agendada. Operações intrusivas continuam bloqueadas fora do horário de manutenção.
               </div>
             )}
@@ -517,11 +517,11 @@ export function InfraTab({
               <div className={`text-2xl font-bold ${tone}`}>
                 {infraMetrics.db_size_mb.toFixed(1)} MB
               </div>
-              <div className="text-sm text-gray-500">
+              <div className="text-sm text-muted-foreground">
                 Limite atual: {infraMetrics.db_size_limit_mb} MB
               </div>
               <Progress value={dbUsagePct} />
-              <div className="text-xs text-gray-500">
+              <div className="text-xs text-muted-foreground">
                 {dbUsagePct.toFixed(1)}% utilizado
               </div>
             </div>
@@ -538,14 +538,14 @@ export function InfraTab({
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              <div className="text-2xl font-bold text-slate-700">
+              <div className="text-2xl font-bold text-foreground">
                 {infraMetrics.storage_mb.toFixed(1)} MB
               </div>
-              <div className="text-sm text-gray-500">
+              <div className="text-sm text-muted-foreground">
                 Limite atual: {infraMetrics.storage_limit_mb} MB
               </div>
               <Progress value={storageUsagePct} />
-              <div className="text-xs text-gray-500">
+              <div className="text-xs text-muted-foreground">
                 {storageUsagePct.toFixed(1)}% utilizado
               </div>
             </div>
@@ -563,14 +563,14 @@ export function InfraTab({
           <CardContent>
             <div className="space-y-3 text-sm">
               <div className="flex items-center justify-between">
-                <span className="text-gray-600">cron.job_run_details</span>
-                <span className="font-semibold text-slate-900">{infraMetrics.cron_job_run_details_mb.toFixed(1)} MB</span>
+                <span className="text-muted-foreground">cron.job_run_details</span>
+                <span className="font-semibold text-foreground">{infraMetrics.cron_job_run_details_mb.toFixed(1)} MB</span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-gray-600">public.audit_logs</span>
-                <span className="font-semibold text-slate-900">{infraMetrics.audit_logs_mb.toFixed(1)} MB</span>
+                <span className="text-muted-foreground">public.audit_logs</span>
+                <span className="font-semibold text-foreground">{infraMetrics.audit_logs_mb.toFixed(1)} MB</span>
               </div>
-              <div className="rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800">
+              <div className="rounded-lg bg-amber-50 dark:bg-amber-950/30 px-3 py-2 text-xs text-amber-800 dark:text-amber-200">
                 O maior risco atual é retenção excessiva de cron e logs, não dados académicos.
               </div>
             </div>
@@ -588,12 +588,12 @@ export function InfraTab({
             <div className="space-y-3">
               {infraMetrics.top_tables.map((table) => (
                 <div key={table.name} className="flex items-center justify-between text-sm">
-                  <span className="truncate text-gray-600 pr-4">{table.name}</span>
-                  <span className="font-mono text-slate-900">{table.size_mb.toFixed(1)} MB</span>
+                  <span className="truncate text-muted-foreground pr-4">{table.name}</span>
+                  <span className="font-mono text-foreground">{table.size_mb.toFixed(1)} MB</span>
                 </div>
               ))}
               {infraMetrics.top_tables.length === 0 ? (
-                <div className="text-sm text-gray-500">Sem dados de tabelas no momento.</div>
+                <div className="text-sm text-muted-foreground">Sem dados de tabelas no momento.</div>
               ) : null}
             </div>
           </CardContent>
@@ -610,27 +610,27 @@ export function InfraTab({
           <CardContent>
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-3 text-sm">
-                <div className="rounded-lg bg-slate-50 p-3">
-                  <div className="text-slate-500">Runs de cron</div>
-                  <div className="mt-1 text-xl font-semibold text-slate-900">{infraMetrics.cron_runs_total.toLocaleString('pt-AO')}</div>
-                  <div className="text-xs text-rose-700">{infraMetrics.cron_failed_total.toLocaleString('pt-AO')} falhas</div>
+                <div className="rounded-lg bg-muted p-3">
+                  <div className="text-muted-foreground">Runs de cron</div>
+                  <div className="mt-1 text-xl font-semibold text-foreground">{infraMetrics.cron_runs_total.toLocaleString('pt-AO')}</div>
+                  <div className="text-xs text-rose-700 dark:text-rose-300">{infraMetrics.cron_failed_total.toLocaleString('pt-AO')} falhas</div>
                 </div>
-                <div className="rounded-lg bg-slate-50 p-3">
-                  <div className="text-slate-500">Audit logs</div>
-                  <div className="mt-1 text-xl font-semibold text-slate-900">{infraMetrics.audit_logs_total.toLocaleString('pt-AO')}</div>
-                  <div className="text-xs text-slate-500">{infraMetrics.audit_logs_mb.toFixed(1)} MB</div>
+                <div className="rounded-lg bg-muted p-3">
+                  <div className="text-muted-foreground">Audit logs</div>
+                  <div className="mt-1 text-xl font-semibold text-foreground">{infraMetrics.audit_logs_total.toLocaleString('pt-AO')}</div>
+                  <div className="text-xs text-muted-foreground">{infraMetrics.audit_logs_mb.toFixed(1)} MB</div>
                 </div>
               </div>
 
               <div className="space-y-2">
                 {infraMetrics.audit_by_portal.map((item) => (
                   <div key={item.portal} className="flex items-center justify-between text-sm">
-                    <span className="text-gray-600">{item.portal}</span>
-                    <span className="font-medium text-slate-900">{item.total.toLocaleString('pt-AO')}</span>
+                    <span className="text-muted-foreground">{item.portal}</span>
+                    <span className="font-medium text-foreground">{item.total.toLocaleString('pt-AO')}</span>
                   </div>
                 ))}
                 {infraMetrics.audit_by_portal.length === 0 ? (
-                  <div className="text-sm text-gray-500">Sem distribuição de auditoria.</div>
+                  <div className="text-sm text-muted-foreground">Sem distribuição de auditoria.</div>
                 ) : null}
               </div>
             </div>
@@ -646,14 +646,14 @@ export function InfraTab({
         <CardContent>
           <div className="space-y-3">
             {infraMetrics.recommendations.map((item) => (
-              <div key={item} className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700">
+              <div key={item} className="rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground">
                 {item}
               </div>
             ))}
             {infraMetrics.recommendations.length === 0 ? (
-              <div className="text-sm text-gray-500">Sem recomendações críticas no momento.</div>
+              <div className="text-sm text-muted-foreground">Sem recomendações críticas no momento.</div>
             ) : null}
-            <div className="pt-2 text-xs text-gray-500">
+            <div className="pt-2 text-xs text-muted-foreground">
               Use `Diagnostics` para investigação técnica e `Health` como cockpit de decisão operacional.
             </div>
           </div>
@@ -667,28 +667,28 @@ export function InfraTab({
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
-              <div className="text-sm font-semibold text-slate-900">Fase 1 · Após limpeza</div>
-              <div className="mt-2 text-sm text-slate-600">
+            <div className="rounded-xl border border-border bg-muted p-4">
+              <div className="text-sm font-semibold text-foreground">Fase 1 · Após limpeza</div>
+              <div className="mt-2 text-sm text-muted-foreground">
                 Rodar <span className="font-mono">ANALYZE cron.job_run_details</span> e <span className="font-mono">ANALYZE public.audit_logs</span> para atualizar estatísticas do planner.
               </div>
             </div>
 
-            <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
-              <div className="text-sm font-semibold text-slate-900">Fase 2 · Manutenção segura</div>
-              <div className="mt-2 text-sm text-slate-600">
+            <div className="rounded-xl border border-border bg-muted p-4">
+              <div className="text-sm font-semibold text-foreground">Fase 2 · Manutenção segura</div>
+              <div className="mt-2 text-sm text-muted-foreground">
                 Rodar <span className="font-mono">VACUUM</span> nessas tabelas para limpar dead tuples e melhorar performance. Isso nem sempre reduz o tamanho físico do banco imediatamente.
               </div>
             </div>
 
-            <div className="rounded-xl border border-amber-200 bg-amber-50 p-4">
-              <div className="text-sm font-semibold text-amber-900">Fase 3 · Só se o tamanho continuar alto</div>
-              <div className="mt-2 text-sm text-amber-800">
+            <div className="rounded-xl border border-amber-200 dark:border-amber-900/60 bg-amber-50 dark:bg-amber-950/30 p-4">
+              <div className="text-sm font-semibold text-amber-900 dark:text-amber-200">Fase 3 · Só se o tamanho continuar alto</div>
+              <div className="mt-2 text-sm text-amber-800 dark:text-amber-200">
                 Avaliar <span className="font-mono">VACUUM FULL</span> e eventualmente <span className="font-mono">REINDEX</span> para <span className="font-mono">cron.job_run_details</span> e depois <span className="font-mono">public.audit_logs</span>. Isso exige janela de manutenção porque pode bloquear tabela.
               </div>
             </div>
 
-            <div className="rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-600">
+            <div className="rounded-xl border border-border bg-card p-4 text-sm text-muted-foreground">
               Ordem operacional recomendada:
               <div className="mt-2 space-y-1">
                 <div>1. Exportar snapshot e audit logs</div>

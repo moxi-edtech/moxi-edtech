@@ -6,8 +6,9 @@
  * Tokens KLASSE: emerald, amber, slate.
  */
 
+import { useSuperAdminWorkspace, useWorkspaceGuard } from "@/components/super-admin/workspace-navigation";
 import { useEffect, useMemo, useState } from "react";
-import Link from "next/link";
+import { WorkspaceLink as Link } from "@/components/super-admin/workspace-navigation";
 import { createClient } from "@/lib/supabaseClient";
 import { toast } from "sonner";
 import { format } from "date-fns";
@@ -39,7 +40,7 @@ type AssinaturaPendente = {
 // ─── Helpers visuais ──────────────────────────────────────────────────────────
 
 const PLAN_META: Record<PlanTier, { pill: string; dot: string }> = {
-  essencial:    { pill: "bg-slate-100 border border-slate-200 text-slate-600",  dot: "bg-slate-400"   },
+  essencial:    { pill: "bg-muted border border-border text-muted-foreground",  dot: "bg-muted"   },
   profissional: { pill: "bg-amber/10 border border-amber/20 text-amber", dot: "bg-amber" },
   premium:      { pill: "bg-emerald/10 border border-emerald/20 text-emerald", dot: "bg-emerald" },
 };
@@ -62,7 +63,7 @@ function StatusBadge({ status }: { status: string }) {
     <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide
       ${isActiva ? 'bg-emerald/10 text-emerald border border-emerald/20' :
         isPendente ? 'bg-amber/10 text-amber border border-amber/20' :
-        'bg-slate-100 text-slate-600 border border-slate-200'}`}>
+        'bg-muted text-muted-foreground border border-border'}`}>
       {status}
     </span>
   );
@@ -73,7 +74,7 @@ function SkeletonRow() {
     <tr>
       {Array.from({ length: 7 }).map((_, j) => (
         <td key={j} className="py-4 px-4">
-          <div className="h-3 rounded bg-slate-100 animate-pulse" style={{ width: `${35 + (j * 17) % 45}%` }} />
+          <div className="h-3 rounded bg-muted animate-pulse" style={{ width: `${35 + (j * 17) % 45}%` }} />
         </td>
       ))}
     </tr>
@@ -83,6 +84,7 @@ function SkeletonRow() {
 // ─── Componente Principal ─────────────────────────────────────────────────────
 
 export default function CobrancasListClient() {
+  const workspace = useSuperAdminWorkspace();
   const [items, setItems] = useState<AssinaturaPendente[]>([]);
   const [loading, setLoading] = useState(true);
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -90,6 +92,7 @@ export default function CobrancasListClient() {
   const [confirmingId, setConfirmingId] = useState<string | null>(null);
   const [syncing, setSyncing] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  useWorkspaceGuard("billing-list", syncing || Boolean(confirmingId));
   const [syncReport, setSyncReport] = useState<{ total_escolas_sync: number; assinaturas_criadas: number; escolas_criadas: Array<{ escola_id: string; escola_nome: string; plano: PlanTier; ciclo: "mensal" | "anual"; valor_kz: number; }>; pendentes_parametrizacao: number; escolas_pendentes_parametrizacao: Array<{ escola_id: string; escola_nome: string; plano: PlanTier; ciclo: "mensal" | "anual"; motivo: string; }>; } | null>(null);
 
   const supabase = createClient();
@@ -102,6 +105,7 @@ export default function CobrancasListClient() {
       if (!res.ok || !json?.ok) throw new Error(json?.error || 'Falha ao sincronizar');
       setSyncReport(json.report_super_admin ?? null);
       toast.success(json.message || 'Sincronização concluída');
+      workspace?.markChanged();
       loadData();
     } catch (err: any) {
       toast.error('Erro ao sincronizar: ' + err.message);
@@ -185,6 +189,7 @@ export default function CobrancasListClient() {
       if (!res.ok || !json?.ok) throw new Error(json?.error || 'Falha ao confirmar comprovativo');
 
       toast.success(`Subscrição de ${item.escola_nome} activada!`);
+      workspace?.markChanged();
       loadData();
     } catch (err: any) {
       toast.error('Erro ao confirmar: ' + err.message);
@@ -200,19 +205,21 @@ export default function CobrancasListClient() {
     [items],
   );
 
+  if (workspace && selectedId) return <AssinaturaDetailsSlideover assinaturaId={selectedId} onClose={() => setSelectedId(null)} onUpdated={() => { workspace.markChanged(); void loadData(); }} />;
+
   return (
-    <div className="text-slate-900">
+    <div className="text-foreground">
       
       {syncReport && (
         <div className="mb-4 rounded-2xl border border-amber/30 bg-amber/10 p-4">
           <p className="text-[11px] font-bold uppercase tracking-widest text-amber">Relatório de bootstrap para revisão Super Admin</p>
-          <p className="mt-1 text-xs text-slate-700">
+          <p className="mt-1 text-xs text-foreground">
             {syncReport.total_escolas_sync} escola(s) no sync; {syncReport.assinaturas_criadas} assinatura(s) criada(s); {syncReport.pendentes_parametrizacao} pendente(s) de parametrização.
           </p>
           {syncReport.escolas_criadas.length > 0 && (
             <div className="mt-2">
               <p className="text-[10px] font-bold uppercase tracking-wide text-amber">Escolas com assinatura criada</p>
-              <ul className="mt-1 space-y-1 text-xs text-slate-700">
+              <ul className="mt-1 space-y-1 text-xs text-foreground">
                 {syncReport.escolas_criadas.map((escola) => (
                   <li key={escola.escola_id}>
                     • {escola.escola_nome} ({PLAN_NAMES[escola.plano]} / {escola.ciclo}) — Kz {escola.valor_kz.toLocaleString()}
@@ -224,7 +231,7 @@ export default function CobrancasListClient() {
           {syncReport.escolas_pendentes_parametrizacao.length > 0 && (
             <div className="mt-2">
               <p className="text-[10px] font-bold uppercase tracking-wide text-amber">Escolas pendentes de parametrização</p>
-              <ul className="mt-1 space-y-1 text-xs text-slate-700">
+              <ul className="mt-1 space-y-1 text-xs text-foreground">
                 {syncReport.escolas_pendentes_parametrizacao.map((escola) => (
                   <li key={escola.escola_id}>
                     • {escola.escola_nome} ({PLAN_NAMES[escola.plano]} / {escola.ciclo}) — {escola.motivo}
@@ -241,18 +248,18 @@ export default function CobrancasListClient() {
           <AlertTriangle className="h-4 w-4 mt-0.5 text-amber" />
           <div>
             <p className="text-[11px] font-bold uppercase tracking-widest text-amber">Assinaturas pendentes de parametrização</p>
-            <p className="mt-1 text-xs text-slate-700">
+            <p className="mt-1 text-xs text-foreground">
               {pendentesParametrizacao.length} assinatura(s) com valor_kz inválido ou pendência de configuração inicial. Rever e parametrizar antes da activação.
             </p>
           </div>
         </div>
       )}
 
-      <div className="mb-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+      <div className="mb-4 rounded-2xl border border-border bg-card p-4 shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Preços gerais</p>
-            <p className="mt-1 text-sm text-slate-700">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Preços gerais</p>
+            <p className="mt-1 text-sm text-foreground">
               Configure os preços globais dos planos, promoções, descontos e períodos de trial antes de parametrizar instituições específicas.
             </p>
           </div>
@@ -267,43 +274,43 @@ export default function CobrancasListClient() {
 
       {/* ── Dashboard Stats ── */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-        <div className="bg-white border border-slate-200 p-4 rounded-2xl shadow-sm">
-          <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1">MRR Estático</p>
-          <p className="text-2xl font-bold text-slate-900">
+        <div className="bg-card border border-border p-4 rounded-2xl shadow-sm">
+          <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1">MRR Estático</p>
+          <p className="text-2xl font-bold text-foreground">
             Kz {items.filter(i => i.status === 'activa' && i.ciclo === 'mensal').reduce((acc, i) => acc + i.valor_kz, 0).toLocaleString()}
           </p>
         </div>
-        <div className="bg-white border border-slate-200 p-4 rounded-2xl shadow-sm">
-          <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1">Pendentes</p>
+        <div className="bg-card border border-border p-4 rounded-2xl shadow-sm">
+          <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1">Pendentes</p>
           <p className="text-2xl font-bold text-amber">
             {items.filter(i => i.status === 'pendente').length}
           </p>
         </div>
-        <div className="bg-white border border-slate-200 p-4 rounded-2xl shadow-sm">
-          <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1">Escolas Activas</p>
+        <div className="bg-card border border-border p-4 rounded-2xl shadow-sm">
+          <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1">Escolas Activas</p>
           <p className="text-2xl font-bold text-emerald">
             {items.filter(i => i.status === 'activa').length}
           </p>
         </div>
-        <div className="bg-white border border-slate-200 p-4 rounded-2xl shadow-sm">
-          <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1">Total Kz (Global)</p>
-          <p className="text-2xl font-bold text-slate-500">
+        <div className="bg-card border border-border p-4 rounded-2xl shadow-sm">
+          <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1">Total Kz (Global)</p>
+          <p className="text-2xl font-bold text-muted-foreground">
             Kz {items.reduce((acc, i) => acc + i.valor_kz, 0).toLocaleString()}
           </p>
         </div>
       </div>
 
       {/* ── Tabela Principal ── */}
-      <div className="rounded-2xl bg-white border border-slate-200 shadow-sm overflow-hidden">
-        <div className="border-b border-slate-100 px-6 py-4 flex items-center justify-between bg-slate-50/50">
+      <div className="rounded-2xl bg-card border border-border shadow-sm overflow-hidden">
+        <div className="border-b border-border px-6 py-4 flex items-center justify-between bg-muted/50">
           <div className="flex flex-col gap-0.5">
-            <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Controlo de Subscrições</p>
-            <p className="text-[10px] text-slate-400">Gestão global de contratos e planos ativos</p>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Controlo de Subscrições</p>
+            <p className="text-[10px] text-muted-foreground">Gestão global de contratos e planos ativos</p>
           </div>
           <div className="flex gap-3">
             <Link
               href="/super-admin/planos"
-              className="px-3 py-1.5 rounded-lg bg-white border border-slate-200 text-slate-500 text-[10px] font-bold uppercase hover:bg-slate-50 transition-all"
+              className="px-3 py-1.5 rounded-lg bg-card border border-border text-muted-foreground text-[10px] font-bold uppercase hover:bg-muted transition-all"
             >
               Preços Gerais
             </Link>
@@ -316,7 +323,7 @@ export default function CobrancasListClient() {
             </button>
             <button 
               onClick={loadData} 
-              className="px-3 py-1.5 rounded-lg bg-white border border-slate-200 text-slate-500 text-[10px] font-bold uppercase hover:bg-slate-50 transition-all"
+              className="px-3 py-1.5 rounded-lg bg-card border border-border text-muted-foreground text-[10px] font-bold uppercase hover:bg-muted transition-all"
             >
               Actualizar
             </button>
@@ -326,41 +333,41 @@ export default function CobrancasListClient() {
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-slate-100 bg-slate-50/30">
+              <tr className="border-b border-border bg-muted/30">
                 {cols.map(h => (
-                  <th key={h} className="py-3 px-6 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest whitespace-nowrap">
+                  <th key={h} className="py-3 px-6 text-left text-[10px] font-bold text-muted-foreground uppercase tracking-widest whitespace-nowrap">
                     {h}
                   </th>
                 ))}
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-border">
               {loading && Array.from({ length: 5 }).map((_, i) => <SkeletonRow key={i} />)}
               
               {!loading && items.length === 0 && (
                 <tr>
                   <td colSpan={7} className="py-20 text-center">
-                    <p className="text-slate-400 text-sm italic">Nenhuma subscrição registada no sistema.</p>
+                    <p className="text-muted-foreground text-sm italic">Nenhuma subscrição registada no sistema.</p>
                   </td>
                 </tr>
               )}
 
               {!loading && items.map((item) => (
-                <tr key={item.id} className="hover:bg-slate-50 transition-colors">
+                <tr key={item.id} className="hover:bg-muted transition-colors">
                   <td className="py-4 px-6">
-                    <p className="font-bold text-slate-900">{item.escola_nome}</p>
-                    <p className="text-[10px] text-slate-400 font-mono mt-0.5">{item.id.slice(0,8)}</p>
+                    <p className="font-bold text-foreground">{item.escola_nome}</p>
+                    <p className="text-[10px] text-muted-foreground font-mono mt-0.5">{item.id.slice(0,8)}</p>
                   </td>
                   <td className="py-4 px-6">
                     <div className="flex flex-col gap-1.5 items-start">
                       <PlanBadge plano={item.plano} />
-                      <span className="text-[10px] text-slate-400 font-medium uppercase tracking-tighter">
+                      <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-tighter">
                         Ciclo: {item.ciclo}
                       </span>
                     </div>
                   </td>
                   <td className="py-4 px-6">
-                    <p className="text-slate-700 font-mono font-semibold">Kz {item.valor_kz.toLocaleString()}</p>
+                    <p className="text-foreground font-mono font-semibold">Kz {item.valor_kz.toLocaleString()}</p>
                     {item.status === 'pendente' && item.valor_kz <= 0 && (
                       <p className="mt-1 text-[10px] font-bold uppercase tracking-wide text-amber">Parametrização obrigatória</p>
                     )}
@@ -377,14 +384,14 @@ export default function CobrancasListClient() {
                         📄 Ver Comprovativo
                       </button>
                     ) : (
-                      <span className="text-[10px] text-slate-300 uppercase italic">Sem prova</span>
+                      <span className="text-[10px] text-muted-foreground uppercase italic">Sem prova</span>
                     )}
                     {item.referencia_ext && (
-                      <p className="text-[10px] text-slate-400 mt-1 font-mono">Ref: {item.referencia_ext}</p>
+                      <p className="text-[10px] text-muted-foreground mt-1 font-mono">Ref: {item.referencia_ext}</p>
                     )}
                   </td>
                   <td className="py-4 px-6">
-                    <p className="text-xs text-slate-500">
+                    <p className="text-xs text-muted-foreground">
                       {format(new Date(item.data_renovacao), "dd 'de' MMM, yyyy", { locale: pt })}
                     </p>
                   </td>
@@ -401,7 +408,7 @@ export default function CobrancasListClient() {
                       )}
                       <button 
                         onClick={() => setSelectedId(item.id)}
-                        className="px-3 py-1.5 rounded-lg bg-white border border-slate-200 hover:bg-slate-50 text-slate-600 text-[10px] font-bold uppercase transition-colors"
+                        className="px-3 py-1.5 rounded-lg bg-card border border-border hover:bg-muted text-muted-foreground text-[10px] font-bold uppercase transition-colors"
                       >
                         Detalhes
                       </button>
@@ -419,7 +426,7 @@ export default function CobrancasListClient() {
         <AssinaturaDetailsSlideover 
           assinaturaId={selectedId} 
           onClose={() => setSelectedId(null)} 
-          onUpdated={loadData}
+          onUpdated={() => { workspace?.markChanged(); void loadData(); }}
         />
       )}
     </div>

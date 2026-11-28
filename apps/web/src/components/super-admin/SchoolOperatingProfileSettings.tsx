@@ -79,51 +79,51 @@ export default function SchoolOperatingProfileSettings({ schoolId }: { schoolId:
     }
   }
 
-  if (loading) return <div className="rounded-xl border border-gray-200 bg-white p-5 text-sm text-gray-500">A carregar perfil institucional…</div>;
-  if (!profile) return <div className="rounded-xl border border-red-200 bg-red-50 p-5 text-sm text-red-700">Perfil institucional indisponível.</div>;
+  if (loading) return <div className="rounded-xl border border-border bg-card p-5 text-sm text-muted-foreground">A carregar perfil institucional…</div>;
+  if (!profile) return <div className="rounded-xl border border-red-200 dark:border-red-900/60 bg-red-50 dark:bg-red-950/30 p-5 text-sm text-red-700 dark:text-red-300">Perfil institucional indisponível.</div>;
 
   return (
-    <section className="rounded-xl border border-amber-200 bg-amber-50/40 p-5 shadow-sm">
+    <section className="rounded-xl border border-amber-200 dark:border-amber-900/60 bg-amber-50/40 p-5 shadow-sm">
       <div className="mb-4">
-        <h3 className="text-sm font-bold uppercase tracking-wider text-gray-700">Perfil institucional</h3>
-        <p className="mt-1 text-xs text-gray-600">Área exclusiva do Super Admin. Alterações criam uma nova versão e ficam auditadas.</p>
+        <h3 className="text-sm font-bold uppercase tracking-wider text-foreground">Perfil institucional</h3>
+        <p className="mt-1 text-xs text-muted-foreground">Área exclusiva do Super Admin. Alterações criam uma nova versão e ficam auditadas.</p>
       </div>
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        <label className="text-sm font-medium text-gray-700">Setor
-          <select className="mt-1 w-full rounded-lg border border-gray-300 bg-white p-2" value={profile.school_sector} onChange={(event) => setProfile({ ...profile, school_sector: event.target.value as SchoolSector })}>
+        <label className="text-sm font-medium text-foreground">Setor
+          <select className="mt-1 w-full rounded-lg border border-border bg-card p-2" value={profile.school_sector} onChange={(event) => setProfile({ ...profile, school_sector: event.target.value as SchoolSector })}>
             {SCHOOL_SECTORS.map((value) => <option key={value} value={value}>{labels[value]}</option>)}
           </select>
         </label>
-        <label className="text-sm font-medium text-gray-700">Modelo financeiro
-          <select className="mt-1 w-full rounded-lg border border-gray-300 bg-white p-2" value={profile.finance_model} onChange={(event) => setProfile({ ...profile, finance_model: event.target.value as FinanceModel })}>
+        <label className="text-sm font-medium text-foreground">Modelo financeiro
+          <select className="mt-1 w-full rounded-lg border border-border bg-card p-2" value={profile.finance_model} onChange={(event) => setProfile({ ...profile, finance_model: event.target.value as FinanceModel })}>
             {FINANCE_MODELS.map((value) => <option key={value} value={value}>{labels[value]}</option>)}
           </select>
         </label>
-        <label className="text-sm font-medium text-gray-700">Perfil regulatório
-          <input className="mt-1 w-full rounded-lg border border-gray-300 bg-white p-2" value={profile.regulatory_profile} onChange={(event) => setProfile({ ...profile, regulatory_profile: event.target.value })} />
+        <label className="text-sm font-medium text-foreground">Perfil regulatório
+          <input className="mt-1 w-full rounded-lg border border-border bg-card p-2" value={profile.regulatory_profile} onChange={(event) => setProfile({ ...profile, regulatory_profile: event.target.value })} />
         </label>
-        <label className="text-sm font-medium text-gray-700">Política de avaliação
-          <select className="mt-1 w-full rounded-lg border border-gray-300 bg-white p-2" value={profile.assessment_policy} onChange={(event) => setProfile({ ...profile, assessment_policy: event.target.value as AssessmentPolicyKey })}>
+        <label className="text-sm font-medium text-foreground">Política de avaliação
+          <select className="mt-1 w-full rounded-lg border border-border bg-card p-2" value={profile.assessment_policy} onChange={(event) => setProfile({ ...profile, assessment_policy: event.target.value as AssessmentPolicyKey })}>
             {ASSESSMENT_POLICIES.map((value) => <option key={value} value={value}>{labels[value]}</option>)}
           </select>
         </label>
-        <label className="text-sm font-medium text-gray-700">Perfil documental
-          <input className="mt-1 w-full rounded-lg border border-gray-300 bg-white p-2" value={profile.document_profile} onChange={(event) => setProfile({ ...profile, document_profile: event.target.value })} />
+        <label className="text-sm font-medium text-foreground">Perfil documental
+          <input className="mt-1 w-full rounded-lg border border-border bg-card p-2" value={profile.document_profile} onChange={(event) => setProfile({ ...profile, document_profile: event.target.value })} />
         </label>
-        <label className="text-sm font-medium text-gray-700">Data de vigência
-          <input type="date" className="mt-1 w-full rounded-lg border border-gray-300 bg-white p-2" value={profile.effective_from} onChange={(event) => setProfile({ ...profile, effective_from: event.target.value })} />
+        <label className="text-sm font-medium text-foreground">Data de vigência
+          <input type="date" className="mt-1 w-full rounded-lg border border-border bg-card p-2" value={profile.effective_from} onChange={(event) => setProfile({ ...profile, effective_from: event.target.value })} />
         </label>
       </div>
       <div className="mt-4 grid gap-3 md:grid-cols-[1fr_auto] md:items-end">
-        <label className="text-sm font-medium text-gray-700">Motivo obrigatório
-          <textarea className="mt-1 min-h-20 w-full rounded-lg border border-gray-300 bg-white p-2" value={reason} onChange={(event) => setReason(event.target.value)} placeholder="Descreva a autorização e o motivo da alteração" />
+        <label className="text-sm font-medium text-foreground">Motivo obrigatório
+          <textarea className="mt-1 min-h-20 w-full rounded-lg border border-border bg-card p-2" value={reason} onChange={(event) => setReason(event.target.value)} placeholder="Descreva a autorização e o motivo da alteração" />
         </label>
         <div className="space-y-3">
-          <label className="flex max-w-xs gap-2 text-xs text-gray-700"><input type="checkbox" checked={confirm} onChange={(event) => setConfirm(event.target.checked)} /> Confirmo a alteração institucional.</label>
-          <button type="button" disabled={saving || !confirm || reason.trim().length < 3} onClick={() => void save()} className="w-full rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50">{saving ? "A guardar…" : "Guardar perfil"}</button>
+          <label className="flex max-w-xs gap-2 text-xs text-foreground"><input type="checkbox" checked={confirm} onChange={(event) => setConfirm(event.target.checked)} /> Confirmo a alteração institucional.</label>
+          <button type="button" disabled={saving || !confirm || reason.trim().length < 3} onClick={() => void save()} className="w-full rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground disabled:cursor-not-allowed disabled:opacity-50">{saving ? "A guardar…" : "Guardar perfil"}</button>
         </div>
       </div>
-      {message && <p className="mt-3 text-sm text-gray-700">{message}</p>}
+      {message && <p className="mt-3 text-sm text-foreground">{message}</p>}
     </section>
   );
 }

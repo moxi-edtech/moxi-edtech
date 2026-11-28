@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import { WorkspaceLink as Link } from "@/components/super-admin/workspace-navigation";
 import { UsersRound, Megaphone, BarChart3, ChevronRight, Clock, ArrowRight } from "lucide-react";
 import { useEffect, useState } from "react";
 import { WidgetError, WidgetSkeleton } from "@/components/super-admin/WidgetStates";

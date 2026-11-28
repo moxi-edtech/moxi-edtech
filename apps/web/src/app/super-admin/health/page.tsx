@@ -1,6 +1,7 @@
 // apps/web/src/app/super-admin/health/page.tsx
 'use client';
 
+import { WorkspaceLink } from "@/components/super-admin/workspace-navigation";
 import { Button } from '@/components/ui/Button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useHealthData } from './hooks';
@@ -35,16 +36,16 @@ export default function AdminHealthDashboard() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 p-6">
-        <div className="max-w-7xl mx-auto">
+      <div className="min-w-0">
+        <div className="w-full min-w-0">
           <div className="animate-pulse space-y-4">
-            <div className="h-8 bg-gray-200 rounded w-1/4"></div>
-            <div className="h-40 bg-gray-200 rounded"></div>
-            <div className="h-10 bg-gray-200 rounded w-full"></div>
+            <div className="h-8 bg-muted rounded w-1/4"></div>
+            <div className="h-40 bg-muted rounded"></div>
+            <div className="h-10 bg-muted rounded w-full"></div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="h-64 bg-gray-200 rounded"></div>
-              <div className="h-64 bg-gray-200 rounded"></div>
-              <div className="h-64 bg-gray-200 rounded"></div>
+              <div className="h-64 bg-muted rounded"></div>
+              <div className="h-64 bg-muted rounded"></div>
+              <div className="h-64 bg-muted rounded"></div>
             </div>
           </div>
         </div>
@@ -53,16 +54,16 @@ export default function AdminHealthDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-4 md:p-6">
+    <div className="min-w-0">
       <AuditPageView portal="super_admin" acao="PAGE_VIEW" entity="health_dashboard" />
-      <div className="max-w-7xl mx-auto">
+      <div className="w-full min-w-0">
         {/* Header */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
           <div>
-            <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Dashboard de Saúde</h1>
-            <p className="text-gray-600 mt-1">
+            <h1 className="text-2xl md:text-3xl font-bold text-foreground">Dashboard de Saúde</h1>
+            <p className="text-muted-foreground mt-1">
               Monitoramento em tempo real do KLASSE • Angola
-              {lastUpdated && <span className="ml-2 text-sm text-gray-500">Atualizado: {lastUpdated}</span>}
+              {lastUpdated && <span className="ml-2 text-sm text-muted-foreground">Atualizado: {lastUpdated}</span>}
             </p>
           </div>
           
@@ -129,18 +130,18 @@ export default function AdminHealthDashboard() {
         </Tabs>
         
         {/* Footer Actions */}
-        <div className="mt-8 pt-6 border-t border-gray-200">
+        <div className="mt-8 pt-6 border-t border-border">
           <div className="flex flex-wrap justify-between items-center gap-4">
-            <div className="text-sm text-gray-600">
+            <div className="text-sm text-muted-foreground">
               <p>KLASSE Admin • Sistema de monitoramento para Angola</p>
               <p className="mt-1">Para suporte emergencial: +244 944 811 150 (WhatsApp)</p>
             </div>
             
             <div className="flex gap-2">
               <Button variant="outline" size="sm" asChild>
-                <a href="/super-admin/diagnostics">
+                <WorkspaceLink href="/super-admin/diagnostics">
                   Ver Logs Completos
-                </a>
+                </WorkspaceLink>
               </Button>
               <Button variant="destructive" size="sm">
                 Modo Manutenção

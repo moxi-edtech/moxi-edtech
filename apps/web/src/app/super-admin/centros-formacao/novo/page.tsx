@@ -1,7 +1,8 @@
 "use client";
 
+import { useSuperAdminWorkspace, useWorkspaceNavigate, useWorkspaceGuard } from "@/components/super-admin/workspace-navigation";
 import { type ReactNode, useMemo, useState } from "react";
-import Link from "next/link";
+import { WorkspaceLink as Link } from "@/components/super-admin/workspace-navigation";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import AuditPageView from "@/components/audit/AuditPageView";
@@ -68,8 +69,11 @@ const EMPTY_MEMBER: TeamMember = {
 
 export default function NovoCentroFormacaoPage() {
   const router = useRouter();
+  const workspace = useSuperAdminWorkspace();
+  const navigate = useWorkspaceNavigate();
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
+  useWorkspaceGuard("new-center", loading);
   const [result, setResult] = useState<
     | {
         escolaId: string;
@@ -239,6 +243,7 @@ export default function NovoCentroFormacaoPage() {
         throw new Error(json?.error || "Falha ao provisionar centro");
       }
 
+      workspace?.markChanged();
       setResult({
         escolaId: json.escolaId,
         provisionados: json.provisionados ?? [],
@@ -252,20 +257,20 @@ export default function NovoCentroFormacaoPage() {
   };
 
   return (
-    <div className="mx-auto max-w-5xl space-y-6 px-4 py-6 sm:px-6">
+    <div className="min-w-0 space-y-6">
       <AuditPageView portal="super_admin" acao="PAGE_VIEW" entity="centros_formacao_create" />
 
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Novo Centro de Formação</h1>
-          <p className="text-sm text-slate-500">Wizard em 5 passos com provisionamento inicial da equipa.</p>
+          <h1 className="text-2xl font-bold text-foreground">Novo Centro de Formação</h1>
+          <p className="text-sm text-muted-foreground">Wizard em 5 passos com provisionamento inicial da equipa.</p>
         </div>
         <Button variant="secondary" asChild>
           <Link href="/super-admin/centros-formacao">Voltar à listagem</Link>
         </Button>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 rounded-2xl border border-slate-200 bg-white p-4 sm:grid-cols-5">
+      <div className="grid grid-cols-1 gap-4 rounded-2xl border border-border bg-card p-4 sm:grid-cols-5">
         {STEP_TITLES.map((title, index) => {
           const number = index + 1;
           const active = number === step;
@@ -277,13 +282,13 @@ export default function NovoCentroFormacaoPage() {
                   active
                     ? "bg-emerald text-white"
                     : done
-                    ? "bg-emerald-500 text-white"
-                    : "bg-slate-100 text-slate-500"
+                    ? "bg-emerald-50 dark:bg-emerald-950/300 text-white"
+                    : "bg-muted text-muted-foreground"
                 }`}
               >
                 {number}
               </div>
-              <p className={`text-xs font-semibold ${active ? "text-emerald" : "text-slate-500"}`}>
+              <p className={`text-xs font-semibold ${active ? "text-emerald" : "text-muted-foreground"}`}>
                 {title}
               </p>
             </div>
@@ -291,11 +296,11 @@ export default function NovoCentroFormacaoPage() {
         })}
       </div>
 
-      <div className="space-y-6 rounded-2xl border border-slate-200 bg-white p-5">
+      <div className="space-y-6 rounded-2xl border border-border bg-card p-5">
         {step === 1 ? (
           <section className="space-y-6">
-            <div className="rounded-xl bg-slate-50 p-4 border border-slate-100">
-              <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Tipo de Operação</span>
+            <div className="rounded-xl bg-muted p-4 border border-border">
+              <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Tipo de Operação</span>
               <div className="mt-2 flex gap-3">
                 {[
                   { id: "formacao", label: "Centro de Formação", sub: "Corporativo" },
@@ -306,12 +311,12 @@ export default function NovoCentroFormacaoPage() {
                     onClick={() => setForm(prev => ({ ...prev, operacao_tipo: tipo.id as any }))}
                     className={`flex-1 flex flex-col items-start p-3 rounded-xl border-2 transition-all ${
                       form.operacao_tipo === tipo.id 
-                        ? "border-emerald bg-white shadow-md ring-4 ring-emerald-50"
-                        : "border-slate-100 bg-slate-50 opacity-60 grayscale"
+                        ? "border-emerald bg-card shadow-md ring-4 ring-emerald-50"
+                        : "border-border bg-muted opacity-60 grayscale"
                     }`}
                   >
-                    <span className="text-xs font-black text-slate-900">{tipo.label}</span>
-                    <span className="text-[10px] font-bold text-slate-400">{tipo.sub}</span>
+                    <span className="text-xs font-black text-foreground">{tipo.label}</span>
+                    <span className="text-[10px] font-bold text-muted-foreground">{tipo.sub}</span>
                   </button>
                 ))}
               </div>
@@ -454,7 +459,7 @@ export default function NovoCentroFormacaoPage() {
                       className={`rounded-full border px-3 py-1.5 text-sm ${
                         selected
                           ? "border-emerald bg-emerald text-white"
-                          : "border-slate-300 bg-white text-slate-700"
+                          : "border-border bg-card text-foreground"
                       }`}
                     >
                       {modalidade}
@@ -505,7 +510,7 @@ export default function NovoCentroFormacaoPage() {
         {step === 4 ? (
           <section className="space-y-4">
             {form.equipe_inicial.map((member, index) => (
-              <div key={index} className="grid grid-cols-1 gap-3 rounded-xl border border-slate-200 p-3 md:grid-cols-4">
+              <div key={index} className="grid grid-cols-1 gap-3 rounded-xl border border-border p-3 md:grid-cols-4">
                 <input
                   value={member.nome}
                   onChange={(event) => updateMember(index, { nome: event.target.value })}
@@ -546,7 +551,7 @@ export default function NovoCentroFormacaoPage() {
               Adicionar membro
             </Button>
 
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-muted-foreground">
               Obrigatório: pelo menos 1 `admin_centro` e 1 `secretaria_centro`.
             </p>
           </section>
@@ -554,7 +559,7 @@ export default function NovoCentroFormacaoPage() {
 
         {step === 5 ? (
           <section className="space-y-4">
-            <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">
+            <div className="rounded-xl border border-border bg-muted p-4 text-sm text-foreground">
               <p>
                 Vai provisionar o centro <strong>{form.centro.nome}</strong> com{" "}
                 <strong>{form.equipe_inicial.length}</strong> utilizadores iniciais.
@@ -574,10 +579,10 @@ export default function NovoCentroFormacaoPage() {
             </Field>
 
             {result ? (
-              <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4">
-                <p className="text-sm font-semibold text-emerald-900">Provisionamento concluído com sucesso.</p>
-                <p className="mt-1 text-sm text-emerald-900">Escola/Tenant ID: {result.escolaId}</p>
-                <div className="mt-3 space-y-1 text-sm text-slate-700">
+              <div className="rounded-xl border border-emerald-200 dark:border-emerald-900/60 bg-emerald-50 dark:bg-emerald-950/30 p-4">
+                <p className="text-sm font-semibold text-emerald-900 dark:text-emerald-200">Provisionamento concluído com sucesso.</p>
+                <p className="mt-1 text-sm text-emerald-900 dark:text-emerald-200">Escola/Tenant ID: {result.escolaId}</p>
+                <div className="mt-3 space-y-1 text-sm text-foreground">
                   {result.provisionados.map((member) => (
                     <p key={`${member.email}-${member.papel}`}>
                       {member.email} ({member.papel})
@@ -589,11 +594,11 @@ export default function NovoCentroFormacaoPage() {
             ) : null}
 
             <div className="flex gap-2">
-              <Button onClick={() => router.push("/super-admin/centros-formacao")}>Ir para listagem</Button>
+              <Button onClick={() => navigate("/super-admin/centros-formacao")}>Ir para listagem</Button>
               <Button
                 variant="secondary"
                 onClick={() => {
-                  router.refresh();
+                  if (!workspace) router.refresh();
                   setResult(null);
                 }}
               >
@@ -625,12 +630,12 @@ export default function NovoCentroFormacaoPage() {
 }
 
 const INPUT_CLASS =
-  "w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-emerald";
+  "w-full rounded-xl border border-border bg-card px-3 py-2 text-sm outline-none focus:border-emerald";
 
 function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
     <label className="space-y-1.5 text-sm">
-      <span className="block text-xs font-semibold uppercase tracking-wide text-slate-500">{label}</span>
+      <span className="block text-xs font-semibold uppercase tracking-wide text-muted-foreground">{label}</span>
       {children}
     </label>
   );
