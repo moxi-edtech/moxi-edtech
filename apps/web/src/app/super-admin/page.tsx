@@ -1,9 +1,7 @@
-import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { Activity, Building2, ChevronRight, Clock3, GraduationCap, Plus, Shield, Users, Wallet } from "lucide-react";
+import { Activity, Building2, GraduationCap, Users } from "lucide-react";
 import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
-import { PortalCulturalSignature } from "@/components/portal/ui/PortalWelcomeCard";
-import AcaoRapidaCard from "@/components/shared/AcaoRapidaCard";
+import CommandCenterWorkspace from "@/components/super-admin/CommandCenterWorkspace";
 import CommandCenterDetails from "@/components/super-admin/CommandCenterDetails";
 import ChartsSection from "@/components/super-admin/ChartsSection";
 import SchoolsSection from "@/components/super-admin/SchoolsSection";
@@ -95,40 +93,7 @@ export default async function SuperAdminDashboard() {
   return (
     <div data-testid="super-admin-command-center" className="min-w-0 space-y-6 pb-12">
       <DashboardHeader title="Visão geral" description="Gestão da plataforma KLASSE" largeDesktopTitle />
-      <section aria-label="Estado da rede" className="klasse-welcome-card klasse-operations-academic-card min-w-0 overflow-hidden rounded-xl">
-        <div className="flex flex-wrap items-center justify-between gap-4 px-4 py-4 sm:px-6">
-          <div className="min-w-0 space-y-1">
-            <p className="text-xs font-medium">{date}</p>
-            <h2 className="text-xl font-semibold tracking-tight">Command Center</h2>
-            <p className="text-sm">{risk == null ? "Estado da rede indisponível" : schools?.length === 0 ? "Sem escolas para avaliar" : risk > 0 ? format(risk) + " escolas sem acesso recente" : "Nenhuma escola sem acesso recente"}</p>
-          </div>
-          <Link href="/super-admin/health" prefetch={false} className="inline-flex min-h-10 items-center gap-1 rounded-xl border border-current px-3 text-sm font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2">
-            Saúde da rede <ChevronRight className="h-4 w-4" aria-hidden="true" />
-          </Link>
-        </div>
-        <PortalCulturalSignature />
-      </section>
-      <section aria-label="Indicadores globais" className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        {metrics.map(({ label, value, icon: Icon }) => (
-          <article key={label} className="min-w-0 rounded-xl border border-border bg-card p-3 sm:p-4">
-            <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-emerald/10 text-emerald dark:text-emerald-300"><Icon aria-hidden="true" className="h-4 w-4" /></span>
-            <p className="mt-3 break-words text-xs text-muted-foreground">{label}</p>
-            <p className="mt-1 break-words text-xl font-semibold tabular-nums text-foreground">{value}</p>
-            {value === "—" && <p className="mt-1 text-xs text-muted-foreground">Indisponível</p>}
-          </article>
-        ))}
-      </section>
-      <section aria-labelledby="super-admin-actions-title" className="space-y-3">
-        <h2 id="super-admin-actions-title" className="text-base font-semibold text-foreground">Ações rápidas</h2>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          <AcaoRapidaCard dashboardCompact icon={<Building2 />} label="Gerir escolas" href="/super-admin/escolas" prefetch={false} />
-          <AcaoRapidaCard dashboardCompact icon={<Plus />} label="Nova escola" href="/super-admin/escolas/nova" prefetch={false} />
-          <AcaoRapidaCard dashboardCompact icon={<Clock3 />} label="Onboarding" sublabel={pending == null ? "Dados indisponíveis" : format(pending) + " por concluir"} unavailable={pending == null} needsAttention={pending != null && pending > 0} href="/super-admin/onboarding" prefetch={false} />
-          <AcaoRapidaCard dashboardCompact icon={<Wallet />} label="Cobranças" href="/super-admin/cobrancas" prefetch={false} />
-          <AcaoRapidaCard dashboardCompact icon={<Users />} label="Utilizadores" href="/super-admin/usuarios" prefetch={false} />
-          <AcaoRapidaCard dashboardCompact icon={<Shield />} label="Saúde e alertas" sublabel={risk == null ? "Dados indisponíveis" : format(risk) + " sem acesso recente"} unavailable={risk == null} needsAttention={risk != null && risk > 0} href="/super-admin/health" prefetch={false} />
-        </div>
-      </section>
+      <CommandCenterWorkspace date={date} pending={pending} risk={risk} networkStatus={risk == null ? "Estado da rede indisponível" : schools?.length === 0 ? "Sem escolas para avaliar" : risk > 0 ? format(risk) + " escolas sem acesso recente" : "Nenhuma escola sem acesso recente"} afterActions={<>
       <section aria-labelledby="super-admin-activity-title" className="min-w-0 space-y-3 rounded-xl border border-border bg-card p-4">
         <h2 id="super-admin-activity-title" className="text-base font-semibold text-foreground">Atividade recente</h2>
         {!logs || logs.error || !logs.data ? <p className="text-sm text-muted-foreground">Não foi possível carregar a atividade.</p> :
@@ -143,6 +108,18 @@ export default async function SuperAdminDashboard() {
           </div>}
       </section>
       <CommandCenterDetails finance={<ChartsSection data={charts} />} schools={schools ? <SchoolsSection escolas={schools} /> : <p className="text-sm text-muted-foreground">Não foi possível carregar as escolas.</p>} />
+      </>}>
+      <section aria-label="Indicadores globais" className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        {metrics.map(({ label, value, icon: Icon }) => (
+          <article key={label} className="min-w-0 rounded-xl border border-border bg-card p-3 sm:p-4">
+            <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-emerald/10 text-emerald dark:text-emerald-300"><Icon aria-hidden="true" className="h-4 w-4" /></span>
+            <p className="mt-3 break-words text-xs text-muted-foreground">{label}</p>
+            <p className="mt-1 break-words text-xl font-semibold tabular-nums text-foreground">{value}</p>
+            {value === "—" && <p className="mt-1 text-xs text-muted-foreground">Indisponível</p>}
+          </article>
+        ))}
+      </section>
+      </CommandCenterWorkspace>
     </div>
   );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import { WorkspaceLink as Link } from "@/components/super-admin/workspace-navigation";
 import { ArrowRight, Check, CircleDashed } from "lucide-react";
 import { WidgetEmpty, WidgetSkeleton } from "@/components/super-admin/WidgetStates";
 

@@ -1,7 +1,8 @@
 "use client";
 
+import { useSuperAdminWorkspace, useWorkspaceNavigate, useWorkspaceGuard } from "@/components/super-admin/workspace-navigation";
 import { type ReactNode, useMemo, useState } from "react";
-import Link from "next/link";
+import { WorkspaceLink as Link } from "@/components/super-admin/workspace-navigation";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import AuditPageView from "@/components/audit/AuditPageView";
@@ -68,8 +69,11 @@ const EMPTY_MEMBER: TeamMember = {
 
 export default function NovoCentroFormacaoPage() {
   const router = useRouter();
+  const workspace = useSuperAdminWorkspace();
+  const navigate = useWorkspaceNavigate();
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
+  useWorkspaceGuard("new-center", loading);
   const [result, setResult] = useState<
     | {
         escolaId: string;
@@ -239,6 +243,7 @@ export default function NovoCentroFormacaoPage() {
         throw new Error(json?.error || "Falha ao provisionar centro");
       }
 
+      workspace?.markChanged();
       setResult({
         escolaId: json.escolaId,
         provisionados: json.provisionados ?? [],
@@ -589,11 +594,11 @@ export default function NovoCentroFormacaoPage() {
             ) : null}
 
             <div className="flex gap-2">
-              <Button onClick={() => router.push("/super-admin/centros-formacao")}>Ir para listagem</Button>
+              <Button onClick={() => navigate("/super-admin/centros-formacao")}>Ir para listagem</Button>
               <Button
                 variant="secondary"
                 onClick={() => {
-                  router.refresh();
+                  if (!workspace) router.refresh();
                   setResult(null);
                 }}
               >

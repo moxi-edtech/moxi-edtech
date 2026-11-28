@@ -1,6 +1,7 @@
 // apps/web/src/app/super-admin/health/page.tsx
 'use client';
 
+import { WorkspaceLink } from "@/components/super-admin/workspace-navigation";
 import { Button } from '@/components/ui/Button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useHealthData } from './hooks';
@@ -138,9 +139,9 @@ export default function AdminHealthDashboard() {
             
             <div className="flex gap-2">
               <Button variant="outline" size="sm" asChild>
-                <a href="/super-admin/diagnostics">
+                <WorkspaceLink href="/super-admin/diagnostics">
                   Ver Logs Completos
-                </a>
+                </WorkspaceLink>
               </Button>
               <Button variant="destructive" size="sm">
                 Modo Manutenção

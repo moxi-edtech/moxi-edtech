@@ -1,6 +1,7 @@
 // apps/web/src/components/super-admin/health/SchoolsTab.tsx
 'use client';
 
+import { WorkspaceLink } from "@/components/super-admin/workspace-navigation";
 import { useMemo, useState } from 'react';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
@@ -172,7 +173,7 @@ export function SchoolsTab({ escolas }: SchoolsTabProps) {
 
           <div className="mt-4 flex gap-2">
             <Button size="sm" asChild>
-              <a href={`/super-admin/escolas/${selecionada.id}`}>Abrir detalhes</a>
+              <WorkspaceLink href={`/super-admin/escolas/${selecionada.id}`}>Abrir detalhes</WorkspaceLink>
             </Button>
             <Button variant="outline" size="sm" asChild>
               <a href={`/admin/login-as?escola_id=${selecionada.id}`}>Acessar como</a>

@@ -6,8 +6,9 @@
  * Tokens KLASSE: superfícies semânticas light/dark.
  */
 
+import { useSuperAdminWorkspace, useWorkspaceGuard } from "@/components/super-admin/workspace-navigation";
 import { useEffect, useState } from "react";
-import Link from "next/link";
+import { WorkspaceLink as Link } from "@/components/super-admin/workspace-navigation";
 import { Check, Filter, Mail, Pencil, Plus, Search, Shield, Trash2, X } from "lucide-react";
 import { useToast, useConfirm } from "@/components/feedback/FeedbackSystem";
 
@@ -153,6 +154,8 @@ export function SuperAdminUsuariosListClient() {
 // ─── Componente Principal ─────────────────────────────────────────────────────
 
 function ListaUsuarios() {
+  const workspace = useSuperAdminWorkspace();
+  const revision = workspace?.revision ?? 0;
   const { success, error: notifyError } = useToast();
   const confirm = useConfirm();
   const [usuarios, setUsuarios]   = useState<Usuario[]>([]);
@@ -172,6 +175,8 @@ function ListaUsuarios() {
   const [resetMustChange,   setResetMustChange]   = useState(true);
   const [resetError,        setResetError]        = useState<string | null>(null);
   const [resetLoading,      setResetLoading]      = useState(false);
+
+  useWorkspaceGuard("users-reset", resetLoading, Boolean(resetUser && resetPassword));
 
   // ── Fetch ──────────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -210,7 +215,7 @@ function ListaUsuarios() {
         setLoading(false);
       }
     })();
-  }, []);
+  }, [revision]);
 
   // ── Handlers ────────────────────────────────────────────────────────────────
   const handleEdit = (u: Usuario) => {
@@ -272,6 +277,7 @@ function ListaUsuarios() {
       });
       if (!res.ok) throw new Error("Falha ao revogar.");
       setUsuarios(prev => prev.filter(u => u.id !== uid));
+      workspace?.markChanged();
       success("Acesso revogado", "O utilizador foi removido do sistema com sucesso.");
     } catch (e) {
       setErro(e instanceof Error ? e.message : "Erro ao eliminar.");
@@ -291,6 +297,7 @@ function ListaUsuarios() {
       });
       if (!res.ok) throw new Error("A API rejeitou a nova credencial.");
       setResetUser(null);
+      workspace?.markChanged();
     } catch (e) {
       setResetError(e instanceof Error ? e.message : "Erro de sistema.");
     } finally { setResetLoading(false); }

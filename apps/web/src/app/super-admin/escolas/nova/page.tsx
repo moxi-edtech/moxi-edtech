@@ -1,5 +1,6 @@
 "use client";
 
+import { useSuperAdminWorkspace, useWorkspaceNavigate, useWorkspaceGuard } from "@/components/super-admin/workspace-navigation";
 import React, { useState, useEffect, useCallback, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/Button";
@@ -65,6 +66,8 @@ function NovaEscolaContent() {
 function CriarEscolaForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const workspace = useSuperAdminWorkspace();
+  const navigate = useWorkspaceNavigate();
   const supabase = createClient();
 
   const [formData, setFormData] = useState({
@@ -86,6 +89,7 @@ function CriarEscolaForm() {
   const [msg, setMsg] = useState<null | { type: "ok" | "err"; text: string }>(null);
   const [creationResult, setCreationResult] = useState<any>(null);
   const [currentStep, setCurrentStep] = useState(1);
+  useWorkspaceGuard("new-school", loading, !creationResult && (currentStep > 1 || Boolean(formData.nome.trim())));
 
   // Carregar pedidos de onboarding pendentes para o Pre-fill
   useEffect(() => {
@@ -169,6 +173,7 @@ function CriarEscolaForm() {
       }
 
       setCreationResult(data);
+      workspace?.markChanged();
       setMsg({
         type: "ok",
         text: `Escola "${formData.nome}" criada com sucesso!`,
@@ -409,7 +414,7 @@ function CriarEscolaForm() {
         {currentStep === 3 && creationResult && (
           <div className="space-y-6 animate-klasse-fade-up">
             <div className="bg-emerald-50 dark:bg-emerald-950/30 border-2 border-emerald-100 dark:border-emerald-900/60 rounded-[2rem] p-8 text-center space-y-4">
-              <div className="w-20 h-20 bg-emerald-50 dark:bg-emerald-950/300 rounded-full flex items-center justify-center mx-auto shadow-xl shadow-emerald-200">
+              <div className="w-20 h-20 bg-emerald-500 rounded-full flex items-center justify-center mx-auto shadow-xl shadow-emerald-200">
                 <CheckCircle2 size={40} className="text-white" />
               </div>
               <h2 className="text-2xl font-black text-emerald-900 dark:text-emerald-200 font-sora">Escola Criada!</h2>
@@ -444,7 +449,7 @@ function CriarEscolaForm() {
                   <Button
                     variant="outline"
                     className="flex-1 border-border rounded-xl font-bold text-muted-foreground py-6"
-                    onClick={() => router.push('/super-admin/escolas')}
+                    onClick={() => navigate('/super-admin/escolas')}
                   >
                     Voltar p/ Lista
                   </Button>

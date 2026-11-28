@@ -1,7 +1,7 @@
 // apps/web/src/components/super-admin/escolas/SchoolsHeader.tsx
 "use client"
 
-import { useRouter } from "next/navigation";
+import { useWorkspaceNavigate } from "@/components/super-admin/workspace-navigation";
 import { Plus, Settings } from "lucide-react";
 
 type SchoolsHeaderProps = {
@@ -11,7 +11,7 @@ type SchoolsHeaderProps = {
 };
 
 export function SchoolsHeader({ fallbackSource, onRepairAdmins, loading }: SchoolsHeaderProps) {
-  const router = useRouter();
+  const navigate = useWorkspaceNavigate();
 
   return (
     <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-10">
@@ -50,7 +50,7 @@ export function SchoolsHeader({ fallbackSource, onRepairAdmins, loading }: Schoo
         </button>
         
         <button 
-          onClick={() => router.push("/super-admin/escolas/nova")}
+          onClick={() => navigate("/super-admin/escolas/nova")}
           className="h-11 px-6 rounded-xl bg-emerald text-white text-[10px] font-black uppercase tracking-widest hover:brightness-110 shadow-sm transition-all active:scale-95"
         >
           <div className="flex items-center gap-2">

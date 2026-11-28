@@ -1,5 +1,6 @@
 "use client";
 
+import { useSuperAdminWorkspace, useWorkspaceGuard } from "@/components/super-admin/workspace-navigation";
 import React, { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
@@ -79,6 +80,7 @@ export default function Page() {
 
 function CriarUsuarioForm() {
   const router = useRouter();
+  const workspace = useSuperAdminWorkspace();
   const [formData, setFormData] = useState<FormData>({
     nome: "",
     email: "",
@@ -94,6 +96,7 @@ function CriarUsuarioForm() {
   const [message, setMessage] = useState<Message | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [currentStep, setCurrentStep] = useState(1);
+  useWorkspaceGuard("new-user", loading, message?.type !== "success" && Boolean(formData.nome.trim() || formData.email.trim()));
 
   // Fetch escolas with error handling and retry
   const fetchEscolas = useCallback(async () => {
@@ -214,6 +217,7 @@ function CriarUsuarioForm() {
         text: `✅ Usuário criado com sucesso! Senha temporária: ${tempPasswordText}.`,
       });
 
+      workspace?.markChanged();
       // Reset form on success
       setFormData({
         nome: "",
@@ -266,7 +270,7 @@ function CriarUsuarioForm() {
         <div className="mb-8">
           <button
             type="button"
-            onClick={() => router.push('/super-admin')}
+            onClick={() => workspace ? workspace.back() : router.push('/super-admin')}
             className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-moxinexa-teal transition-colors mb-6"
           >
             <ArrowLeftIcon className="w-4 h-4" />

@@ -1,8 +1,8 @@
 "use client";
 
+import { useWorkspaceNavigate } from "@/components/super-admin/workspace-navigation";
 import { useMemo, useState, type ComponentType } from "react";
 import { ArrowRight, ArrowRightLeft, Check, Coins, Eye, Filter, Plus, Settings, Shield, Users, Wallet, AlertCircle, Zap, ShieldCheck } from "lucide-react";
-import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 
 type RiskLevel = "low" | "medium" | "high";
@@ -58,7 +58,7 @@ function getDebugPolicy(env: "dev" | "staging" | "prod"): "enabled" | "degraded"
 }
 
 export default function QuickActionsSection() {
-  const router = useRouter();
+  const navigate = useWorkspaceNavigate();
   const [pendingAction, setPendingAction] = useState<QuickAction | null>(null);
   const env = getRuntimeEnv();
   const debugPolicy = getDebugPolicy(env);
@@ -222,7 +222,7 @@ export default function QuickActionsSection() {
     }
 
     if (action.href) {
-      router.push(action.href);
+      navigate(action.href);
       return;
     }
 
@@ -235,7 +235,7 @@ export default function QuickActionsSection() {
     setPendingAction(null);
 
     if (action.href) {
-      router.push(action.href);
+      navigate(action.href);
       return;
     }
 

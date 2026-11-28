@@ -6,8 +6,9 @@
  * Tokens KLASSE: emerald, amber, slate.
  */
 
+import { useSuperAdminWorkspace, useWorkspaceGuard } from "@/components/super-admin/workspace-navigation";
 import { useEffect, useMemo, useState } from "react";
-import Link from "next/link";
+import { WorkspaceLink as Link } from "@/components/super-admin/workspace-navigation";
 import { createClient } from "@/lib/supabaseClient";
 import { toast } from "sonner";
 import { format } from "date-fns";
@@ -83,6 +84,7 @@ function SkeletonRow() {
 // ─── Componente Principal ─────────────────────────────────────────────────────
 
 export default function CobrancasListClient() {
+  const workspace = useSuperAdminWorkspace();
   const [items, setItems] = useState<AssinaturaPendente[]>([]);
   const [loading, setLoading] = useState(true);
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -90,6 +92,7 @@ export default function CobrancasListClient() {
   const [confirmingId, setConfirmingId] = useState<string | null>(null);
   const [syncing, setSyncing] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  useWorkspaceGuard("billing-list", syncing || Boolean(confirmingId));
   const [syncReport, setSyncReport] = useState<{ total_escolas_sync: number; assinaturas_criadas: number; escolas_criadas: Array<{ escola_id: string; escola_nome: string; plano: PlanTier; ciclo: "mensal" | "anual"; valor_kz: number; }>; pendentes_parametrizacao: number; escolas_pendentes_parametrizacao: Array<{ escola_id: string; escola_nome: string; plano: PlanTier; ciclo: "mensal" | "anual"; motivo: string; }>; } | null>(null);
 
   const supabase = createClient();
@@ -102,6 +105,7 @@ export default function CobrancasListClient() {
       if (!res.ok || !json?.ok) throw new Error(json?.error || 'Falha ao sincronizar');
       setSyncReport(json.report_super_admin ?? null);
       toast.success(json.message || 'Sincronização concluída');
+      workspace?.markChanged();
       loadData();
     } catch (err: any) {
       toast.error('Erro ao sincronizar: ' + err.message);
@@ -185,6 +189,7 @@ export default function CobrancasListClient() {
       if (!res.ok || !json?.ok) throw new Error(json?.error || 'Falha ao confirmar comprovativo');
 
       toast.success(`Subscrição de ${item.escola_nome} activada!`);
+      workspace?.markChanged();
       loadData();
     } catch (err: any) {
       toast.error('Erro ao confirmar: ' + err.message);
@@ -419,7 +424,7 @@ export default function CobrancasListClient() {
         <AssinaturaDetailsSlideover 
           assinaturaId={selectedId} 
           onClose={() => setSelectedId(null)} 
-          onUpdated={loadData}
+          onUpdated={() => { workspace?.markChanged(); void loadData(); }}
         />
       )}
     </div>
