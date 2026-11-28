@@ -117,13 +117,13 @@ export default function CommandCenterWorkspace({ children, afterActions, date, n
       </div>
       <PortalSignature />
     </section>
-    <div className="grid gap-3 lg:grid-cols-[minmax(0,4fr)_minmax(0,1fr)]">
+    <section aria-label="Indicadores globais" className="grid grid-cols-2 gap-3 lg:grid-cols-5">
       {children}
       <button type="button" aria-haspopup="dialog" aria-expanded={current?.path === "/super-admin/usuarios/activos"} onClick={() => open("/super-admin/usuarios/activos")} className="group min-w-0 rounded-xl border border-border bg-card p-3 text-left hover:border-ring focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:p-4">
         <span className="flex items-center justify-between gap-2"><span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-emerald/10 text-emerald dark:text-emerald-300"><Activity className="h-4 w-4" aria-hidden /></span><ChevronRight className="h-4 w-4 text-muted-foreground" aria-hidden /></span>
         <span className="mt-3 block text-xs text-muted-foreground">Utilizadores activos</span><span className="mt-1 block text-xl font-semibold tabular-nums text-foreground">{activeUsers == null ? "—" : format(activeUsers)}</span><span className="mt-1 block text-xs text-muted-foreground">{activeUsers == null ? "Indisponível" : "Últimos 5 minutos"}</span>
       </button>
-    </div>
+    </section>
     <section aria-labelledby="super-admin-actions-title" className="space-y-3">
       <h2 id="super-admin-actions-title" className="text-base font-semibold text-foreground">Ações rápidas</h2>
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{actions.map(({ href, label, icon: Icon, count, suffix, indicator }) => <AcaoRapidaCard key={href} dashboardCompact icon={<Icon />} label={label} sublabel={indicator ? count == null ? "Dados indisponíveis" : format(count) + suffix : undefined} unavailable={indicator && count == null} needsAttention={indicator && count != null && count > 0} onClick={() => open(href)} dialogOpen={current?.path === href} />)}</div>

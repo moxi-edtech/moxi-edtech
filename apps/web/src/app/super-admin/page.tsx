@@ -114,7 +114,7 @@ export default async function SuperAdminDashboard() {
       </section>
       <CommandCenterDetails finance={<ChartsSection data={charts} />} schools={schools ? <SchoolsSection escolas={schools} /> : <p className="text-sm text-muted-foreground">Não foi possível carregar as escolas.</p>} />
       </>}>
-      <section aria-label="Indicadores globais" className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <>
         {metrics.map(({ label, value, icon: Icon }) => (
           <article key={label} className="min-w-0 rounded-xl border border-border bg-card p-3 sm:p-4">
             <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-emerald/10 text-emerald dark:text-emerald-300"><Icon aria-hidden="true" className="h-4 w-4" /></span>
@@ -123,7 +123,7 @@ export default async function SuperAdminDashboard() {
             {value === "—" && <p className="mt-1 text-xs text-muted-foreground">Indisponível</p>}
           </article>
         ))}
-      </section>
+      </>
       </CommandCenterWorkspace>
     </div>
   );

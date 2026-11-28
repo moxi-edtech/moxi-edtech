@@ -202,7 +202,10 @@ export default function SessionLockProvider({ children }: { children: ReactNode 
       if (document.visibilityState === "visible" && !presenceInFlightRef.current) {
         const key = `klasse:presence:v1:${user.id}`;
         let last = presenceAttemptRef.current?.userId === user.id ? presenceAttemptRef.current.time : 0;
-        try { last = Math.max(last, Number(localStorage.getItem(key)) || 0); } catch {}
+        if (now - last >= 120_000) {
+          try { last = Math.max(last, Number(localStorage.getItem(key)) || 0); } catch {}
+          if (now - last < 120_000) presenceAttemptRef.current = { userId: user.id, time: last };
+        }
         if (now - last >= 120_000) {
           presenceAttemptRef.current = { userId: user.id, time: now };
           try { localStorage.setItem(key, String(now)); } catch {}

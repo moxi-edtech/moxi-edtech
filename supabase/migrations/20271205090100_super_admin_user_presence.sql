@@ -40,8 +40,9 @@ BEGIN
       AND p.role::text IN ('super_admin', 'global_admin', 'superadmin')
   ) THEN RAISE EXCEPTION 'not allowed' USING ERRCODE = '42501'; END IF;
   IF v_limit = 0 THEN
-    RETURN jsonb_build_object('total', (SELECT count(*) FROM klasse_presence_private.user_presence
-      WHERE last_seen_at >= v_now - interval '5 minutes' AND last_seen_at <= v_now),
+    RETURN jsonb_build_object('total', (SELECT count(*) FROM klasse_presence_private.user_presence u
+      WHERE u.last_seen_at >= v_now - interval '5 minutes' AND u.last_seen_at <= v_now
+        AND EXISTS (SELECT 1 FROM public.profiles p WHERE p.user_id = u.user_id)),
       'as_of', v_now, 'items', '[]'::jsonb);
   END IF;
   WITH active AS MATERIALIZED (
