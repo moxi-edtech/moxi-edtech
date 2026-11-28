@@ -1,4 +1,6 @@
 "use client";
+import { PortalPullToRefresh } from "@/components/portal/ui/PortalPullToRefresh";
+
 
 import { useEffect, useState } from "react";
 import { Bell, ChevronRight } from "lucide-react";
@@ -45,7 +47,7 @@ export function TabNotificacoes() {
   };
 
   return (
-    <section className="space-y-6" aria-label="Avisos">
+    <PortalPullToRefresh onRefresh={() => { setLoading(true); setRetry(value => value + 1); }} busy={loading} disabled={Boolean(selectedId)} role="region" className="space-y-6" aria-label="Avisos">
       {!navigation && <div className="space-y-1">
         <h1 id="aluno-avisos-title" className="text-2xl font-semibold tracking-tight text-primary">Avisos</h1>
       </div>}
@@ -85,6 +87,6 @@ export function TabNotificacoes() {
         <p className="whitespace-pre-wrap break-words text-sm leading-relaxed">{selected?.resumo || "Sem informação adicional."}</p>
         {selected?.data && !Number.isNaN(Date.parse(selected.data)) && <p className="text-xs text-muted-foreground">{new Date(selected.data).toLocaleDateString("pt-AO")}</p>}
       </PortalSheet>}
-    </section>
+    </PortalPullToRefresh>
   );
 }
