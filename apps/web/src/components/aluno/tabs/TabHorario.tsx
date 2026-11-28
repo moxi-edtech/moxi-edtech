@@ -1,4 +1,6 @@
 "use client";
+import { PortalPullToRefresh } from "@/components/portal/ui/PortalPullToRefresh";
+
 
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Clock, Calendar, FileCheck } from "lucide-react";
@@ -173,7 +175,7 @@ export function TabHorario({ dailyOnly = false, snapshot, children }: {
   }, [studentId, academicYearId, agendaRequested, agendaRetry, read]);
 
   return (
-    <div className="min-w-0 space-y-6">
+    <PortalPullToRefresh onRefresh={() => { if (activeTab === "agenda") { setAgendaLoading(true); setAgendaRequested(true); setAgendaRetry(value => value + 1); } else { setLoading(true); setHorarioRetry(value => value + 1); } }} busy={activeTab === "agenda" ? agendaLoading : timetableLoading} disabled={dailyOnly || Boolean(initial)} className="min-w-0 space-y-6">
       {!dailyOnly && <header className="space-y-1">
         <h1 className="text-2xl font-semibold tracking-tight text-primary">Horário</h1>
         {visibleData?.context?.anoLetivoLabel && (
@@ -326,6 +328,6 @@ export function TabHorario({ dailyOnly = false, snapshot, children }: {
       )}
 
       {!timetableLoading && children?.(visibleData ? { key: requestKey, data: visibleData } : undefined)}
-    </div>
+    </PortalPullToRefresh>
   );
 }
