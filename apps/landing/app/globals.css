@@ -2109,3 +2109,8 @@ html{scroll-behavior:smooth}body{background:var(--bg);color:var(--t1);font-size:
   .pricing-capacity{grid-template-columns:1fr}
   .pricing-capacity > div{display:flex;align-items:baseline;justify-content:space-between;padding:5px 8px}
 }
+
+
+/* Landing editorial: keep pricing capacities readable. */
+.landing-page .pricing-capacity-value{overflow-wrap:anywhere}
+.landing-page .pricing-capacity-label{letter-spacing:0;overflow-wrap:anywhere}

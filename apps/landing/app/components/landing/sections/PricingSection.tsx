@@ -48,15 +48,10 @@ const resolveHref = (appUrl: string, ctaHref: string) => {
   return `${normalizedAppUrl}${normalizedCta}`
 }
 
-const resolveCapacity = (plan: PricingPlan) =>
-  plan.slug === 'enterprise'
-    ? { alunos: '∞', utilizadores: '∞', storage: '∞' }
-    : plan.capacity
-
 function PricingPlanCard({ plan, appUrl }: { plan: PricingPlan; appUrl: string }) {
   const variant = variants[plan.slug]
   const planHref = resolveHref(appUrl, plan.ctaHref)
-  const capacityValues = resolveCapacity(plan)
+  const capacityValues = plan.capacity
 
   return (
     <motion.div
@@ -107,7 +102,7 @@ function PricingPlanCard({ plan, appUrl }: { plan: PricingPlan; appUrl: string }
         </div>
         <div>
           <div className="pricing-capacity-value">{capacityValues.storage}</div>
-          <div className="pricing-capacity-label">Storage</div>
+          <div className="pricing-capacity-label">Armazenamento</div>
         </div>
       </div>
 
@@ -141,11 +136,8 @@ function PricingPlanCard({ plan, appUrl }: { plan: PricingPlan; appUrl: string }
 function PricingIntro({ intro }: { intro: string }) {
   return (
     <FadeIn style={{ textAlign: 'center', maxWidth: 520, margin: '0 auto 0' }}>
-      <div className="sec-eyebrow" style={{ justifyContent: 'center' }}>
-        Planos transparentes
-      </div>
       <h2 className="sec-title" style={{ textAlign: 'center' }}>
-        Preços para a nossa realidade.
+        Planos e preços
       </h2>
       <p className="precos-intro">{intro}</p>
     </FadeIn>

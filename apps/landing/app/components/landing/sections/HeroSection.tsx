@@ -74,7 +74,7 @@ export function HeroSection({ titleLines, eyebrow, subtitle, primaryCta, note }:
               </a>
             </motion.div>
             <motion.div variants={itemVariants} className="hero-proof">
-              <div className="proof-text"><strong>{note}</strong><span>Configuração e formação acompanhadas</span></div>
+              <div className="proof-text"><strong>{note}</strong></div>
             </motion.div>
           </motion.div>
           </div>
