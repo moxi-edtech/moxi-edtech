@@ -99,6 +99,7 @@ try {
   await validateDrawerData();
   await validateDashboardNavigation();
   await validateGradeAndPaymentRequests();
+  await validatePullToRefresh();
   for (const viewport of [{width:390,height:844},{width:768,height:1024},{width:1024,height:768},{width:1366,height:768}]) {
     for (const reducedMotion of ["reduce","no-preference"]) {
       const ctx=await browser.newContext({viewport,reducedMotion});
@@ -555,4 +556,87 @@ async function validateGradeAndPaymentRequests() {
     assert.equal(payments("preview").length,2);
     console.log("Drawer request budget: AppyPay monthly: one preview per opening, one explicit issue, one explicit check, no implicit writes");
   } finally { await page.close(); }
+}
+
+async function validatePullToRefresh() {
+  const page = await browser.newPage({ viewport:{width:390,height:844}, hasTouch:true, isMobile:true });
+  let requests=0, forbidden=0, release;
+  const held = new Promise(resolve => { release = resolve; });
+  await page.route("**/api/fixture/pull-refresh", async route => {
+    assert.equal(route.request().method(),"GET");
+    requests++;
+    if (requests===1) await held;
+    await route.fulfill({json:{ok:true}});
+  });
+  await page.route("**/api/fixture/forbidden", route => { forbidden++; return route.fulfill({json:{ok:true}}); });
+  const swipe = (locator, dx, dy, cancel=false) => locator.evaluate((target,{dx,dy,cancel}) => {
+    const make = (x,y) => new Touch({identifier:1,target,clientX:x,clientY:y});
+    const start=make(100,100), end=make(100+dx,100+dy);
+    const dispatch = (type,touches,changed) => target.dispatchEvent(new TouchEvent(type,{touches,targetTouches:touches,changedTouches:changed,bubbles:true,cancelable:true}));
+    dispatch("touchstart",[start],[start]); dispatch("touchmove",[end],[end]);
+    dispatch(cancel?"touchcancel":"touchend",[],[end]);
+  },{dx,dy,cancel});
+  const dismiss = locator => locator.evaluate(target => {
+    for (const [type,y] of [["pointerdown",100],["pointermove",210],["pointerup",210]]) target.dispatchEvent(new PointerEvent(type,{pointerId:1,pointerType:"touch",isPrimary:true,clientX:100,clientY:y,bubbles:true,cancelable:true}));
+  });
+  try {
+    await page.goto(base+"/?story=pull-to-refresh");
+    assert.ok(await page.evaluate(()=>matchMedia("(pointer: coarse)").matches));
+    const target=page.getByTestId("pull-target");
+    await target.waitFor();
+    await swipe(target,0,35);
+    await swipe(target,130,15);
+    await swipe(target,0,-90);
+    await swipe(target,0,110,true);
+    assert.equal(requests,0,"short, horizontal, upward and cancelled gestures must not refresh");
+    await page.evaluate(()=>window.scrollTo(0,200));
+    await page.waitForFunction(()=>window.scrollY>0);
+    await swipe(target,0,110);
+    assert.equal(requests,0,"refresh away from scroll top");
+    await page.evaluate(()=>window.scrollTo(0,0));
+    await page.waitForFunction(()=>window.scrollY===0);
+    await swipe(target,0,110);
+    await page.getByText("A actualizar…",{exact:true}).waitFor();
+    await page.waitForFunction(()=>document.querySelector('[data-testid="pull-fixture"]')!==null);
+    await swipe(target,0,110);
+    release();
+    await page.getByTestId("pull-completed").getByText("1",{exact:true}).waitFor();
+    assert.equal(requests,1,"parallel refresh");
+    await page.getByRole("button",{name:"Alternar edição"}).click();
+    await swipe(target,0,110);
+    assert.equal(requests,1,"dirty form refreshed");
+    await page.getByRole("button",{name:"Alternar edição"}).click();
+    await page.getByRole("button",{name:"Abrir drawer de teste"}).click();
+    const drawer=page.getByRole("dialog",{name:"Drawer de teste"});
+    await drawer.waitFor();
+    assert.equal(await drawer.locator('[data-portal-pull-refresh="true"]').count(),0);
+    await swipe(page.getByTestId("drawer-pull-target"),0,110);
+    assert.equal(forbidden,0,"drawer refreshed");
+    assert.equal(requests,1,"background page refreshed while drawer open");
+    await dismiss(drawer.locator('[data-portal-dismiss-handle]'));
+    await drawer.waitFor({state:"hidden"});
+    assert.equal(forbidden,0,"dismiss must not refresh");
+    assert.equal(requests,1,"dismiss must not refresh background");
+    await page.goto(base+"/?story=dashboard-clean");
+    const dashboard=page.getByTestId("aluno-dashboard-editorial");
+    await dashboard.waitFor();
+    await page.waitForLoadState("networkidle");
+    await page.evaluate(()=>{
+      window.pullCalls=[];
+      const original=window.fetch.bind(window);
+      window.fetch=(input,init)=>{
+        const url=new URL(typeof input==="string"?input:input.url??input,location.href);
+        if(url.pathname.startsWith("/api/")) window.pullCalls.push((init?.method??"GET")+" "+url.pathname);
+        return original(input,init);
+      };
+    });
+    await swipe(dashboard.getByRole("heading",{name:"Em resumo",exact:true}),0,110);
+    await page.waitForFunction(()=>window.pullCalls.includes("GET /api/aluno/dashboard"));
+    await page.waitForFunction(()=>!document.querySelector('[data-testid="aluno-dashboard-editorial"] [role="status"]')?.textContent?.includes("A actualizar"));
+    const calls=await page.evaluate(()=>window.pullCalls);
+    assert.equal(calls.filter(call=>call==="GET /api/aluno/dashboard").length,1);
+    assert.ok(calls.every(call=>call.startsWith("GET ")));
+    assert.equal(new Set(calls).size,calls.length,"student dashboard refresh repeated a GET");
+    console.log("Pull-to-refresh: one GET per resource, ignored invalid gestures, blocked draft and drawer, swipe dismiss without refresh");
+  } finally { release(); await page.close(); }
 }
