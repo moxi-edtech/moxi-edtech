@@ -1,4 +1,6 @@
 'use client';
+import { PortalPullToRefresh } from "@/components/portal/ui/PortalPullToRefresh";
+
 
 import { usePortalDrawerGuard, PortalFrameActiveContext, usePortalDrawerNavigation } from "@/components/portal/ui/PortalDrawerNavigator";
 import { useContext, useState, useEffect, useCallback, useRef } from "react";
@@ -92,7 +94,9 @@ export function TabDocumentos({ embedded = false, active = true, focusServiceCod
     (!serviceCode || doc.codigo === serviceCode)
   );
 
+  const catalogPending = useRef(0);
   const fetchCatalogo = useCallback(async (quiet = false, fresh = true) => {
+    catalogPending.current += 1;
     const sequence = ++catalogSequence.current;
     setCatalogError(null);
     if (!quiet) setFetching(true);
@@ -110,6 +114,7 @@ export function TabDocumentos({ embedded = false, active = true, focusServiceCod
       setCatalogError(err instanceof Error ? err.message : "Não foi possível carregar os serviços.");
       return false;
     } finally {
+      catalogPending.current -= 1;
       if (sequence === catalogSequence.current) setFetching(false);
     }
   }, [query, read]);
@@ -136,6 +141,7 @@ export function TabDocumentos({ embedded = false, active = true, focusServiceCod
     };
     const refresh = async () => {
       if (stopped || document.hidden || inFlight) return;
+      if (catalogPending.current > 0) { schedule(); return; }
       inFlight = true;
       try {
         const succeeded = await fetchCatalogo(true);
@@ -272,7 +278,7 @@ export function TabDocumentos({ embedded = false, active = true, focusServiceCod
   if (fetching) return <PortalLoadingState label="A carregar documentos" rows={3} className="pb-4" />;
 
   return (
-    <div className="min-w-0 space-y-5">
+    <PortalPullToRefresh onRefresh={() => catalogPending.current ? undefined : fetchCatalogo(true)} busy={fetching} disabled={!active || showDrawer || loading !== null} className="min-w-0 space-y-5">
       {/* Cabeçalho */}
       {!embedded && <header className="space-y-1">
         <h1 className="text-2xl font-semibold tracking-tight text-primary">Secretaria Digital</h1>
@@ -383,7 +389,7 @@ export function TabDocumentos({ embedded = false, active = true, focusServiceCod
           intentId: selectedDoc.pagamento_intent_id
         } : null}
       />
-    </div>
+    </PortalPullToRefresh>
   );
 }
 
