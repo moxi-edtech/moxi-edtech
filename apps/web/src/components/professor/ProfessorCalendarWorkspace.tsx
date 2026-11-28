@@ -1,4 +1,6 @@
 "use client";
+import { PortalPullToRefresh } from "@/components/portal/ui/PortalPullToRefresh";
+
 
 import { usePortalDrawerNavigation } from "@/components/portal/ui/PortalDrawerNavigator";
 import { PortalSheet } from "@/components/portal/ui/PortalSheet";
@@ -287,7 +289,7 @@ export function ProfessorCalendarWorkspace({ embedded = false, initialView = "ca
                 ) : null}
                 </>);
   return (
-    <div className={embedded ? "min-w-0" : "min-h-screen bg-background"}>
+    <PortalPullToRefresh onRefresh={() => { setLoading(true); setRetry(value => value + 1); }} busy={loading} disabled={embedded || eventOpen || historyOpen} className={embedded ? "min-w-0" : "min-h-screen bg-background"}>
       <div className={embedded ? "flex min-w-0 flex-col gap-4" : `${PORTAL_PAGE_INSET} max-md:px-0 max-md:py-0 flex flex-col gap-4 sm:gap-6`}>
         {!embedded && <DashboardHeader
           title="Calendário Académico"
@@ -501,6 +503,6 @@ export function ProfessorCalendarWorkspace({ embedded = false, initialView = "ca
           </>
         )}
       </div>
-    </div>
+    </PortalPullToRefresh>
   );
 }
