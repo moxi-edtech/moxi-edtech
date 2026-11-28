@@ -174,7 +174,7 @@ export default function ComunicacaoPage() {
               <Label htmlFor="message">Mensagem <span className="text-red-500">*</span></Label>
               <textarea
                 id="message"
-                className="flex min-h-[300px] w-full rounded-md border border-border bg-card px-3 py-2 text-sm ring-offset-white placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 font-mono"
+                className="flex min-h-[300px] w-full rounded-md border border-border bg-card px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 font-mono"
                 placeholder="Escreva sua mensagem aqui (suporta HTML)..."
                 value={formData.message}
                 onChange={(e) => setFormData({ ...formData, message: e.target.value })}

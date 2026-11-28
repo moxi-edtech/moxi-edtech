@@ -1,6 +1,6 @@
 "use client";
 
-import { useWorkspaceNavigate } from "@/components/super-admin/workspace-navigation";
+import { useSuperAdminWorkspace, useWorkspaceNavigate } from "@/components/super-admin/workspace-navigation";
 import { useMemo, useState, type ComponentType } from "react";
 import { ArrowRight, ArrowRightLeft, Check, Coins, Eye, Filter, Plus, Settings, Shield, Users, Wallet, AlertCircle, Zap, ShieldCheck } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -59,6 +59,7 @@ function getDebugPolicy(env: "dev" | "staging" | "prod"): "enabled" | "degraded"
 
 export default function QuickActionsSection() {
   const navigate = useWorkspaceNavigate();
+  const workspace = useSuperAdminWorkspace();
   const [pendingAction, setPendingAction] = useState<QuickAction | null>(null);
   const env = getRuntimeEnv();
   const debugPolicy = getDebugPolicy(env);
@@ -331,7 +332,7 @@ export default function QuickActionsSection() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm"
+            className={workspace ? "flex justify-center py-4" : "fixed inset-0 z-[100] flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm"}
           >
             <motion.div 
               initial={{ scale: 0.9, y: 20 }}

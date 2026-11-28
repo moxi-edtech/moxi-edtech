@@ -68,7 +68,7 @@ export default function CommandCenterWorkspace({ children, afterActions, date, n
   const changed = useRef(false);
   const trigger = useRef<HTMLElement | null>(null);
   const format = (n: number) => n.toLocaleString("pt-AO");
-  const current = stack.at(-1);
+  const current = stack[stack.length - 1];
   const setGuard = useCallback((key: string, state: "busy" | "dirty" | null) => { if (state) guards.current.set(key, state); else guards.current.delete(key); }, []);
   const markChanged = useCallback(() => { changed.current = true; setRevision(v => v + 1); }, []);
   const open = useCallback((href: string) => {
@@ -79,7 +79,7 @@ export default function CommandCenterWorkspace({ children, afterActions, date, n
     if (!document.querySelector("[data-workspace-path]")) trigger.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     setWarning(null);
     setStack(previous => {
-      if (previous.at(-1)?.href === route.href) return previous;
+      if (previous[previous.length - 1]?.href === route.href) return previous;
 
       const existing = previous.findIndex(item => item.href === route.href);
       return existing >= 0 ? previous.slice(0, existing + 1) : [...previous, route];

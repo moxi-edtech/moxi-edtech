@@ -28,7 +28,8 @@ export const workspaceTitles = {
 export type WorkspaceRoute = { href: string; path: string; title: string; schoolId?: string };
 export function resolveWorkspaceRoute(href: string): WorkspaceRoute | null {
   if (!href.startsWith("/super-admin/") || href.includes("\\")) return null;
-  const url = new URL(href, "https://workspace.invalid");
+  let url: URL;
+  try { url = new URL(href, "https://workspace.invalid"); } catch { return null; }
   if (url.origin !== "https://workspace.invalid") return null;
   const path = url.pathname.replace(/\/$/, "");
   if (Object.prototype.hasOwnProperty.call(workspaceTitles, path)) {
