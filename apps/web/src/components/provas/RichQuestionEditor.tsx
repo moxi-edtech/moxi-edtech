@@ -82,7 +82,7 @@ export default function RichQuestionEditor({block,onChange,onDone,disabled,label
   surface.current?.querySelector<HTMLButtonElement>("#provas-formula-trigger")?.focus({preventScroll:true});
  });
  function cancelFormula(){
-  if(!formula)return;
+  if(!editor||!formula)return;
   editor.setEditable(!disabled,false);
   // Blur/hiding the contenteditable can collapse a DOM selection. Restore the
   // original atomic node selection explicitly before returning to the toolbar.
