@@ -47,7 +47,7 @@ export function TabNotificacoes() {
   };
 
   return (
-    <PortalPullToRefresh onRefresh={() => { setLoading(true); setRetry(value => value + 1); }} busy={loading} disabled={Boolean(selectedId)} role="region" className="space-y-6" aria-label="Avisos">
+    <PortalPullToRefresh as="section" onRefresh={() => { setLoading(true); setRetry(value => value + 1); }} busy={loading} disabled={Boolean(selectedId)} className="space-y-6" aria-label="Avisos">
       {!navigation && <div className="space-y-1">
         <h1 id="aluno-avisos-title" className="text-2xl font-semibold tracking-tight text-primary">Avisos</h1>
       </div>}
